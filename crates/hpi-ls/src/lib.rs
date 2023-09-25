@@ -1,4 +1,4 @@
-use rush_analyzer::DiagnosticLevel;
+use hpi_analyzer::DiagnosticLevel;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -52,7 +52,7 @@ impl LanguageServer for Backend {
 impl Backend {
     async fn create_diagnostics(&self, params: TextDocumentItem) {
         // obtain the diagnostics from the analyzer
-        let raw_diagnostics = match rush_analyzer::analyze(&params.text, params.uri.as_str()) {
+        let raw_diagnostics = match hpi_analyzer::analyze(&params.text, params.uri.as_str()) {
             Ok((_, diagnostics)) => diagnostics,
             Err(diagnostics) => diagnostics,
         };

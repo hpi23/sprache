@@ -2,7 +2,7 @@ use std::{
     borrow::Cow, cell::RefCell, collections::HashMap, io::Write, rc::Rc, thread, time::Duration,
 };
 
-use rush_analyzer::{ast::*, AssignOp, InfixOp, PrefixOp, Type};
+use hpi_analyzer::{ast::*, AssignOp, InfixOp, PrefixOp, Type};
 
 use crate::value::{InterruptKind, Value};
 

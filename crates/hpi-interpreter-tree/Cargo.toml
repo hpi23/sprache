@@ -1,5 +1,5 @@
 [package]
-name = "rush-interpreter-tree"
+name = "hpi-interpreter-tree"
 version = "0.1.0"
 authors.workspace = true
 edition = "2021"
@@ -10,4 +10,4 @@ repository.workspace = true
 
 [dependencies]
 getrandom = { version = "0.2.10", features = ["js"]}
-rush-analyzer = { path = "../rush-analyzer", version = "0.1.0" }
+hpi-analyzer = { path = "../hpi-analyzer", version = "0.1.0" }

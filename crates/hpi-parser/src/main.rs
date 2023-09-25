@@ -1,6 +1,6 @@
 use std::{fs, env::args};
 
-use rush_parser::{Parser, Lexer};
+use hpi_parser::{Parser, Lexer};
 
 fn main() {
     let path = args().nth(1).unwrap();

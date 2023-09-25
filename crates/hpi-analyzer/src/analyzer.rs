@@ -4,7 +4,7 @@ use std::{
     vec,
 };
 
-use rush_parser::{ast::*, Span};
+use hpi_parser::{ast::*, Span};
 
 use crate::{ast::*, Diagnostic, DiagnosticLevel, ErrorKind};
 

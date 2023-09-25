@@ -5,7 +5,7 @@ mod value;
 use std::{fmt::Debug, io::Write};
 
 pub use interpreter::Interpreter;
-use rush_analyzer::Diagnostic;
+use hpi_analyzer::Diagnostic;
 
 /// Interprets rush source code by walking the analyzed tree.
 /// The `Ok(_)` variant returns the exit code and non-error diagnostics.
@@ -15,7 +15,7 @@ pub fn run<'src>(
     path: &'src str,
     output: impl Write,
 ) -> Result<(i64, Vec<Diagnostic<'src>>), RunError<'src>> {
-    let (tree, diagnostics) = rush_analyzer::analyze(text, path)?;
+    let (tree, diagnostics) = hpi_analyzer::analyze(text, path)?;
     let code = Interpreter::new(output).run(tree)?;
     Ok((code, diagnostics))
 }

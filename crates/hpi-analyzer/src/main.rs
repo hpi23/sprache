@@ -4,7 +4,7 @@ fn main() {
     let start = Instant::now();
     let path = env::args().nth(1).unwrap();
     let code = fs::read_to_string(&path).unwrap();
-    match rush_analyzer::analyze(&code, &path) {
+    match hpi_analyzer::analyze(&code, &path) {
         Ok(res) => {
             for diagnostic in &res.1 {
                 println!("{diagnostic:#}");

@@ -3,7 +3,7 @@ use std::{
     fmt::{self, Display, Formatter},
 };
 
-use rush_parser::{Error, Span};
+use hpi_parser::{Error, Span};
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Diagnostic<'src> {

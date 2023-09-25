@@ -1,11 +1,11 @@
 [package]
-name = "rush-parser"
-version = "0.1.2"
+name = "hpi-parser"
+version = "0.1.0"
 authors.workspace = true
 edition = "2021"
 license.workspace = true
 repository.workspace = true
-description = "A lexer and parser for the rush programming language"
+description = "A lexer and parser for the HPI programming language"
 
 [dependencies]
 either = "1.8.0"

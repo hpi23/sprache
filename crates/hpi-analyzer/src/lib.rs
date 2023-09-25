@@ -11,8 +11,8 @@ pub use analyzer::*;
 use ast::AnalyzedProgram;
 pub use diagnostic::*;
 
-pub use rush_parser::ast::{AssignOp, InfixOp, PrefixOp, Type};
-use rush_parser::{Lexer, Parser};
+pub use hpi_parser::ast::{AssignOp, InfixOp, PrefixOp, Type};
+use hpi_parser::{Lexer, Parser};
 
 /// Analyzes rush source code and returns an analyzed (annotated) AST.
 /// The `Ok(_)` variant also returns non-error diagnostics.
