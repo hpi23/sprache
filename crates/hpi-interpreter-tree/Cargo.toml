@@ -1,0 +1,13 @@
+[package]
+name = "rush-interpreter-tree"
+version = "0.1.0"
+authors.workspace = true
+edition = "2021"
+license.workspace = true
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+getrandom = { version = "0.2.10", features = ["js"]}
+rush-analyzer = { path = "../rush-analyzer", version = "0.1.0" }

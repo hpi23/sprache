@@ -1,0 +1,11 @@
+funk Bewerbung() ergibt Zeichenkette {
+  "Ich bin so toll"
+}
+
+funk Einschreibung(Zahl matrikelnummer) ergibt Nichts {
+  drucke(Matrikelnummer);
+}
+
+funk Studium() ergibt Nichts {
+
+}

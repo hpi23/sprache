@@ -1,0 +1,63 @@
+beantrage foo von bar;
+
+setze Zahl a auf 42;
+setze Zeichenkette b auf "Das ist ein String";
+setze Zeichen c auf 'c';
+setze Fließkommazahl d auf 3,14159265;
+setze Liste von Zeichen e auf [ 'c' / 'd' ];
+setze Wahrheitswert f auf ja;
+
+funk Bewerbung() ergibt Zeichenkette {
+    setze Zeichenkette Bewerbung auf "Hallo, ich bin der ...";
+    drucke(Bewerbung);
+    überweise Bewerbung;
+}
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+    // Matrikelnummer = (Matrikelnummer + 1) - 2 * 3 : 4 % 5;
+    ändere Matrikelnummer auf (Matrikelnummer + 1) - 2 * 3 : 4 % 5;
+    drucke("Erfolgreich eingeschrieben: Matrikelnummer:" / Matrikelnummer);
+
+    setze Fließkommazahl Zähler auf 3,145;
+
+    solange Zähler < 10F {
+        drucke(Zähler);
+        Zähler += 1F;
+        schlummere(0,5);
+    }
+    ändere Zähler auf 2F; // Zähler = 2;
+
+    falls (Matrikelnummer % 2) == 0 {
+        drucke("Matrikelnummer" / Matrikelnummer / "ist gerade.");
+    } sonst falls Matrikelnummer % 3 == 0 {
+        drucke("Matrikelnummer" / Matrikelnummer / "ist durch 3 teilbar.");
+    } sonst {
+        drucke("Matrikelnummer" / Matrikelnummer / "kann nichts.");
+    }
+
+    setze Zahl _a auf 1;
+    // setze Zeiger auf Zahl b = Referenz zu a; // Referenz zu
+    // drucke(Wert bei b);
+    // b += 1;
+}
+
+funk Studium() ergibt Nichts {
+    drucke(a / b / c / d / e / f);
+
+    irgendwas('c' / 2);
+}
+
+funk irgendwas(Zeichen n / Zahl x) ergibt Zahl {
+    drucke(n);
+
+    drucke("Vor einfügen" / e);
+    e.hinzufügen('Z');
+    drucke("Nach einfügen" / e);
+
+    drucke(e[0]);
+    //ändere e[0] auf 42;
+    e.aktualisieren(0 / '4');
+    drucke(e[0]);
+
+    überweise x;
+}

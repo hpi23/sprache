@@ -1,0 +1,23 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: clippy
+  - repo: https://github.com/adamchainz/pre-commit-dprint
+    rev: v0.35.3
+    hooks:
+      - id: dprint
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.14.3
+    hooks:
+      - id: typos

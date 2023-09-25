@@ -1,0 +1,9 @@
+funk einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+    falls n < 2 {
+
+    } oder falls n < 3 {
+
+    } oder {
+
+    }
+}

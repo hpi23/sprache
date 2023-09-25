@@ -1,0 +1,48 @@
+let mut a = 234;
+let b = 2;
+
+fn set() {
+    a += b;
+}
+
+// Should be 37
+fn main() {
+    set();
+    exit(a - fib(10) - pow(12, 2));
+}
+
+fn fib(mut n: int) -> int {
+    if n == 0 {
+        return 0;
+    }
+
+    let mut prev = 1;
+    let mut curr = 1;
+    while n > 2 {
+        n -= 1;
+        let tmp = curr + prev;
+        prev = curr;
+        curr = tmp;
+    }
+    curr
+}
+
+fn pow(base: int, mut exponent: int) -> int {
+    if exponent < 0 {
+        return 0;
+    }
+    let mut accumulator = 1;
+    while exponent != 0 {
+        exponent -= 1;
+        accumulator *= base;
+    }
+    accumulator
+}
+
+fn fib_recursive(n: int) -> int {
+    if n < 2 {
+        n
+    } else {
+        fib_recursive(n - 1) + fib_recursive(n - 2)
+    }
+}

@@ -1,37 +1,21 @@
-# The rush Programming Language
+# Die HPI Programmiersprache
 
-A simple programming language for researching different ways of program
-execution and compilation.
+Die ~~offizielle~~ Programmiersprache des HPI.
 
-> **Note:** Since this project is part of a research project, the language
-> cannot be considered _production-ready_.
+> **Anmerkung:** Dieses Projekt soll niemanden beleidigen oder bloßstellen, alles bitte mit Humor behandeln.
 
-## Projects Which Are Part of rush
+## Teilprojekte
 
-### Program Analysis
+### Programmanalyze
 
-- [Lexer & Parser](./crates/rush-parser/)
-- [Semantic Analyzer](./crates/rush-analyzer/)
+- [Lexer & Parser](./crates/hpi-parser/)
+- [Semantikanalyse](./crates/hpi-analyzer/)
 
-### Interpreters
+### Interpreter
 
-- [Tree-walking Interpreter](./crates/rush-interpreter-tree/)
-- [Virtual Machine Interpreter](./crates/rush-interpreter-vm/)
-
-### Compilers
-
-- [Wasm Compiler](./crates/rush-compiler-wasm/)
-- [LLVM Compiler](./crates/rush-compiler-llvm/)
-- [RISC-V Compiler](./crates/rush-compiler-risc-v/)
-- [x86_64 Compiler](./crates/rush-compiler-x86-64/)
-
-### Transpilers
-
-- [ANSI C Transpiler](./crates/rush-transpiler-c/)
+- [Tree-walking Interpreter](./crates/hpi-interpreter-tree/)
 
 ### Toolchain
 
-- [Language Server](./crates/rush-ls/)
-- [rush CLI](./crates/rush-cli/)
-# sprache
-# sprache
+- [Language Server](./crates/hpi-ls/)
+- [rush CLI](./crates/hpi-cli/)

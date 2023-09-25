@@ -1,0 +1,13 @@
+[workspace]
+members = [
+    "crates/hpi-ls",
+    "crates/hpi-cli",
+    "crates/hpi-parser",
+    "crates/hpi-analyzer",
+    "crates/hpi-interpreter-tree",
+]
+resolver = "1"
+package.authors = ["MikMuellerDev"]
+package.edition = "2021"
+package.license = "GPL-3.0-only"
+package.repository = "https://github.com/hpi23/sprache.git"

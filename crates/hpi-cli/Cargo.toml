@@ -1,0 +1,28 @@
+[package]
+name = "rush-cli"
+version = "0.1.0"
+authors.workspace = true
+edition = "2021"
+license.workspace = true
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+llvm = ["dep:rush-compiler-llvm"]
+
+[dependencies]
+anyhow = "1.0.66"
+clap = { version = "4.0.24", features = ["derive"] }
+rush-analyzer = { path = "../rush-analyzer" }
+rush-compiler-llvm = { path = "../rush-compiler-llvm", optional = true }
+rush-compiler-risc-v = { path = "../rush-compiler-risc-v" }
+rush-compiler-wasm = { path = "../rush-compiler-wasm" }
+rush-compiler-x86-64 = { path = "../rush-compiler-x86-64" }
+rush-interpreter-tree = { path = "../rush-interpreter-tree" }
+rush-interpreter-vm = { path = "../rush-interpreter-vm" }
+rush-ls = { path = "../rush-ls" }
+rush-transpiler-c = { path = "../rush-transpiler-c" }
+tempfile = "3.3.0"
+tokio = "1.26.0"
