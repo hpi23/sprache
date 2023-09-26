@@ -141,6 +141,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
 
         Ok(Program {
             span: start_loc.until(self.prev_tok.span.end),
+            imports,
             functions,
             globals,
         })

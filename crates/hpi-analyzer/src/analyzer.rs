@@ -151,6 +151,11 @@ impl<'src> Analyzer<'src> {
         mut self,
         program: Program<'src>,
     ) -> Result<(AnalyzedProgram<'src>, Vec<Diagnostic>), Vec<Diagnostic>> {
+        // visit all import statements in the beginning
+        for item in &program.imports {
+            // self.beantrage(item)
+        }
+
         // add all function signatures first
         for func in &program.functions {
             // check for duplicate function names
