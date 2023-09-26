@@ -177,7 +177,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             TokenKind::Ident(ident) => {
                 // TODO: rechtschreibfehler
                 self.errors.push(Error::new(
-                    format!("Datentyp `{ident}` ist nicht bekannt"),
+                    format!("Datentyp `{ident}` ist nicht bekannt."),
                     self.curr_tok.span,
                     self.lexer.source(),
                 ));
@@ -185,7 +185,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             }
             invalid => {
                 return Err(Error::new_boxed(
-                    format!("expected a type, found `{invalid}`"),
+                    format!("Erwartete einen Datentyp, fand `{invalid}`."),
                     self.curr_tok.span,
                     self.lexer.source(),
                 ));
