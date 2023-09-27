@@ -1,0 +1,27 @@
+beantrage drucke von Drucker;
+beantrage geld von Hasso;
+beantrage aufgeben von libSAP;
+
+setze Zahl a auf 1;
+
+funk Bewerbung() ergibt Zeichenkette {
+    "foo"
+}
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+    drucke(Matrikelnummer);
+}
+
+funk Studium() ergibt Nichts {
+    setze Liste von Liste von Zahl a auf [ ];
+    drucke(a);
+
+    ändere a auf [];
+
+    drucke(a);
+    drucke(geld());
+
+    aufgeben(1);
+
+    überweise;
+}

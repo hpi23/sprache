@@ -180,7 +180,7 @@ where
         mut args: Vec<Value>,
     ) -> ExprResult {
         match func_name {
-            AnalyzedCallBase::Ident("exit") => {
+            AnalyzedCallBase::Ident("aufgeben") => {
                 Err(InterruptKind::Exit(args.swap_remove(0).unwrap_int()))
             }
             AnalyzedCallBase::Ident("drucke") => {
@@ -209,6 +209,13 @@ where
                 } else {
                     unreachable!("the analyzer prevents this")
                 }
+
+                Ok(Value::Unit)
+            }
+            AnalyzedCallBase::Ident("geld") => {
+                self.output
+                    .write_all(("Nun sind Sie reich, sie wurden gesponst!").as_bytes())
+                    .expect("if this fails, we're screwed");
 
                 Ok(Value::Unit)
             }
@@ -256,15 +263,14 @@ where
 
     fn visit_statement(&mut self, node: &AnalyzedStatement<'src>) -> StmtResult {
         match node {
+            AnalyzedStatement::Beantrage(_) => Ok(()),
             AnalyzedStatement::Let(node) => self.visit_let_stmt(node),
             AnalyzedStatement::Aendere(node) => self.visit_aendere_stmt(node),
             AnalyzedStatement::Return(expr) => Err(InterruptKind::Return(
                 expr.as_ref()
                     .map_or(Ok(Value::Unit), |expr| self.visit_expression(expr))?,
             )),
-            AnalyzedStatement::Loop(node) => self.visit_loop_stmt(node),
             AnalyzedStatement::While(node) => self.visit_while_stmt(node),
-            AnalyzedStatement::For(node) => self.visit_for_stmt(node),
             AnalyzedStatement::Break => Err(InterruptKind::Break),
             AnalyzedStatement::Continue => Err(InterruptKind::Continue),
             AnalyzedStatement::Expr(node) => self.visit_expression(node).map(|_| ()),

@@ -52,8 +52,8 @@ impl Display for Type {
                         .join(" / ")
                 )
             }
-            Self::Nichts => write!(f, "()"),
-            Self::Never => write!(f, "!"),
+            Self::Nichts => write!(f, "Nichts"),
+            Self::Never => write!(f, "Niemand"),
             Self::Unknown => write!(f, "{{unknown}}"),
         }
     }

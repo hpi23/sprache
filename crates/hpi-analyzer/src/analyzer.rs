@@ -25,7 +25,7 @@ pub struct Analyzer<'src> {
     source: &'src str,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Function<'src> {
     pub ident: Spanned<'src, &'src str>,
     pub params: Spanned<'src, Vec<Parameter<'src>>>,
@@ -66,20 +66,10 @@ impl<'src> Analyzer<'src> {
     /// Creates a new [`Analyzer`].
     pub fn new(source: &'src str) -> Self {
         Self {
-            builtin_functions: HashMap::from([
-                (
-                    "exit",
-                    BuiltinFunction::new(ParamTypes::Normal(vec![Type::Int(0)]), Type::Never),
-                ),
-                (
-                    "drucke",
-                    BuiltinFunction::new(ParamTypes::VarArgs(Type::Unknown), Type::Nichts),
-                ),
-                (
-                    "schlummere",
-                    BuiltinFunction::new(ParamTypes::Normal(vec![Type::Float(0)]), Type::Nichts),
-                ),
-            ]),
+            builtin_functions: HashMap::from([(
+                "schlummere",
+                BuiltinFunction::new(ParamTypes::Normal(vec![Type::Float(0)]), Type::Nichts),
+            )]),
             source,
             scopes: vec![HashMap::new()], // start with empty global scope
             ..Default::default()
@@ -152,9 +142,11 @@ impl<'src> Analyzer<'src> {
         program: Program<'src>,
     ) -> Result<(AnalyzedProgram<'src>, Vec<Diagnostic>), Vec<Diagnostic>> {
         // visit all import statements in the beginning
-        for item in &program.imports {
-            // self.beantrage(item)
-        }
+        let imports = program
+            .imports
+            .iter()
+            .map(|item| self.beantrage(item))
+            .collect();
 
         // add all function signatures first
         for func in &program.functions {
@@ -268,6 +260,7 @@ impl<'src> Analyzer<'src> {
         match (bewerbung_fn, einschreibung_fn, studium_fn) {
             (Some(bewerbung_fn), Some(einschreibung_fn), Some(studium_fn)) => Ok((
                 AnalyzedProgram {
+                    imports,
                     globals,
                     functions,
                     bewerbung_fn,
@@ -316,6 +309,37 @@ impl<'src> Analyzer<'src> {
                 );
                 Err(self.diagnostics)
             }
+        }
+    }
+
+    fn beantrage(&mut self, node: &BeantrageStmt<'src>) -> AnalyzedBeantrageStmt<'src> {
+        match (node.value_name.inner, node.von_name.inner) {
+            ("drucke", "Drucker") => {
+                self.builtin_functions.insert(
+                    "drucke",
+                    BuiltinFunction::new(ParamTypes::VarArgs(Type::Unknown), Type::Nichts),
+                );
+            }
+            ("geld", "Hasso") => {
+                self.builtin_functions.insert(
+                    "geld",
+                    BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::String(0)),
+                );
+            }
+            ("aufgeben", "libSAP") => {
+                self.builtin_functions.insert("aufgeben", BuiltinFunction::new(ParamTypes::Normal(vec![Type::Int(0)]), Type::Never));
+            },
+            (value, module) => self.error(
+                ErrorKind::Reference,
+                format!("Dieser Antrag `{value}` von `{module}` wurde aufgrund falscher Angaben abgelehnt."),
+                vec!["Vielleicht existiert diese Wert / Modul Kombination nicht.".into()],
+                node.span,
+            ),
+        }
+
+        AnalyzedBeantrageStmt {
+            import: node.von_name.inner,
+            from_module: node.von_name.inner,
         }
     }
 
@@ -432,24 +456,14 @@ impl<'src> Analyzer<'src> {
         }
 
         // check if the type conflicts with the rhs
-        if node.type_.inner != expr.result_type()
-            && !matches!(expr.result_type(), Type::Unknown | Type::Never)
-        {
-            self.error(
-                ErrorKind::Type,
-                format!(
-                    "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
-                    node.type_.inner,
-                    expr.result_type(),
-                ),
-                vec![],
-                expr_span,
-            );
-            self.hint(
-                format!("Deshalb wird der Datentyp `{}` erwartet.", node.type_.inner),
-                node.type_.span,
-            );
-        }
+        self.type_check(
+            &Spanned {
+                span: expr_span,
+                inner: expr.result_type(),
+            },
+            &node.type_,
+            false,
+        );
 
         // do not allow duplicate globals
         if let Some(prev) = self.scopes[0].get(node.name.inner) {
@@ -657,24 +671,14 @@ impl<'src> Analyzer<'src> {
         let block = self.block(node.block, false);
 
         // check that the block results in the expected type
-        if block.result_type != node.return_type.inner
-            // unknown and never types are tolerated
-            && !matches!(block.result_type, Type::Unknown | Type::Never)
-        {
-            self.error(
-                ErrorKind::Type,
-                format!(
-                    "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
-                    node.return_type.inner, block.result_type,
-                ),
-                vec![],
-                block_result_span,
-            );
-            self.hint(
-                "Der Funktionsrückgabewert in Frage wurde hier definiert.",
-                node.return_type.span,
-            );
-        }
+        self.type_check(
+            &node.return_type,
+            &Spanned {
+                span: block_result_span,
+                inner: block.result_type.clone(),
+            },
+            true,
+        );
 
         // drop the scope when finished
         self.pop_scope();
@@ -776,6 +780,142 @@ impl<'src> Analyzer<'src> {
         })
     }
 
+    fn type_check(
+        &mut self,
+        lhs_type: &Spanned<'src, Type>,
+        rhs_type: &Spanned<'src, Type>,
+        is_function_return_value: bool,
+    ) -> Type {
+        match (&lhs_type.inner, &rhs_type.inner) {
+            (_, rhs @ Type::Unknown | rhs @ Type::Never) => rhs.clone(),
+            (Type::List(linner, mut lptr), Type::List(rinner, mut rptr)) if lptr == rptr => {
+                let mut linner = *linner.clone();
+                let mut rinner = *rinner.clone();
+                let mut fail = false;
+
+                loop {
+                    if let Type::List(typ, ptr) = linner {
+                        linner = *typ;
+                        lptr = ptr;
+                    } else {
+                        break;
+                    }
+
+                    if let Type::List(typ, ptr) = rinner {
+                        rinner = *typ;
+                        rptr = ptr
+                    } else {
+                        break;
+                    }
+
+                    if lptr != rptr || linner != rinner {
+                        fail = true;
+                        break;
+                    }
+                }
+
+                if fail || linner != rinner {
+                    match (linner, rinner) {
+                        (typ @ Type::Unknown | typ @ Type::Never, _)
+                        | (_, typ @ Type::Unknown | typ @ Type::Never) => typ,
+                        (_, _) => {
+                            self.error(
+                                ErrorKind::Type,
+                                format!(
+                                    "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
+                                    lhs_type.inner, rhs_type.inner,
+                                ),
+                                vec![],
+                                lhs_type.span,
+                            );
+                            if lhs_type.span != Span::dummy() {
+                                if is_function_return_value {
+                                    self.hint(
+                                        "Der Funktionsrückgabewert in Frage wurde hier definiert.",
+                                        rhs_type.span,
+                                    );
+                                } else {
+                                    self.hint(
+                                        format!(
+                                            "Erwarte Datentyp `{}` aufgrund dieser Definition.",
+                                            rhs_type.inner,
+                                        ),
+                                        rhs_type.span,
+                                    );
+                                }
+                            }
+                            Type::Unknown
+                        }
+                    }
+                } else {
+                    lhs_type.inner.clone()
+                }
+
+                // match (&**l_inner, &**r_inner) {
+                //     (_, rhs @ Type::Unknown | rhs @ Type::Never) => rhs.clone(),
+                //     (lhs, rhs) if lhs != rhs => {
+                //         self.error(
+                //             ErrorKind::Type,
+                //             format!(
+                //                 "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
+                //                 lhs, rhs,
+                //             ),
+                //             vec![],
+                //             lhs_type.span,
+                //         );
+                //         if lhs_type.span != Span::dummy() {
+                //             if is_function_return_value {
+                //                 self.hint(
+                //                     "Der Funktionsrückgabewert in Frage wurde hier definiert.",
+                //                     rhs_type.span,
+                //                 );
+                //             } else {
+                //                 self.hint(
+                //                     format!(
+                //                         "Erwarte Datentyp `{}` aufgrund dieser Definition.",
+                //                         rhs,
+                //                     ),
+                //                     rhs_type.span,
+                //                 );
+                //             }
+                //         }
+                //
+                //         Type::Unknown
+                //     }
+                //     (_, rhs) => rhs.clone(),
+                // }
+            }
+            (lhs, rhs) if lhs != rhs => {
+                self.error(
+                    ErrorKind::Type,
+                    format!(
+                        "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
+                        lhs, rhs,
+                    ),
+                    vec![],
+                    lhs_type.span,
+                );
+
+                if lhs_type.span != Span::dummy() {
+                    if is_function_return_value {
+                        self.hint(
+                            "Der Funktionsrückgabewert in Frage wurde hier definiert.",
+                            rhs_type.span,
+                        );
+                    } else {
+                        self.hint(
+                            format!("Erwarte Datentyp `{}` aufgrund dieser Definition.", rhs,),
+                            rhs_type.span,
+                        );
+                    }
+                }
+
+                Type::Unknown
+            }
+            (_, rhs) => rhs.clone(),
+        }
+    }
+
     fn setze_stmt(&mut self, node: SetzeStmt<'src>) -> AnalyzedStatement<'src> {
         // save the expression's span for later use
         let expr_span = node.expr.span();
@@ -783,54 +923,14 @@ impl<'src> Analyzer<'src> {
         // analyze the right hand side first
         let expr = self.expression(node.expr);
 
-        match (&node.type_.inner, &expr.result_type()) {
-            (_, Type::Unknown | Type::Never) => {}
-            (Type::List(l_inner, l_ptr), Type::List(r_inner, r_ptr)) if l_ptr == r_ptr => {
-                match (&**l_inner, &**r_inner) {
-                    (_, Type::Unknown | Type::Never) => {}
-                    (lhs, rhs) if lhs != rhs => {
-                        self.error(
-                            ErrorKind::Type,
-                            format!(
-                                "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
-                                node.type_.inner,
-                                expr.result_type(),
-                            ),
-                            vec![],
-                            expr_span,
-                        );
-                        self.hint(
-                            format!(
-                                "Erwarte Datentyp `{}` aufgrund dieser Definition.",
-                                node.type_.inner
-                            ),
-                            node.type_.span,
-                        );
-                    }
-                    (_, _) => {}
-                }
-            }
-            (lhs, rhs) if lhs != rhs => {
-                self.error(
-                    ErrorKind::Type,
-                    format!(
-                        "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
-                        node.type_.inner,
-                        expr.result_type(),
-                    ),
-                    vec![],
-                    expr_span,
-                );
-                self.hint(
-                    format!(
-                        "Erwarte Datentyp `{}` aufgrund dieser Definition.",
-                        node.type_.inner
-                    ),
-                    node.type_.span,
-                );
-            }
-            (_, _) => {}
-        }
+        self.type_check(
+            &Spanned {
+                span: expr_span,
+                inner: expr.result_type(),
+            },
+            &node.type_,
+            false,
+        );
 
         // warn unreachable if never type
         if expr.result_type() == Type::Never {
@@ -933,33 +1033,28 @@ impl<'src> Analyzer<'src> {
 
         let expr_span = node.expr.span();
         let expr = self.expression(node.expr);
-        let result_type = match (var_type, expr.result_type()) {
-            (Type::Unknown, _) | (_, Type::Unknown) => Type::Unknown,
-            (_, Type::Never) => {
-                self.warn_unreachable(node.span, expr_span, true);
-                Type::Never
-            }
-            (left, right) if left != right => {
-                self.error(
-                    ErrorKind::Type,
-                    format!("Datentypkonflikt: erwartete `{left}`, `{right}` wurde aufgespürt."),
-                    vec![],
-                    expr_span,
-                );
-                self.hint(
-                    format!("Diese Variable hat den Datentyp `{left}`."),
-                    node.assignee.span,
-                );
-                Type::Unknown
-            }
-            (_, _) => Type::Nichts,
-        };
+
+        let result_type = self.type_check(
+            &Spanned {
+                span: expr_span,
+                inner: expr.result_type(),
+            },
+            &Spanned {
+                span: node.assignee.span,
+                inner: var_type,
+            },
+            false,
+        );
 
         AnalyzedStatement::Aendere(AnalyzedAendereStmt {
             assignee: node.assignee.inner,
             assignee_ptr_count: node.assignee_ptr_count,
             expr,
-            result_type,
+            result_type: if matches!(result_type, Type::Unknown | Type::Never) {
+                result_type
+            } else {
+                Type::Nichts
+            },
         })
     }
 
@@ -982,29 +1077,16 @@ impl<'src> Analyzer<'src> {
             );
         }
 
-        let curr_fn = &self.functions[self.curr_func_name];
+        let curr_fn = self.functions[self.curr_func_name].clone();
 
-        // test if the return type is correct
-        if curr_fn.return_type.inner!= expr_type
-            // unknown and never types are tolerated
-            && !matches!(expr_type, Type::Unknown | Type::Never)
-        {
-            let fn_type_span = curr_fn.return_type.span;
-
-            self.error(
-                ErrorKind::Type,
-                format!(
-                    "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
-                    curr_fn.return_type.inner, expr_type
-                ),
-                vec![],
-                node.span,
-            );
-            self.hint(
-                "Der Funktionsrückgabewert in Frage wurde hier definiert.",
-                fn_type_span,
-            );
-        }
+        self.type_check(
+            &Spanned {
+                span: expr_span.unwrap_or_else(Span::dummy),
+                inner: expr_type,
+            },
+            &curr_fn.return_type,
+            true,
+        );
 
         AnalyzedStatement::Return(expr)
     }
@@ -1098,13 +1180,8 @@ impl<'src> Analyzer<'src> {
         match (never_loops, condition_is_const_true) {
             // if the condition is always `false`, return nothing
             (true, _) => None,
-            // if the condition is always `true`, return an `AnalyzedLoopStmt`
-            (false, true) => Some(AnalyzedStatement::Loop(AnalyzedLoopStmt {
-                block,
-                never_terminates,
-            })),
             // otherwise, return an `AnalyzedWhileStmt`
-            (false, false) => Some(AnalyzedStatement::While(AnalyzedWhileStmt {
+            (_, _) => Some(AnalyzedStatement::While(AnalyzedWhileStmt {
                 cond,
                 block,
                 never_terminates,
@@ -2065,15 +2142,28 @@ impl<'src> Analyzer<'src> {
                 self.warn_unreachable(call_span, arg_span, true);
                 *result_type = Type::Never;
             }
-            (arg_type, param_type) if arg_type != *param_type => self.error(
-                ErrorKind::Type,
-                format!(
-                    "Datentypkonflikt: erwartetete `{param_type}`, `{arg_type}` wurde aufgespürt."
-                ),
-                vec![],
-                arg_span,
-            ),
-            _ => {}
+            (arg_type, param_type) => {
+                self.type_check(
+                    &Spanned {
+                        span: arg_span,
+                        inner: arg_type,
+                    },
+                    &Spanned {
+                        span: Span::dummy(),
+                        inner: param_type.clone(),
+                    },
+                    false,
+                );
+                // (arg_type, param_type) if arg_type != *param_type => self.error(
+                //     ErrorKind::Type,
+                //     format!(
+                //         "Datentypkonflikt: erwartetete `{param_type}`, `{arg_type}` wurde aufgespürt."
+                //     ),
+                //     vec![],
+                //     arg_span,
+                // ),
+                // _ => {}
+            }
         }
 
         arg
@@ -2101,6 +2191,52 @@ impl<'src> Analyzer<'src> {
                 Type::Int(0) | Type::Float(0) | Type::Bool(0) | Type::Char(0),
                 Type::Int(0) | Type::Float(0) | Type::Bool(0) | Type::Char(0),
             ) => node.type_.inner.clone(),
+            (Type::List(mut linner, mut lptr), Type::List(mut rinner, mut rptr)) => {
+                let mut fail = false;
+
+                loop {
+                    if let Type::List(typ, ptr) = *linner {
+                        linner = typ;
+                        lptr = ptr;
+                    } else {
+                        break;
+                    }
+
+                    if let Type::List(typ, ptr) = *rinner {
+                        rinner = typ;
+                        rptr = ptr
+                    } else {
+                        break;
+                    }
+
+                    if lptr != rptr {
+                        fail = true;
+                        break;
+                    }
+                }
+
+                if fail {
+                    match (*linner, *rinner) {
+                        (typ @ Type::Unknown | typ @ Type::Never, _)
+                        | (_, typ @ Type::Unknown | typ @ Type::Never) => typ,
+                        (_, _) => {
+                            self.error(
+                    ErrorKind::Type,
+                    format!(
+                        "Unzulässliche Typumwandlung: der Datentyp `{}` kann nicht in `{}` umgewandelt werden.",
+                        expr.result_type(),
+                        node.type_.inner
+                    ),
+                    vec![],
+                    node.span,
+                );
+                            Type::Unknown
+                        }
+                    }
+                } else {
+                    node.type_.inner.clone()
+                }
+            }
             _ => {
                 self.error(
                     ErrorKind::Type,

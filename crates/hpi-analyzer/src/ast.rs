@@ -4,6 +4,7 @@ use hpi_parser::ast::{AssignOp, InfixOp, PrefixOp, Type};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnalyzedProgram<'src> {
+    pub imports: Vec<AnalyzedBeantrageStmt<'src>>,
     pub globals: Vec<AnalyzedLetStmt<'src>>,
     pub functions: Vec<AnalyzedFunctionDefinition<'src>>,
     pub bewerbung_fn: AnalyzedBlock<'src>,
@@ -36,12 +37,11 @@ pub struct AnalyzedBlock<'src> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AnalyzedStatement<'src> {
+    Beantrage(AnalyzedBeantrageStmt<'src>),
     Let(AnalyzedLetStmt<'src>),
     Aendere(AnalyzedAendereStmt<'src>),
     Return(AnalyzedReturnStmt<'src>),
-    Loop(AnalyzedLoopStmt<'src>),
     While(AnalyzedWhileStmt<'src>),
-    For(AnalyzedForStmt<'src>),
     Break,
     Continue,
     Expr(AnalyzedExpression<'src>),
@@ -50,18 +50,11 @@ pub enum AnalyzedStatement<'src> {
 impl AnalyzedStatement<'_> {
     pub fn result_type(&self) -> Type {
         match self {
+            Self::Beantrage(_) => Type::Nichts,
             Self::Let(_) => Type::Nichts,
             Self::Aendere(_) => Type::Nichts,
             Self::Return(_) => Type::Never,
-            Self::Loop(node) => match node.never_terminates {
-                true => Type::Never,
-                false => Type::Nichts,
-            }, // Used for detecting never-ending loops
             Self::While(node) => match node.never_terminates {
-                true => Type::Never,
-                false => Type::Nichts,
-            }, // Used for detecting never-ending loops
-            Self::For(node) => match node.never_terminates {
                 true => Type::Never,
                 false => Type::Nichts,
             }, // Used for detecting never-ending loops
@@ -77,6 +70,12 @@ impl AnalyzedStatement<'_> {
             _ => false,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnalyzedBeantrageStmt<'src> {
+    pub import: &'src str,
+    pub from_module: &'src str,
 }
 
 #[derive(Debug, Clone, PartialEq)]
