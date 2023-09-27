@@ -886,7 +886,6 @@ impl<'src> Analyzer<'src> {
                 // }
             }
             (lhs, rhs) if lhs != rhs => {
-                panic!("");
                 self.error(
                     ErrorKind::Type,
                     format!(
