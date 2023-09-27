@@ -783,27 +783,53 @@ impl<'src> Analyzer<'src> {
         // analyze the right hand side first
         let expr = self.expression(node.expr);
 
-        // check if the optional type conflicts with the rhs
-        if node.type_.inner != expr.result_type()
-            && !matches!(expr.result_type(), Type::Unknown | Type::Never)
-        {
-            self.error(
-                ErrorKind::Type,
-                format!(
-                    "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
-                    node.type_.inner,
-                    expr.result_type(),
-                ),
-                vec![],
-                expr_span,
-            );
-            self.hint(
-                format!(
-                    "Erwarte Datentyp `{}` aufgrund dieser Definition.",
-                    node.type_.inner
-                ),
-                node.type_.span,
-            );
+        match (&node.type_.inner, &expr.result_type()) {
+            (_, Type::Unknown | Type::Never) => {}
+            (Type::List(l_inner, l_ptr), Type::List(r_inner, r_ptr)) if l_ptr == r_ptr => {
+                match (&**l_inner, &**r_inner) {
+                    (_, Type::Unknown | Type::Never) => {}
+                    (lhs, rhs) if lhs != rhs => {
+                        self.error(
+                            ErrorKind::Type,
+                            format!(
+                                "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
+                                node.type_.inner,
+                                expr.result_type(),
+                            ),
+                            vec![],
+                            expr_span,
+                        );
+                        self.hint(
+                            format!(
+                                "Erwarte Datentyp `{}` aufgrund dieser Definition.",
+                                node.type_.inner
+                            ),
+                            node.type_.span,
+                        );
+                    }
+                    (_, _) => {}
+                }
+            }
+            (lhs, rhs) if lhs != rhs => {
+                self.error(
+                    ErrorKind::Type,
+                    format!(
+                        "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
+                        node.type_.inner,
+                        expr.result_type(),
+                    ),
+                    vec![],
+                    expr_span,
+                );
+                self.hint(
+                    format!(
+                        "Erwarte Datentyp `{}` aufgrund dieser Definition.",
+                        node.type_.inner
+                    ),
+                    node.type_.span,
+                );
+            }
+            (_, _) => {}
         }
 
         // warn unreachable if never type
@@ -1248,7 +1274,10 @@ impl<'src> Analyzer<'src> {
                             vec!["Die `falls` und `sonst` Zweige müssen Werte mit dem identischen Datentyp produzieren.".into()],
                             else_result_span,
                         );
-                        self.hint("Datentyp `{then_type}` aufgrund dieser Verzweigung erwartet.",  then_result_span);
+                        self.hint(
+                            "Datentyp `{then_type}` aufgrund dieser Verzweigung erwartet.",
+                            then_result_span,
+                        );
                         Type::Unknown
                     }
                 };
@@ -1349,7 +1378,10 @@ impl<'src> Analyzer<'src> {
         if !node.inner.is_empty() {
             self.error(
                 ErrorKind::Reference,
-                format!("Unzulässliche Nutzung einer undefinierten Variable mit dem Namen `{}`.", node.inner),
+                format!(
+                    "Unzulässliche Nutzung einer undefinierten Variable mit dem Namen `{}`.",
+                    node.inner
+                ),
                 vec![],
                 node.span,
             );
@@ -1408,61 +1440,67 @@ impl<'src> Analyzer<'src> {
                     Type::Unknown
                 }
             },
-            PrefixOp::Ref => match &expr {
-                AnalyzedExpression::Ident(ident) => match ident.result_type.clone().add_ref() {
-                    Some(res) => {
-                        let var = self
-                            .scopes
-                            .iter_mut()
-                            .rev()
-                            .find_map(|s| s.get_mut(ident.ident))
-                            .expect("variable references are valid here");
+            PrefixOp::Ref => {
+                match &expr {
+                    AnalyzedExpression::Ident(ident) => match ident.result_type.clone().add_ref() {
+                        Some(res) => {
+                            let var = self
+                                .scopes
+                                .iter_mut()
+                                .rev()
+                                .find_map(|s| s.get_mut(ident.ident))
+                                .expect("variable references are valid here");
 
-                        // references (`&`) count as mutable variable accesses
-                        var.mutated = true;
+                            // references (`&`) count as mutable variable accesses
+                            var.mutated = true;
 
-                        res
-                    }
-                    None if ident.result_type == Type::Unknown => Type::Unknown,
-                    None => {
-                        self.error(
+                            res
+                        }
+                        None if ident.result_type == Type::Unknown => Type::Unknown,
+                        None => {
+                            self.error(
                             ErrorKind::Type,
                             format!("Variablen des Datentyps `{}` können nicht referenziert werden.", ident.result_type),
                             vec![],
                             node.span,
                         );
-                        Type::Unknown
-                    }
-                },
-                _ => unreachable!("parser guarantees that only identifiers are referenced"),
-            },
+                            Type::Unknown
+                        }
+                    },
+                    _ => unreachable!("parser guarantees that only identifiers are referenced"),
+                }
+            }
             PrefixOp::Deref => match &expr {
                 // TODO: improve this
-                AnalyzedExpression::Ident(ident) => match ident.result_type.clone().sub_deref() {
-                    Some(res) => res,
-                    None => {
-                        self.error(
+                AnalyzedExpression::Ident(ident) => {
+                    match ident.result_type.clone().sub_deref() {
+                        Some(res) => res,
+                        None => {
+                            self.error(
                             ErrorKind::Type,
                             format!("Wert des Datentyps `{}` kann nicht dereferenziert werden.", ident.result_type),
                             vec!["Nur Zeiger `Zeiger auf` können dereferenziert werden.".into()],
                             node.span,
                         );
-                        dbg!(ident);
-                        Type::Unknown
+                            dbg!(ident);
+                            Type::Unknown
+                        }
                     }
-                },
-                AnalyzedExpression::Prefix(expr) => match expr.result_type.clone().sub_deref() {
-                    Some(res) => res,
-                    None => {
-                        self.error(
+                }
+                AnalyzedExpression::Prefix(expr) => {
+                    match expr.result_type.clone().sub_deref() {
+                        Some(res) => res,
+                        None => {
+                            self.error(
                             ErrorKind::Type,
                             format!("Wert des Datentyps `{}` kann nicht dereferenziert werden.", expr.result_type),
                             vec!["Nur Zeiger `Zeiger auf` können dereferenziert werden.".into()],
                             node.span,
                         );
-                        Type::Unknown
+                            Type::Unknown
+                        }
                     }
-                },
+                }
                 _ => unreachable!("can only dereference identifiers or prefix expressions"),
             },
         };
@@ -1601,7 +1639,9 @@ impl<'src> Analyzer<'src> {
                 InfixOp::Div => return AnalyzedExpression::Int(left.wrapping_div(*right)),
                 InfixOp::Rem if *right == 0 => self.error(
                     ErrorKind::Semantic,
-                    format!("Der Rest von {left} mit einem Divisor von 0 kann nicht berechnet werden."),
+                    format!(
+                        "Der Rest von {left} mit einem Divisor von 0 kann nicht berechnet werden."
+                    ),
                     vec!["Fragen Sie Timo, weshalb Mathe das nicht erlaubt.".into()],
                     node.span,
                 ),
@@ -1629,7 +1669,10 @@ impl<'src> Analyzer<'src> {
                     _ => self.error(
                         ErrorKind::Semantic,
                         format!("Kann nicht um {right} verschieben."),
-                        vec!["Verschiebungen außerhalb des Intervalls `0..=63` sind unzulässlich.".into()],
+                        vec![
+                            "Verschiebungen außerhalb des Intervalls `0..=63` sind unzulässlich."
+                                .into(),
+                        ],
                         node.span,
                     ),
                 },
@@ -1728,7 +1771,10 @@ impl<'src> Analyzer<'src> {
                 None => {
                     self.error(
                         ErrorKind::Reference,
-                        format!("Nutzung einer undefinierten Variable mit dem Namen `{}`.", node.assignee.inner),
+                        format!(
+                            "Nutzung einer undefinierten Variable mit dem Namen `{}`.",
+                            node.assignee.inner
+                        ),
                         vec![],
                         node.assignee.span,
                     );
@@ -2044,7 +2090,11 @@ impl<'src> Analyzer<'src> {
                 Type::Never
             }
             (left, right) if left == right => {
-                self.info("Unnötige Umwandlung zum selben Datentyp.", vec![], node.span);
+                self.info(
+                    "Unnötige Umwandlung zum selben Datentyp.",
+                    vec![],
+                    node.span,
+                );
                 node.type_.inner.clone()
             }
             (
