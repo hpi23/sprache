@@ -53,7 +53,7 @@ impl Display for Type {
                 )
             }
             Self::Nichts => write!(f, "Nichts"),
-            Self::Never => write!(f, "Niemand"),
+            Self::Never => write!(f, "Niemals"),
             Self::Unknown => write!(f, "{{unknown}}"),
         }
     }

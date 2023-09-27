@@ -13,15 +13,9 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
-    setze Liste von Liste von Zahl a auf [ ];
-    drucke(a);
-
-    ändere a auf [];
-
-    drucke(a);
-    drucke(geld());
-
-    aufgeben(1);
-
     überweise;
+}
+
+funk aa() ergibt Zahl {
+    1
 }
