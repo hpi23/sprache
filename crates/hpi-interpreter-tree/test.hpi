@@ -1,0 +1,14 @@
+beantrage geld von Hasso;
+beantrage drucke von Drucker;
+
+funk Bewerbung() ergibt Zeichenkette {
+  "Hei"
+}
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+  setze Zahl _ auf Matrikelnummer;
+}
+
+funk Studium() ergibt Nichts {
+  drucke(geld());
+}

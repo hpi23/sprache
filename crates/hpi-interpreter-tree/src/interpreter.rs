@@ -116,7 +116,6 @@ where
 
         let mut rand_buffer: [u8; 4] = [0; 4];
         getrandom::getrandom(&mut rand_buffer).unwrap();
-        println!("{rand_buffer:?}");
         let matrikelnummer: u32 = (rand_buffer[0] as u32)
             | (rand_buffer[1] as u32) << 8
             | (rand_buffer[2] as u32) << 16
@@ -213,11 +212,7 @@ where
                 Ok(Value::Unit)
             }
             AnalyzedCallBase::Ident("geld") => {
-                self.output
-                    .write_all(("Nun sind Sie reich, sie wurden gesponst!").as_bytes())
-                    .expect("if this fails, we're screwed");
-
-                Ok(Value::Unit)
+                Ok(Value::String(String::from("Nun sind Sie reich, sie wurden gesponst!")))
             }
             AnalyzedCallBase::Ident(func_name) => {
                 let func = Rc::clone(&self.functions[func_name]);
