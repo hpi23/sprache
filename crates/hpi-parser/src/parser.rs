@@ -162,6 +162,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             TokenKind::Ident("Fließkommazahl") => Type::Float(ptr_count),
             TokenKind::Ident("Wahrheitswert") => Type::Bool(ptr_count),
             TokenKind::Ident("Zeichen") => Type::Char(ptr_count),
+            TokenKind::Ident("Speicherbox") => Type::AnyObject(ptr_count),
             TokenKind::Ident("Liste") => {
                 self.next()?;
                 self.expect(TokenKind::Von)?;

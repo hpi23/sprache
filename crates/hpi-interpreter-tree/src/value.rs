@@ -31,7 +31,9 @@ fn list_push(val: &Value, args: Vec<Value>) -> Value {
 
 fn list_update(val: &Value, args: Vec<Value>) -> Value {
     match (val, &args[0]) {
-        (Value::List(values), &Value::Int(idx)) => values.borrow_mut()[idx as usize] = args[1].clone(),
+        (Value::List(values), &Value::Int(idx)) => {
+            values.borrow_mut()[idx as usize] = args[1].clone()
+        }
         (_, _) => unreachable!("the analyzer prevents this: {val:?}"),
     };
     Value::Unit

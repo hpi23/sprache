@@ -1,5 +1,6 @@
 beantrage geld von Hasso;
 beantrage drucke von Drucker;
+beantrage http von Netzwerk;
 
 funk Bewerbung() ergibt Zeichenkette {
   "Hei"
@@ -10,5 +11,14 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
-  drucke(geld());
+    setze Zeichenkette URL auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos?tx_ddfmensa_ddfmensajson%5Binterneid%5D=353&type=14529821235&cHash=2baa819c66f7bd7c19a21693a97b5f34";
+    setze Zeichenkette body auf "";
+    drucke(http(
+        "GET" /
+        URL /
+        "" /
+        &body /
+    ));
+
+    drucke(body);
 }

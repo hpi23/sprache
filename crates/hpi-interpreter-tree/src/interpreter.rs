@@ -11,22 +11,30 @@ type ExprResult = Result<Value, InterruptKind>;
 type StmtResult = Result<(), InterruptKind>;
 type Scope<'src> = HashMap<&'src str, Rc<RefCell<Value>>>;
 
+pub trait HPIHttpClient {
+    fn request(&self, method: String, url: &str, body: String) -> Result<(u16, String), String>;
+}
+
 #[derive(Debug)]
-pub struct Interpreter<'src, Output>
+pub struct Interpreter<'src, Output, HttpClient>
 where
     Output: Write,
+    HttpClient: HPIHttpClient,
 {
     output: Output,
+    http_client: HttpClient,
     scopes: Vec<Scope<'src>>,
     functions: HashMap<&'src str, Rc<AnalyzedFunctionDefinition<'src>>>,
 }
 
-impl<'src, Output> Interpreter<'src, Output>
+impl<'src, Output, HttpClient> Interpreter<'src, Output, HttpClient>
 where
     Output: Write,
+    HttpClient: HPIHttpClient,
 {
-    pub fn new(output: Output) -> Self {
+    pub fn new(output: Output, http_client: HttpClient) -> Self {
         Self {
+            http_client,
             output,
             scopes: vec![],
             functions: HashMap::new(),
@@ -197,6 +205,38 @@ where
 
                 Ok(Value::Unit)
             }
+            AnalyzedCallBase::Ident("http") => {
+                // BuiltinFunction::new(ParamTypes::Normal(vec![
+                //                         Type::String(0), // method
+                //                         Type::String(0), // url
+                //                         Type::String(0), // body
+                //                         Type::List(Box::new(Type::String(0)), 0); // headers
+
+                let Value::String(method) = args[0].clone() else {
+                    unreachable!("the analyzer prevents this");
+                };
+
+                let Value::String(url) = args[1].clone() else {
+                    unreachable!("the analyzer prevents this");
+                };
+
+                let Value::String(body) = args[2].clone() else {
+                    unreachable!("the analyzer prevents this");
+                };
+
+                let Value::Ptr(body_ptr) = args[3].clone() else {
+                    unreachable!("the analyzer prevents this");
+                };
+
+                let res = self
+                    .http_client
+                    .request(method, url.as_str(), body)
+                    .map_err(|err| InterruptKind::Error(err.into()))?;
+
+                *body_ptr.borrow_mut() = Value::String(res.1);
+
+                Ok(Value::Int(res.0 as i64))
+            }
             AnalyzedCallBase::Ident("schlummere") => {
                 #[cfg(target_arch = "wasm32")]
                 {
@@ -211,9 +251,9 @@ where
 
                 Ok(Value::Unit)
             }
-            AnalyzedCallBase::Ident("geld") => {
-                Ok(Value::String(String::from("Nun sind Sie reich, sie wurden gesponst!")))
-            }
+            AnalyzedCallBase::Ident("geld") => Ok(Value::String(String::from(
+                "Nun sind Sie reich, sie wurden gesponst!",
+            ))),
             AnalyzedCallBase::Ident(func_name) => {
                 let func = Rc::clone(&self.functions[func_name]);
 

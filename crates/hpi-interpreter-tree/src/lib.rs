@@ -4,19 +4,24 @@ mod value;
 
 use std::{fmt::Debug, io::Write};
 
-pub use interpreter::Interpreter;
 use hpi_analyzer::Diagnostic;
+pub use interpreter::HPIHttpClient;
+pub use interpreter::Interpreter;
 
 /// Interprets rush source code by walking the analyzed tree.
 /// The `Ok(_)` variant returns the exit code and non-error diagnostics.
 /// The `Err(_)` variant returns a [`RunError`].
-pub fn run<'src>(
+pub fn run<'src, HttpClient>(
     text: &'src str,
     path: &'src str,
     output: impl Write,
-) -> Result<(i64, Vec<Diagnostic<'src>>), RunError<'src>> {
+    http_client: HttpClient,
+) -> Result<(i64, Vec<Diagnostic<'src>>), RunError<'src>>
+where
+    HttpClient: HPIHttpClient,
+{
     let (tree, diagnostics) = hpi_analyzer::analyze(text, path)?;
-    let code = Interpreter::new(output).run(tree)?;
+    let code = Interpreter::new(output, http_client).run(tree)?;
     Ok((code, diagnostics))
 }
 

@@ -17,5 +17,7 @@ funk Studium() ergibt Nichts {
 }
 
 funk aa() ergibt Zahl {
+    setze     
+
     1
 }

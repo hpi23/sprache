@@ -312,6 +312,14 @@ impl<'src> Analyzer<'src> {
         }
     }
 
+    fn check_any(&self, typ: Type) -> bool {
+        match typ {
+            Type::List(inner, _) => *inner == Type::Any,
+            Type::Any => true,
+            _ => false,
+        }
+    }
+
     fn beantrage(&mut self, node: &BeantrageStmt<'src>) -> AnalyzedBeantrageStmt<'src> {
         match (node.value_name.inner, node.von_name.inner) {
             ("drucke", "Drucker") => {
@@ -324,6 +332,17 @@ impl<'src> Analyzer<'src> {
                 self.builtin_functions.insert(
                     "geld",
                     BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::String(0)),
+                );
+            }
+            ("http", "Netzwerk") => {
+                self.builtin_functions.insert(
+                    "http",
+                    BuiltinFunction::new(ParamTypes::Normal(vec![
+                                            Type::String(0), // method
+                                            Type::String(0), // url
+                                            Type::String(0), // body
+                                            Type::String(1), // body dest
+                    ]), Type::Int(0)),
                 );
             }
             ("aufgeben", "libSAP") => {
@@ -1215,6 +1234,7 @@ impl<'src> Analyzer<'src> {
     }
 
     fn expression(&mut self, node: Expression<'src>) -> AnalyzedExpression<'src> {
+        let node_span = node.span();
         let res = match node {
             Expression::Int(node) => AnalyzedExpression::Int(node.inner),
             Expression::Float(node) => AnalyzedExpression::Float(node.inner),
@@ -1253,6 +1273,19 @@ impl<'src> Analyzer<'src> {
                 }
             }
         };
+
+        if self.check_any(res.result_type()) {
+            self.error(
+                ErrorKind::Semantic,
+                "Implizite Nutzung des `Unbekannt` Datentypen: explizite Annotation erforderlich.",
+                vec![
+                    "Denken Sie darüber nach, den Datentypen des Ausdrucks manuell umzuwandeln."
+                        .into(),
+                    "... als Datentyp".into(),
+                ],
+                node_span,
+            );
+        }
 
         // if this is a `!` expression, count it like a loop termination
         if res.result_type() == Type::Never {
@@ -2293,10 +2326,23 @@ impl<'src> Analyzer<'src> {
         let expr = self.expression(node.expr);
 
         let members = match expr.result_type() {
-            Type::Int(_) | Type::Float(_) | Type::Bool(_) | Type::Char(_) | Type::String(_) => {
-                HashMap::new()
-            }
-            Type::List(inner, _) => HashMap::from([
+            Type::AnyObject(0) => HashMap::from([
+                (
+                    "get",
+                    Type::Function {
+                        params: vec![Type::String(0)],
+                        result_type: Box::new(Type::Any),
+                    },
+                ),
+                (
+                    "set",
+                    Type::Function {
+                        params: vec![Type::Unknown],
+                        result_type: Box::new(Type::Nichts),
+                    },
+                ),
+            ]),
+            Type::List(inner, 0) => HashMap::from([
                 (
                     "hinzufügen",
                     Type::Function {
@@ -2317,6 +2363,7 @@ impl<'src> Analyzer<'src> {
                 result_type: _,
             } => todo!(),
             Type::Nichts | Type::Never | Type::Unknown => HashMap::new(),
+            _ => HashMap::new(),
         };
 
         match members.get(node.member.inner) {

@@ -14,6 +14,8 @@ pub enum Type {
         params: Vec<Type>,
         result_type: Box<Type>,
     },
+    AnyObject(usize),
+    Any,
     Nichts,
     /// Internal use only, used for diverging expressions
     Never,
@@ -38,6 +40,9 @@ impl Display for Type {
             Self::List(inner, indirections) => {
                 write!(f, "{}Liste von {}", "*".repeat(*indirections), inner)
             }
+            Self::AnyObject(indirections) => {
+                write!(f, "{}Speicherbox", "*".repeat(*indirections))
+            }
             Self::Function {
                 params,
                 result_type,
@@ -52,6 +57,7 @@ impl Display for Type {
                         .join(" / ")
                 )
             }
+            Self::Any => write!(f, "Unbekannt"),
             Self::Nichts => write!(f, "Nichts"),
             Self::Never => write!(f, "Niemals"),
             Self::Unknown => write!(f, "{{unknown}}"),
@@ -66,6 +72,8 @@ impl Type {
             Type::Float(ptr) => Type::Float(ptr + 1),
             Type::Bool(ptr) => Type::Bool(ptr + 1),
             Type::Char(ptr) => Type::Char(ptr + 1),
+            Type::String(ptr) => Type::String(ptr + 1),
+            Type::List(inner, ptr) => Type::List(inner, ptr + 1),
             _ => return None,
         })
     }
@@ -79,6 +87,8 @@ impl Type {
             Type::Float(ptr) => Type::Float(ptr - 1),
             Type::Bool(ptr) => Type::Bool(ptr - 1),
             Type::Char(ptr) => Type::Char(ptr - 1),
+            Type::String(ptr) => Type::String(ptr - 1),
+            Type::List(inner, ptr) => Type::List(inner, ptr - 1),
             _ => return None,
         })
     }
@@ -95,6 +105,8 @@ impl Type {
                 params: _,
                 result_type: _,
             } => None,
+            Type::AnyObject(ptr) => Some(*ptr),
+            Type::Any => None,
             Type::Nichts => None,
             Type::Never => None,
             Type::Unknown => None,
@@ -110,6 +122,7 @@ impl Type {
             Self::String(_) => Self::String(0),
             Self::List(inner, _) => Self::List(inner, 0),
             Self::Nichts => Self::Nichts,
+            Self::AnyObject(_) => Self::AnyObject(0),
             Self::Function {
                 params,
                 result_type,
@@ -117,6 +130,7 @@ impl Type {
                 params,
                 result_type,
             },
+            Self::Any => Self::Any,
             Self::Never => Self::Never,
             Self::Unknown => Self::Unknown,
         }

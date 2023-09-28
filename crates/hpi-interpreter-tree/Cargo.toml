@@ -11,3 +11,10 @@ repository.workspace = true
 [dependencies]
 getrandom = { version = "0.2.10", features = ["js"]}
 hpi-analyzer = { path = "../hpi-analyzer", version = "0.1.0" }
+reqwest = "0.11.20"
+
+[dev-dependencies]
+reqwest = { version = "0.11.20", features = ["blocking", "rustls"] }
+
+[[example]]         # <--- declare the executable
+name = "main"
