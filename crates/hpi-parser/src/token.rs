@@ -2,7 +2,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 
 use crate::Span;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Token<'src> {
     pub kind: TokenKind<'src>,
     pub span: Span<'src>,
@@ -35,7 +35,7 @@ impl Debug for Token<'_> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum TokenKind<'src> {
     /// End of file
     #[default]
@@ -50,7 +50,7 @@ pub enum TokenKind<'src> {
     /// A char literal
     Char(u8),
     // A string literal
-    String(&'src str),
+    String(String),
 
     /// `ja`
     Ja,

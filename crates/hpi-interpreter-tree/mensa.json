@@ -1,0 +1,29 @@
+{
+  "content": null,
+  "embeds": [
+    {
+      "title": "Mensa Griebnitzsee 20.09.2023",
+      "description": "Hallo an Alle!\nEin neuer Tag, neues Essen!",
+      "url": "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos/mensa-griebnitzsee",
+      "color": 14574087,
+      "fields": [
+        {
+          "name": "Angebot 1",
+          "value": "Komisches Essen - 2,50€"
+        },
+        {
+          "name": "Angebot 2",
+          "value": "Weiteres Komisches Essen - 2,50€"
+        },
+        {
+          "name": "Angebot 3",
+          "value": "Komisches Essen - 2,50€"
+        }
+      ],
+      "footer": {
+        "text": "Powered by Mensa Scraper written in HPI script.\nhttps://sprache.hpi.church"
+      }
+    }
+  ],
+  "attachments": []
+}

@@ -1,6 +1,7 @@
 beantrage drucke von Drucker;
 beantrage geld von Hasso;
 beantrage aufgeben von libSAP;
+beantrage parse_json von Textverarbeitung;
 
 setze Zahl a auf 1;
 
@@ -17,7 +18,7 @@ funk Studium() ergibt Nichts {
 }
 
 funk aa() ergibt Zahl {
-    setze     
+    setze
 
     1
 }

@@ -126,7 +126,7 @@ pub enum AnalyzedExpression<'src> {
     Float(f64),
     Bool(bool),
     Char(u8),
-    String(&'src str),
+    String(String),
     List(AnalyzedListExpression<'src>),
     Ident(AnalyzedIdentExpr<'src>),
     Prefix(Box<AnalyzedPrefixExpr<'src>>),

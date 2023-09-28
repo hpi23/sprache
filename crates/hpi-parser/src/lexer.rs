@@ -297,19 +297,22 @@ impl<'src> Lexer<'src> {
         // skip opening quote
         self.next();
 
+        let mut buffer = String::new();
+
         let start_loc = self.location;
 
         while let Some(curr) = self.curr_char {
-            if curr == '"' {
-                break;
+            match curr {
+                '"' => break,
+                '\\' => buffer.push(self.escape_seq()?),
+                _ => {
+                    self.next();
+                    buffer.push(curr);
+                }
             }
-            self.next();
         }
 
-        let token = Token::new(
-            TokenKind::String(&self.input[start_loc.byte_idx..self.location.byte_idx]),
-            start_loc.until(self.location),
-        );
+        let token = Token::new(TokenKind::String(buffer), start_loc.until(self.location));
 
         // skip closing quote
         self.next();
@@ -317,10 +320,31 @@ impl<'src> Lexer<'src> {
         Ok(token)
     }
 
+    fn escape_seq(&mut self) -> Result<'src, char> {
+        let start_loc = self.location;
+        self.next();
+
+        let char = match self.curr_char {
+            Some('"') => '"',
+            Some('t') => '\t',
+            Some('r') => '\r',
+            Some('n') => '\n',
+            Some(_) | None => {
+                return Err(Error::new_boxed(
+                    "Invalide Ausbruchssequenz.".to_string(),
+                    start_loc.until(self.location),
+                    self.input,
+                ))
+            }
+        };
+
+        self.next();
+
+        Ok(char)
+    }
+
     fn make_number(&mut self) -> Result<'src, Token<'src>> {
         let start_loc = self.location;
-        println!("{:?}", start_loc);
-
         if self.curr_char == Some('0') && self.next_char == Some('x') {
             self.next();
             self.next();

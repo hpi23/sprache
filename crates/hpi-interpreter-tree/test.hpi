@@ -1,6 +1,7 @@
 beantrage geld von Hasso;
 beantrage drucke von Drucker;
 beantrage http von Netzwerk;
+beantrage Zergliedere_JSON von Textverarbeitung;
 
 funk Bewerbung() ergibt Zeichenkette {
   "Hei"
@@ -12,13 +13,30 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 
 funk Studium() ergibt Nichts {
     setze Zeichenkette URL auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos?tx_ddfmensa_ddfmensajson%5Binterneid%5D=353&type=14529821235&cHash=2baa819c66f7bd7c19a21693a97b5f34";
-    setze Zeichenkette body auf "";
+    setze Zeichenkette Körper auf "";
     drucke(http(
         "GET" /
         URL /
         "" /
-        &body /
+        &Körper /
     ));
 
-    drucke(body);
+    // drucke(Körper);
+
+    setze Speicherbox Res auf Zergliedere_JSON(Körper) als Speicherbox;
+    setze Speicherbox Erster auf (Res.Nehmen("wochentage") als Liste von Speicherbox)[0];
+    setze Speicherbox Datum auf Erster.Nehmen("datum") als Speicherbox;
+    setze Liste von Speicherbox Angebote auf Datum.Nehmen("angebote") als Liste von Speicherbox;
+
+    setze Zahl Zähler auf 0;
+    solange Zähler < Angebote.Länge() {
+        falls Angebote[Zähler].Datentyp_Von("preis_s") == "Zeichenkette" {
+            setze Zeichenkette Beschreibung auf Angebote[Zähler].Nehmen("beschreibung") als Zeichenkette;
+            setze Zeichenkette Titel auf Angebote[Zähler].Nehmen("titel") als Zeichenkette;
+            setze Fließkommazahl Preis auf Angebote[Zähler].Nehmen("preis_s") als Zeichenkette als Fließkommazahl;
+            drucke(Titel / ":" / Beschreibung / "kostet" / Preis / "€");
+        }
+
+        ändere Zähler auf Zähler + 1;
+    }
 }

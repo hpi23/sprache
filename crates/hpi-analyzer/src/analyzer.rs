@@ -21,6 +21,8 @@ pub struct Analyzer<'src> {
     used_builtins: HashSet<&'src str>,
     /// Specifies whether there is at least one `break` statement inside the current loop.
     current_loop_is_terminated: bool,
+    // if set to `true`, the analyzer creates an error if an expression results in `any`
+    create_err_if_expr_contains_any: bool,
     /// The source code of the program to be analyzed
     source: &'src str,
 }
@@ -72,6 +74,7 @@ impl<'src> Analyzer<'src> {
             )]),
             source,
             scopes: vec![HashMap::new()], // start with empty global scope
+            create_err_if_expr_contains_any: true,
             ..Default::default()
         }
     }
@@ -322,6 +325,12 @@ impl<'src> Analyzer<'src> {
 
     fn beantrage(&mut self, node: &BeantrageStmt<'src>) -> AnalyzedBeantrageStmt<'src> {
         match (node.value_name.inner, node.von_name.inner) {
+            ("Zergliedere_JSON", "Textverarbeitung") => {
+                self.builtin_functions.insert(
+                    "Zergliedere_JSON",
+                    BuiltinFunction::new(ParamTypes::Normal(vec![Type::String(0)]), Type::Any),
+                );
+            }
             ("drucke", "Drucker") => {
                 self.builtin_functions.insert(
                     "drucke",
@@ -1274,7 +1283,7 @@ impl<'src> Analyzer<'src> {
             }
         };
 
-        if self.check_any(res.result_type()) {
+        if self.check_any(res.result_type()) && self.create_err_if_expr_contains_any {
             self.error(
                 ErrorKind::Semantic,
                 "Implizite Nutzung des `Unbekannt` Datentypen: explizite Annotation erforderlich.",
@@ -1664,7 +1673,7 @@ impl<'src> Analyzer<'src> {
                 allowed_types = &[Type::Int(0)];
             }
             InfixOp::Eq | InfixOp::Neq => {
-                allowed_types = &[Type::Int(0), Type::Float(0), Type::Bool(0), Type::Char(0)];
+                allowed_types = &[Type::Int(0), Type::Float(0), Type::Bool(0), Type::Char(0), Type::String(0)];
                 override_result_type = Some(Type::Bool(0));
             }
             InfixOp::BitOr | InfixOp::BitAnd | InfixOp::BitXor => {
@@ -2062,7 +2071,7 @@ impl<'src> Analyzer<'src> {
                     (None, None) => {
                         self.error(
                             ErrorKind::Reference,
-                            format!("Nutung einer undefinerten Funktion mit dem Namen `{}`.", ident.inner),
+                            format!("Nutzung einer undefinerten Funktion mit dem Namen `{}`.", ident.inner),
                             vec![format!(
                                 "Eine Funktion kann wie folgt definiert werden: `funk {}(...) ergibt Datentyp {{ ... }}`",
                                 ident.inner,
@@ -2074,8 +2083,7 @@ impl<'src> Analyzer<'src> {
                     }
                 };
                 let (result_type, args) = match func {
-                    Some((_, func_params)) => {
-                        let mut result_type = Type::Unknown;
+                    Some((mut result_type, func_params)) => {
                         let args = node
                             .args
                             .into_iter()
@@ -2117,9 +2125,8 @@ impl<'src> Analyzer<'src> {
                 match func.result_type() {
                     Type::Function {
                         params,
-                        result_type: _,
+                        mut result_type,
                     } => {
-                        let mut result_type = Type::Unknown;
                         let args = node
                             .args
                             .into_iter()
@@ -2128,7 +2135,7 @@ impl<'src> Analyzer<'src> {
                             .collect();
 
                         AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
-                            result_type,
+                            result_type: *result_type,
                             func: AnalyzedCallBase::Expr(Box::new(func)),
                             args,
                         }))
@@ -2204,9 +2211,12 @@ impl<'src> Analyzer<'src> {
 
     fn cast_expr(&mut self, node: CastExpr<'src>) -> AnalyzedExpression<'src> {
         let expr_span = node.expr.span();
+        self.create_err_if_expr_contains_any = false;
         let expr = self.expression(node.expr);
+        self.create_err_if_expr_contains_any = true;
 
         let result_type = match (expr.result_type(), node.type_.inner.clone()) {
+            (Type::Any, other) => other,
             (Type::Unknown, _) => Type::Unknown,
             (Type::Never, _) => {
                 self.warn_unreachable(node.span, expr_span, true);
@@ -2224,6 +2234,7 @@ impl<'src> Analyzer<'src> {
                 Type::Int(0) | Type::Float(0) | Type::Bool(0) | Type::Char(0),
                 Type::Int(0) | Type::Float(0) | Type::Bool(0) | Type::Char(0),
             ) => node.type_.inner.clone(),
+            (Type::String(0), Type::Int(0) | Type::Float(0)) => node.type_.inner.clone(),
             (Type::List(mut linner, mut lptr), Type::List(mut rinner, mut rptr)) => {
                 let mut fail = false;
 
@@ -2325,36 +2336,43 @@ impl<'src> Analyzer<'src> {
     fn member_expr(&mut self, node: MemberExpr<'src>) -> AnalyzedExpression<'src> {
         let expr = self.expression(node.expr);
 
-        let members = match expr.result_type() {
+        let mut members = match expr.result_type() {
             Type::AnyObject(0) => HashMap::from([
                 (
-                    "get",
+                    "Nehmen",
                     Type::Function {
                         params: vec![Type::String(0)],
                         result_type: Box::new(Type::Any),
                     },
                 ),
                 (
-                    "set",
+                    "Datentyp_Von",
                     Type::Function {
-                        params: vec![Type::Unknown],
-                        result_type: Box::new(Type::Nichts),
+                        params: vec![Type::String(0)],
+                        result_type: Box::new(Type::String(0)),
                     },
                 ),
             ]),
             Type::List(inner, 0) => HashMap::from([
                 (
-                    "hinzufügen",
+                    "Hinzufügen",
                     Type::Function {
                         params: vec![*inner.clone()],
                         result_type: Box::new(Type::Nichts),
                     },
                 ),
                 (
-                    "aktualisieren",
+                    "Aktualisieren",
                     Type::Function {
                         params: vec![Type::Int(0), *inner.clone()],
                         result_type: Box::new(Type::Nichts),
+                    },
+                ),
+                (
+                    "Länge",
+                    Type::Function {
+                        params: vec![],
+                        result_type: Box::new(Type::Int(0)),
                     },
                 ),
             ]),
@@ -2362,9 +2380,16 @@ impl<'src> Analyzer<'src> {
                 params: _,
                 result_type: _,
             } => todo!(),
-            Type::Nichts | Type::Never | Type::Unknown => HashMap::new(),
             _ => HashMap::new(),
         };
+
+        members.insert(
+            "Datentyp",
+            Type::Function {
+                params: vec![],
+                result_type: Box::new(Type::String(0)),
+            },
+        );
 
         match members.get(node.member.inner) {
             Some(result_type) => AnalyzedExpression::Member(Box::new(AnalyzedMemberExpr {

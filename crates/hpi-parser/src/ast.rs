@@ -66,6 +66,18 @@ impl Display for Type {
 }
 
 impl Type {
+    pub fn with_ref(self, level: usize) -> Self {
+        match self {
+            Type::Int(_) => Type::Int(level),
+            Type::Float(_) => Type::Float(level),
+            Type::Bool(_) => Type::Bool(level),
+            Type::Char(_) => Type::Char(level),
+            Type::String(_) => Type::String(level),
+            Type::List(inner, _) => Type::List(inner, level),
+            _ => self,
+        }
+    }
+
     pub fn add_ref(self) -> Option<Self> {
         Some(match self {
             Type::Int(ptr) => Type::Int(ptr + 1),
@@ -268,7 +280,7 @@ pub enum Expression<'src> {
     Float(Spanned<'src, f64>),
     Bool(Spanned<'src, bool>),
     Char(Spanned<'src, u8>),
-    String(Spanned<'src, &'src str>),
+    String(Spanned<'src, String>),
     List(Spanned<'src, Vec<Expression<'src>>>),
     Ident(Spanned<'src, &'src str>),
     Prefix(Box<PrefixExpr<'src>>),

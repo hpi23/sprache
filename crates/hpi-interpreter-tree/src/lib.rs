@@ -1,6 +1,7 @@
 mod interpreter;
 mod ops;
 mod value;
+mod json;
 
 use std::{fmt::Debug, io::Write};
 

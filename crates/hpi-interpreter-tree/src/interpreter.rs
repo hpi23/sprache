@@ -4,7 +4,10 @@ use std::{
 
 use hpi_analyzer::{ast::*, AssignOp, InfixOp, PrefixOp, Type};
 
-use crate::value::{InterruptKind, Value};
+use crate::{
+    json,
+    value::{InterruptKind, Value},
+};
 
 pub(crate) type Error = Cow<'static, str>;
 type ExprResult = Result<Value, InterruptKind>;
@@ -205,6 +208,13 @@ where
 
                 Ok(Value::Unit)
             }
+            AnalyzedCallBase::Ident("Zergliedere_JSON") => {
+                let Value::String(string_input) = args[0].clone() else {
+                    unreachable!("the analyzer prevents this")
+                };
+
+                json::deserialize(&string_input)
+            }
             AnalyzedCallBase::Ident("http") => {
                 // BuiltinFunction::new(ParamTypes::Normal(vec![
                 //                         Type::String(0), // method
@@ -334,17 +344,6 @@ where
         Ok(())
     }
 
-    fn visit_loop_stmt(&mut self, node: &AnalyzedLoopStmt<'src>) -> StmtResult {
-        loop {
-            match self.visit_block(&node.block, true) {
-                Err(InterruptKind::Break) => break,
-                Err(InterruptKind::Continue) => continue,
-                res => res?,
-            };
-        }
-        Ok(())
-    }
-
     fn visit_while_stmt(&mut self, node: &AnalyzedWhileStmt<'src>) -> StmtResult {
         while self.visit_expression(&node.cond)?.unwrap_bool() {
             match self.visit_block(&node.block, true) {
@@ -354,33 +353,6 @@ where
             };
         }
         Ok(())
-    }
-
-    fn visit_for_stmt(&mut self, node: &AnalyzedForStmt<'src>) -> StmtResult {
-        // new scope just for the induction variable
-        let init_val = self.visit_expression(&node.initializer)?;
-
-        self.scoped(
-            HashMap::from([(node.ident, init_val.wrapped())]),
-            |self_| -> StmtResult {
-                loop {
-                    if !self_.visit_expression(&node.cond)?.unwrap_bool() {
-                        break;
-                    }
-
-                    let res = self_.visit_block(&node.block, true);
-
-                    self_.visit_expression(&node.update)?;
-
-                    match res {
-                        Err(InterruptKind::Break) => break,
-                        Err(InterruptKind::Continue) => continue,
-                        res => res?,
-                    };
-                }
-                Ok(())
-            },
-        )
     }
 
     //////////////////////////////////
@@ -511,6 +483,15 @@ where
         self.call_func(&node.func, args)
     }
 
+    fn cast_from_any(&self, from: Value, as_type: Type) -> ExprResult {
+        let from_type = from.as_type();
+        if from_type != as_type {
+            return Err(InterruptKind::Error(format!("Invalide Typumwandlung während der Laufzeit: Der Datentyp `{from_type}` kann nicht in `{as_type}` umgewandelt werden.").into()));
+        }
+
+        Ok(from)
+    }
+
     fn visit_cast_expr(&mut self, node: &AnalyzedCastExpr<'src>) -> ExprResult {
         let val = self.visit_expression(&node.expr)?;
         match (val, node.as_type.clone()) {
@@ -518,7 +499,6 @@ where
             | (val @ Value::Float(_), Type::Float(0))
             | (val @ Value::Char(_), Type::Char(0))
             | (val @ Value::Bool(_), Type::Bool(0)) => Ok(val),
-
             (Value::Int(int), Type::Float(0)) => Ok((int as f64).into()),
             (Value::Int(int), Type::Bool(0)) => Ok((int != 0).into()),
             (Value::Int(int), Type::Char(0)) => Ok((int.clamp(0, 127) as u8).into()),
@@ -531,6 +511,33 @@ where
             (Value::Char(char), Type::Int(0)) => Ok((char as i64).into()),
             (Value::Char(char), Type::Float(0)) => Ok((char as f64).into()),
             (Value::Char(char), Type::Bool(0)) => Ok((char != 0).into()),
+            (Value::String(inner), type_ @ Type::Int(0) | type_ @ Type::Float(0)) => {
+                let inner = inner.replace(',', ".");
+                match type_ {
+                    Type::Int(0) => {
+                        let num: i64 = inner.parse().map_err(|err| {
+                            InterruptKind::Error(
+                                format!("Zeichenkettenverarbeitungsfehler in Zeichenkette `{inner}`: {err}").into(),
+                            )
+                        })?;
+
+                        Ok(Value::Int(num))
+                    }
+                    Type::Float(0) => {
+                        let num: f64 = inner.parse().map_err(|err| {
+                            InterruptKind::Error(
+                                format!("Zeichenkettenverarbeitungsfehler in Zeichenkette `{inner}`: {err}").into(),
+                            )
+                        })?;
+
+                        Ok(Value::Float(num))
+                    }
+                    _ => unreachable!("the analyzer guarantees this"),
+                }
+            }
+            (val, to_type) if node.expr.result_type() == Type::Any => {
+                self.cast_from_any(val, to_type)
+            }
             _ => unreachable!("the analyzer guarantees one of the above to match"),
         }
     }

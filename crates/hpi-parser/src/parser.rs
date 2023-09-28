@@ -157,7 +157,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             ptr_count += 1;
         }
 
-        let type_ = match self.curr_tok.kind {
+        let type_ = match &self.curr_tok.kind {
             TokenKind::Ident("Zahl") => Type::Int(ptr_count),
             TokenKind::Ident("Fließkommazahl") => Type::Float(ptr_count),
             TokenKind::Ident("Wahrheitswert") => Type::Bool(ptr_count),
@@ -247,8 +247,6 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
 
     fn beantrage_stmt(&mut self) -> Result<'src, BeantrageStmt<'src>> {
         let start_loc = self.curr_tok.span.start;
-
-        dbg!(self.curr_tok);
 
         self.expect(TokenKind::Beantrage)?;
         let value_name = self.expect_ident()?;
@@ -485,7 +483,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             _ => (self.expression(0)?, false),
         };
 
-        match (self.curr_tok.kind, with_block) {
+        match (&self.curr_tok.kind, with_block) {
             (TokenKind::Semicolon, _) => self.next()?,
             (TokenKind::RBrace, _) => return Ok(Either::Right(expr)),
             (_, true) => {}
@@ -505,14 +503,14 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
     fn expression(&mut self, prec: u8) -> Result<'src, Expression<'src>> {
         let start_loc = self.curr_tok.span.start;
 
-        let mut lhs = match self.curr_tok.kind {
-            TokenKind::Int(num) => Expression::Int(self.atom(num)?),
-            TokenKind::Float(num) => Expression::Float(self.atom(num)?),
+        let mut lhs = match &self.curr_tok.kind {
+            TokenKind::Int(num) => Expression::Int(self.atom(*num)?),
+            TokenKind::Float(num) => Expression::Float(self.atom(*num)?),
             TokenKind::Ja => Expression::Bool(self.atom(true)?),
             TokenKind::Nein => Expression::Bool(self.atom(false)?),
-            TokenKind::Char(char) => Expression::Char(self.atom(char)?),
-            TokenKind::String(string) => Expression::String(self.atom(string)?),
-            TokenKind::Ident(ident) => Expression::Ident(self.atom(ident)?),
+            TokenKind::Char(char) => Expression::Char(self.atom(*char)?),
+            TokenKind::String(string) => Expression::String(self.atom(string.clone())?),
+            TokenKind::Ident(ident) => Expression::Ident(self.atom(*ident)?),
             TokenKind::LBrace => Expression::Block(self.block()?.into()),
             TokenKind::Falls => Expression::If(self.falls_expr()?.into()),
             TokenKind::Not => Expression::Prefix(self.prefix_expr(PrefixOp::Not, false)?.into()),
@@ -586,7 +584,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
         let else_block = match self.curr_tok.kind {
             TokenKind::Sonst => {
                 self.next()?;
-                Some(match self.curr_tok.kind {
+                Some(match &self.curr_tok.kind {
                     TokenKind::Falls => {
                         let if_expr = self.falls_expr()?;
                         Block {
