@@ -136,6 +136,7 @@ pub enum AnalyzedExpression<'src> {
     Cast(Box<AnalyzedCastExpr<'src>>),
     Member(Box<AnalyzedMemberExpr<'src>>),
     Index(Box<AnalyzedIndexExpr<'src>>),
+    Object(Box<AnalyzedObjectExpr<'src>>),
     Grouped(Box<AnalyzedExpression<'src>>),
 }
 
@@ -167,6 +168,12 @@ impl AnalyzedExpression<'_> {
             Self::If(expr) => expr.result_type.clone(),
             Self::Block(expr) => expr.result_type.clone(),
             Self::Grouped(expr) => expr.result_type(),
+            Self::Object(expr) => {
+                let members = expr.members.iter().map(|element| {
+                        (element.key.clone(), element.value.result_type())
+                }).collect();
+                Type::Object(members, 0)
+            },
         }
     }
 
@@ -215,6 +222,19 @@ pub struct AnalyzedIdentExpr<'src> {
     pub result_type: Type,
     pub ident: &'src str,
 }
+
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnalyzedObjectField<'src> {
+    pub key: String,
+    pub value: AnalyzedExpression<'src>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnalyzedObjectExpr<'src> {
+    pub members: Vec<AnalyzedObjectField<'src>>,
+}
+
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnalyzedPrefixExpr<'src> {

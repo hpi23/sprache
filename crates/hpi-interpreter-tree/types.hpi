@@ -1,4 +1,5 @@
-beantrage foo von bar;
+datentyp Zahl2 auf Zahl;
+setze Zahl2 ma auf 1;
 
 funk Bewerbung() ergibt Zeichenkette {
     überweise "aa";
@@ -8,5 +9,4 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
-    // Setze Objekt {  } Foo auf 1;
 }

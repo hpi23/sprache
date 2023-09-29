@@ -1,19 +1,31 @@
-use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc, str::FromStr};
 
 use hpi_analyzer::Type;
+use serde_json::Number;
 
 use crate::value::{InterruptKind, Value};
 
 pub fn deserialize(input: &str) -> Result<Value, InterruptKind> {
-    let serde_value: serde_json::Value = serde_json::from_str(input)
-        .map_err(|err| InterruptKind::Error(format!("Zergliedere_JSON Textverarbeitungsfehler: {err}").into()))?;
-    Value::from_json(serde_value)
-        .map_err(|err| InterruptKind::Error(format!("Zergliedere_JSON Umwandlungsfehler: {err}").into()))
+    let serde_value: serde_json::Value = serde_json::from_str(input).map_err(|err| {
+        InterruptKind::Error(format!("Zergliedere_JSON Textverarbeitungsfehler: {err}").into())
+    })?;
+    Value::from_json(serde_value).map_err(|err| {
+        InterruptKind::Error(format!("Zergliedere_JSON Umwandlungsfehler: {err}").into())
+    })
+}
+
+pub fn serialize(input: Value) -> Result<String, InterruptKind> {
+    let serde_value = input.to_json().map_err(|err| {
+        InterruptKind::Error(format!("Gliedere_JSON Umwandlungsfehler: {err}").into())
+    })?;
+
+    Ok(serde_value.to_string())
 }
 
 #[derive(Debug)]
 enum TypeError {
     ListInnerType { expected: Type, found: Type },
+    UnsupportedType(Type),
 }
 
 impl Display for TypeError {
@@ -23,11 +35,55 @@ impl Display for TypeError {
                 f,
                 "Datentypfehler: Erwartete `{expected}`, `{found}` wurde aufgespürt."
             ),
+            TypeError::UnsupportedType(other) => write!(
+                f,
+                "Datentypfehler: der Datentyp `{other}` wird nicht unterstützt."
+            ),
         }
     }
 }
 
 impl Value {
+    fn to_json(&self) -> Result<serde_json::Value, TypeError> {
+        Ok(match self {
+            Value::Int(inner) => {
+                serde_json::Value::from_str(&format!("{inner}")).expect("this should not fail")
+            }
+            Value::Float(inner) => {
+                serde_json::Value::Number(Number::from_f64(*inner).expect("this should not fail"))
+            }
+            Value::Char(inner) => serde_json::Value::String(inner.to_string()),
+            Value::String(inner) => serde_json::Value::String(inner.clone()),
+            Value::List(inner) => {
+                let inner = inner
+                    .borrow()
+                    .iter()
+                    .map(|element| element.to_json())
+                    .collect::<Result<Vec<serde_json::Value>, TypeError>>()?;
+                serde_json::Value::Array(inner)
+            }
+            Value::Bool(inner) => serde_json::Value::Bool(*inner),
+            Value::Unit => serde_json::Value::Null,
+            Value::Ptr(_) | Value::BuiltinFunction(_, _) => {
+                return Err(TypeError::UnsupportedType(self.as_type()))
+            }
+            Value::Speicherbox(inner) => {
+                let mut new_inner = serde_json::Map::new();
+                for (key, value) in inner {
+                    new_inner.insert(key.clone(), value.to_json()?);
+                }
+                serde_json::Value::Object(new_inner)
+            }
+            Value::Objekt(inner) => {
+                let mut new_inner = serde_json::Map::new();
+                for (key, value) in inner.borrow().iter() {
+                    new_inner.insert(key.clone(), value.to_json()?);
+                }
+                serde_json::Value::Object(new_inner)
+            }
+        })
+    }
+
     fn from_json(value: serde_json::Value) -> Result<Self, TypeError> {
         Ok(match value {
             serde_json::Value::Null => Self::Unit,

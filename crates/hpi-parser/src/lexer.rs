@@ -465,6 +465,8 @@ impl<'src> Lexer<'src> {
             self.next()
         }
         let kind = match &self.input[start_loc.byte_idx..self.location.byte_idx] {
+            "erstelle" => TokenKind::New,
+            "datentyp" => TokenKind::Datentyp,
             "ja" => TokenKind::Ja,
             "nein" => TokenKind::Nein,
             "funk" => TokenKind::Funk,

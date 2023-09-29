@@ -1,4 +1,7 @@
-use std::fmt::{self, Debug, Display, Formatter};
+use std::{
+    collections::HashMap,
+    fmt::{self, Debug, Display, Formatter},
+};
 
 use crate::Span;
 
@@ -14,6 +17,7 @@ pub enum Type {
         params: Vec<Type>,
         result_type: Box<Type>,
     },
+    Object(HashMap<String, Type>, usize),
     AnyObject(usize),
     Any,
     Nichts,
@@ -21,6 +25,8 @@ pub enum Type {
     Never,
     /// Internal use only, used if typecheck could not determine a type
     Unknown,
+    /// Internal use for giving types a name
+    Ident(String, usize),
 }
 
 impl Display for Type {
@@ -57,10 +63,20 @@ impl Display for Type {
                         .join(" / ")
                 )
             }
+            Self::Object(fields, ptr) => {
+                let members = fields
+                    .iter()
+                    .map(|element| format!("{} {}", element.0, element.1))
+                    .collect::<Vec<String>>()
+                    .join("\n,");
+
+                write!(f, "{}Objekt {{\n{}\n}}", "*".repeat(*ptr), members)
+            }
             Self::Any => write!(f, "Unbekannt"),
             Self::Nichts => write!(f, "Nichts"),
             Self::Never => write!(f, "Niemals"),
             Self::Unknown => write!(f, "{{unknown}}"),
+            Self::Ident(inner, ptr) => write!(f, "{}{inner}", "*".repeat(*ptr)),
         }
     }
 }
@@ -117,11 +133,13 @@ impl Type {
                 params: _,
                 result_type: _,
             } => None,
+            Type::Object(_, ptr) => Some(*ptr),
             Type::AnyObject(ptr) => Some(*ptr),
             Type::Any => None,
             Type::Nichts => None,
             Type::Never => None,
             Type::Unknown => None,
+            Type::Ident(_, ptr) => Some(*ptr),
         }
     }
 
@@ -142,9 +160,11 @@ impl Type {
                 params,
                 result_type,
             },
+            Self::Object(inner, _) => Self::Object(inner, 0),
             Self::Any => Self::Any,
             Self::Never => Self::Never,
             Self::Unknown => Self::Unknown,
+            Self::Ident(inner, _) => Self::Ident(inner, 0),
         }
     }
 }
@@ -161,6 +181,7 @@ pub struct Program<'src> {
     pub imports: Vec<BeantrageStmt<'src>>,
     pub functions: Vec<FunctionDefinition<'src>>,
     pub globals: Vec<SetzeStmt<'src>>,
+    pub datentypen: Vec<Statement<'src>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -203,6 +224,7 @@ pub enum Statement<'src> {
     Solange(SolangeStmt<'src>),
     Abbrechen(AbbrechenStmt<'src>),
     Weitermachen(WeitermachenStmt<'src>),
+    Datentyp(Datentyp<'src>),
     Expr(ExprStmt<'src>),
 }
 
@@ -215,6 +237,7 @@ impl<'src> Statement<'src> {
             Self::Solange(stmt) => stmt.span,
             Self::Abbrechen(stmt) => stmt.span,
             Self::Weitermachen(stmt) => stmt.span,
+            Self::Datentyp(stmt) => stmt.span,
             Self::Expr(stmt) => stmt.span,
         }
     }
@@ -267,6 +290,13 @@ pub struct WeitermachenStmt<'src> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct Datentyp<'src> {
+    pub name: Spanned<'src, &'src str>,
+    pub type_: Spanned<'src, Type>,
+    pub span: Span<'src>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ExprStmt<'src> {
     pub span: Span<'src>,
     pub expr: Expression<'src>,
@@ -282,6 +312,7 @@ pub enum Expression<'src> {
     Char(Spanned<'src, u8>),
     String(Spanned<'src, String>),
     List(Spanned<'src, Vec<Expression<'src>>>),
+    Object(Box<ObjectExpr<'src>>),
     Ident(Spanned<'src, &'src str>),
     Prefix(Box<PrefixExpr<'src>>),
     Infix(Box<InfixExpr<'src>>),
@@ -313,6 +344,7 @@ impl<'src> Expression<'src> {
             Self::Member(expr) => expr.span,
             Self::Index(expr) => expr.span,
             Self::Grouped(expr) => expr.span,
+            Self::Object(expr) => expr.span,
         }
     }
 }
@@ -323,6 +355,19 @@ pub struct IfExpr<'src> {
     pub cond: Expression<'src>,
     pub then_block: Block<'src>,
     pub else_block: Option<Block<'src>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ObjectField<'src> {
+    pub key_type: Spanned<'src, Type>,
+    pub key: Spanned<'src, String>,
+    pub value: Expression<'src>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ObjectExpr<'src> {
+    pub span: Span<'src>,
+    pub members: Vec<ObjectField<'src>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

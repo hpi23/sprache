@@ -52,6 +52,10 @@ pub enum TokenKind<'src> {
     // A string literal
     String(String),
 
+    /// `datentyp`
+    Datentyp,
+    /// `new`
+    New,
     /// `ja`
     Ja,
     /// `nein`
@@ -232,6 +236,7 @@ impl Display for TokenKind<'_> {
             Self::Char(char @ b' '..=b'~') => write!(f, "'{}'", *char as char),
             Self::Char(char) => write!(f, "'\\x{char:x}'"),
             Self::String(str) => write!(f, "\"{str}\""),
+            Self::Datentyp => write!(f, "datentyp"),
             Self::Ja => write!(f, "ja"),
             Self::Nein => write!(f, "nein"),
             Self::Funk => write!(f, "fn"),
@@ -249,6 +254,7 @@ impl Display for TokenKind<'_> {
             Self::Ergibt => write!(f, "ergibt"),
             Self::Zeiger => write!(f, "Zeiger"),
             Self::Auf => write!(f, "auf"),
+            Self::New => write!(f, "new"),
             Self::LParen => write!(f, "("),
             Self::RParen => write!(f, ")"),
             Self::LBracket => write!(f, "["),

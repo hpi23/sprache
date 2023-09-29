@@ -1,0 +1,59 @@
+beantrage drucke von Drucker;
+beantrage Gliedere_JSON von Textverarbeitung;
+
+funk Bewerbung() ergibt Zeichenkette {
+    überweise "aa";
+}
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+}
+
+funk Studium() ergibt Nichts {
+    setze Objekt { Zahl foo } Foo auf new {
+        Zahl foo auf 1 /
+    };
+
+ // {
+   // "content": null,
+   // "embeds": [
+     // {
+       // "title": "Mensa Griebnitzsee 20.09.2023",
+       // "description": "Hallo Zusammen, ein neuer Tag, ein neues Angebot!",
+       // "url": "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos/mensa-griebnitzsee",
+       // "color": 14573831,
+       // "fields": [
+         // {
+           // "name": "Angebot 1",
+           // "value": "Weirdes Essen - 2,50€"
+         // }
+       // ],
+       // "footer": {
+         // "text": "Powered by Mensa Scraper written in HPI script.\nhttps://sprache.hpi.church"
+       // }
+     // }
+   // ],
+   // "attachments": []
+ // }
+
+    setze Liste von Objekt {} Felder auf [
+        new {
+            Zeichenkette name auf "Angebot 1" /
+            Zeichkette value auf "Weirdes Essen - 2,50€" /
+        }
+    ];
+
+    setze Objekt {} Embed auf new {
+        Zeichenkette title auf "Mensa Griebnitzsee 20.09.2023" /
+        Zeichenkette description auf "Hallo Zusammen, ein neuer Tag, ein neues Angebot!" /
+        Zeichenkette url auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos/mensa-griebnitzsee" /
+        Zahl color auf 14573831 /
+        Liste von Objekt {} fields auf Felder /
+    };
+
+    setze Objekt { Nichts contents / Liste von Objekt {} embeds  } Körper auf new {
+        Nichts contents auf Nichts /
+        Liste von Objekt {} embeds auf [ embed ]
+    };
+
+    drucke(Gliedere_JSON(Foo));
+}

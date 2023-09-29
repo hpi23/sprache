@@ -11,6 +11,7 @@ use crate::{ast::*, Diagnostic, DiagnosticLevel, ErrorKind};
 #[derive(Default, Debug)]
 pub struct Analyzer<'src> {
     functions: HashMap<&'src str, Function<'src>>,
+    types: HashMap<&'src str, Spanned<'src, Type>>,
     diagnostics: Vec<Diagnostic<'src>>,
     scopes: Vec<HashMap<&'src str, Variable<'src>>>,
     curr_func_name: &'src str,
@@ -144,7 +145,7 @@ impl<'src> Analyzer<'src> {
         mut self,
         program: Program<'src>,
     ) -> Result<(AnalyzedProgram<'src>, Vec<Diagnostic>), Vec<Diagnostic>> {
-        // visit all import statements in the beginning
+        // visit all import statements
         let imports = program
             .imports
             .iter()
@@ -182,6 +183,11 @@ impl<'src> Analyzer<'src> {
                     used: false,
                 },
             );
+        }
+        
+        // visit all type statements
+        for item in program.datentypen {
+            self.statement(item.clone());
         }
 
         // analyze global let stmts
@@ -315,6 +321,24 @@ impl<'src> Analyzer<'src> {
         }
     }
 
+    fn lookup_type(&mut self, input: &Spanned<'src, Type>) -> Type {
+        match &input.inner {
+            Type::Ident(ident, 0) => match self.types.get(ident.as_str()) {
+                None => {
+                    self.error(
+                        ErrorKind::Type,
+                        format!("Unbekannter Datentyp mit dem Namen `{ident}` aufgespürt."),
+                        vec!["Vielleicht haben Sie sich einfach nur vertippt?".into()],
+                        input.span,
+                    );
+                    Type::Unknown
+                }
+                Some(typ_) => typ_.inner.clone(),
+            },
+            other => other.clone(),
+        }
+    }
+
     fn check_any(&self, typ: Type) -> bool {
         match typ {
             Type::List(inner, _) => *inner == Type::Any,
@@ -329,6 +353,12 @@ impl<'src> Analyzer<'src> {
                 self.builtin_functions.insert(
                     "Zergliedere_JSON",
                     BuiltinFunction::new(ParamTypes::Normal(vec![Type::String(0)]), Type::Any),
+                );
+            }
+            ("Gliedere_JSON", "Textverarbeitung") => {
+                self.builtin_functions.insert(
+                    "Gliedere_JSON",
+                    BuiltinFunction::new(ParamTypes::Normal(vec![Type::Unknown]), Type::String(0)),
                 );
             }
             ("drucke", "Drucker") => {
@@ -799,6 +829,10 @@ impl<'src> Analyzer<'src> {
     fn statement(&mut self, node: Statement<'src>) -> Option<AnalyzedStatement<'src>> {
         Some(match node {
             Statement::Setze(node) => self.setze_stmt(node),
+            Statement::Datentyp(node) => {
+                self.datentyp_stmt(node);
+                return None;
+            }
             Statement::Aendere(node) => self.aendere_stmt(node),
             Statement::Ueberweise(node) => self.return_stmt(node),
             Statement::Solange(node) => return self.while_stmt(node),
@@ -810,11 +844,19 @@ impl<'src> Analyzer<'src> {
 
     fn type_check(
         &mut self,
-        lhs_type: &Spanned<'src, Type>,
-        rhs_type: &Spanned<'src, Type>,
+        expected: &Spanned<'src, Type>,
+        got: &Spanned<'src, Type>,
         is_function_return_value: bool,
     ) -> Type {
-        match (&lhs_type.inner, &rhs_type.inner) {
+        println!("{}", got.inner);
+        println!("{}", expected.inner);
+        let expected_raw = self.lookup_type(expected);
+        let got_raw = self.lookup_type(got);
+
+        println!("{}", got_raw);
+        println!("{}", expected_raw);
+
+        match (&expected_raw, &got_raw) {
             (_, rhs @ Type::Unknown | rhs @ Type::Never) => rhs.clone(),
             (Type::List(linner, mut lptr), Type::List(rinner, mut rptr)) if lptr == rptr => {
                 let mut linner = *linner.clone();
@@ -851,24 +893,24 @@ impl<'src> Analyzer<'src> {
                                 ErrorKind::Type,
                                 format!(
                                     "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
-                                    lhs_type.inner, rhs_type.inner,
+                                    expected_raw, got_raw,
                                 ),
                                 vec![],
-                                lhs_type.span,
+                                expected.span,
                             );
-                            if lhs_type.span != Span::dummy() {
+                            if expected.span != Span::dummy() {
                                 if is_function_return_value {
                                     self.hint(
                                         "Der Funktionsrückgabewert in Frage wurde hier definiert.",
-                                        rhs_type.span,
+                                        got.span,
                                     );
                                 } else {
                                     self.hint(
                                         format!(
                                             "Erwarte Datentyp `{}` aufgrund dieser Definition.",
-                                            rhs_type.inner,
+                                            got_raw,
                                         ),
-                                        rhs_type.span,
+                                        got.span,
                                     );
                                 }
                             }
@@ -876,42 +918,8 @@ impl<'src> Analyzer<'src> {
                         }
                     }
                 } else {
-                    lhs_type.inner.clone()
+                    expected_raw.clone()
                 }
-
-                // match (&**l_inner, &**r_inner) {
-                //     (_, rhs @ Type::Unknown | rhs @ Type::Never) => rhs.clone(),
-                //     (lhs, rhs) if lhs != rhs => {
-                //         self.error(
-                //             ErrorKind::Type,
-                //             format!(
-                //                 "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
-                //                 lhs, rhs,
-                //             ),
-                //             vec![],
-                //             lhs_type.span,
-                //         );
-                //         if lhs_type.span != Span::dummy() {
-                //             if is_function_return_value {
-                //                 self.hint(
-                //                     "Der Funktionsrückgabewert in Frage wurde hier definiert.",
-                //                     rhs_type.span,
-                //                 );
-                //             } else {
-                //                 self.hint(
-                //                     format!(
-                //                         "Erwarte Datentyp `{}` aufgrund dieser Definition.",
-                //                         rhs,
-                //                     ),
-                //                     rhs_type.span,
-                //                 );
-                //             }
-                //         }
-                //
-                //         Type::Unknown
-                //     }
-                //     (_, rhs) => rhs.clone(),
-                // }
             }
             (lhs, rhs) if lhs != rhs => {
                 self.error(
@@ -921,19 +929,19 @@ impl<'src> Analyzer<'src> {
                         lhs, rhs,
                     ),
                     vec![],
-                    lhs_type.span,
+                    expected.span,
                 );
 
-                if lhs_type.span != Span::dummy() {
+                if expected.span != Span::dummy() {
                     if is_function_return_value {
                         self.hint(
                             "Der Funktionsrückgabewert in Frage wurde hier definiert.",
-                            rhs_type.span,
+                            got.span,
                         );
                     } else {
                         self.hint(
-                            format!("Erwarte Datentyp `{}` aufgrund dieser Definition.", rhs,),
-                            rhs_type.span,
+                            format!("Erwarte Datentyp `{}` aufgrund dieser Definition.", rhs),
+                            got.span,
                         );
                     }
                 }
@@ -944,6 +952,22 @@ impl<'src> Analyzer<'src> {
         }
     }
 
+    fn datentyp_stmt(&mut self, node: Datentyp<'src>) {
+        if self.types.get(node.name.inner).is_some() {
+            self.error(
+                ErrorKind::Semantic,
+                format!(
+                    "Unerlaubte Neudefinition des Datentyps `{}`.",
+                    node.name.inner
+                ),
+                vec!["Entfernen Sie diese Anweisung geschwindt!".into()],
+                node.name.span,
+            );
+            return;
+        }
+        self.types.insert(node.name.inner, node.type_);
+    }
+
     fn setze_stmt(&mut self, node: SetzeStmt<'src>) -> AnalyzedStatement<'src> {
         // save the expression's span for later use
         let expr_span = node.expr.span();
@@ -952,11 +976,11 @@ impl<'src> Analyzer<'src> {
         let expr = self.expression(node.expr);
 
         self.type_check(
+            &node.type_,
             &Spanned {
                 span: expr_span,
                 inner: expr.result_type(),
             },
-            &node.type_,
             false,
         );
 
@@ -1274,6 +1298,7 @@ impl<'src> Analyzer<'src> {
             Expression::Index(node) => self.index_expr(*node),
             Expression::If(node) => self.if_expr(*node),
             Expression::Block(node) => self.block_expr(*node),
+            Expression::Object(node) => self.object_expr(*node),
             Expression::Grouped(node) => {
                 let expr = self.expression(*node.inner);
                 match expr.as_constant() {
@@ -1311,6 +1336,30 @@ impl<'src> Analyzer<'src> {
             Some(expr) => expr,
             None => AnalyzedExpression::Block(block.into()),
         }
+    }
+
+    fn object_expr(&mut self, node: ObjectExpr<'src>) -> AnalyzedExpression<'src> {
+        let members = node
+            .members
+            .iter()
+            .map(|element| {
+                let expr = self.expression(element.value.clone());
+                self.type_check(
+                    &element.key_type,
+                    &Spanned {
+                        span: element.value.span(),
+                        inner: expr.result_type(),
+                    },
+                    false,
+                );
+                AnalyzedObjectField {
+                    key: element.key.inner.clone(),
+                    value: expr,
+                }
+            })
+            .collect();
+
+        AnalyzedExpression::Object(Box::new(AnalyzedObjectExpr { members }))
     }
 
     fn eval_block(block: &AnalyzedBlock<'src>) -> Option<AnalyzedExpression<'src>> {
@@ -1673,7 +1722,13 @@ impl<'src> Analyzer<'src> {
                 allowed_types = &[Type::Int(0)];
             }
             InfixOp::Eq | InfixOp::Neq => {
-                allowed_types = &[Type::Int(0), Type::Float(0), Type::Bool(0), Type::Char(0), Type::String(0)];
+                allowed_types = &[
+                    Type::Int(0),
+                    Type::Float(0),
+                    Type::Bool(0),
+                    Type::Char(0),
+                    Type::String(0),
+                ];
                 override_result_type = Some(Type::Bool(0));
             }
             InfixOp::BitOr | InfixOp::BitAnd | InfixOp::BitXor => {

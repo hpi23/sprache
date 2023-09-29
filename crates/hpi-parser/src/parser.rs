@@ -1,4 +1,4 @@
-use std::mem;
+use std::{collections::HashMap, mem};
 
 use either::Either;
 
@@ -120,12 +120,14 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
         let mut functions = vec![];
         let mut imports = vec![];
         let mut globals = vec![];
+        let mut datentypen = vec![];
 
         while self.curr_tok.kind != TokenKind::Eof {
             match self.curr_tok.kind {
                 TokenKind::Funk => functions.push(self.function_definition()?),
                 TokenKind::Beantrage => imports.push(self.beantrage_stmt()?),
                 TokenKind::Setze => globals.push(self.setze_stmt()?),
+                TokenKind::Datentyp => datentypen.push(self.datentyp()?),
                 _ => {
                     return Err(Error::new_boxed(
                         format!(
@@ -144,7 +146,15 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             imports,
             functions,
             globals,
+            datentypen,
         })
+    }
+
+    fn object_type_field(&mut self) -> Result<'src, (String, Type)> {
+        let type_ = self.type_()?;
+        let name = self.expect_ident()?;
+
+        Ok((name.inner.to_string(), type_.inner))
     }
 
     fn type_(&mut self) -> Result<'src, Spanned<'src, Type>> {
@@ -163,6 +173,41 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             TokenKind::Ident("Wahrheitswert") => Type::Bool(ptr_count),
             TokenKind::Ident("Zeichen") => Type::Char(ptr_count),
             TokenKind::Ident("Speicherbox") => Type::AnyObject(ptr_count),
+            TokenKind::Ident("Objekt") => {
+                self.next()?;
+
+                self.expect(TokenKind::LBrace)?;
+
+                let mut members = HashMap::new();
+
+                if !matches!(self.curr_tok.kind, TokenKind::RBrace | TokenKind::Eof) {
+                    let field = self.object_type_field()?;
+                    members.insert(field.0, field.1);
+
+                    while self.curr_tok.kind == TokenKind::Slash {
+                        // skip slash
+                        self.next()?;
+
+                        if matches!(self.curr_tok.kind, TokenKind::RBrace | TokenKind::Eof) {
+                            break;
+                        }
+
+                        let field = self.object_type_field()?;
+                        members.insert(field.0, field.1);
+                    }
+                }
+
+                self.expect_recoverable(
+                    TokenKind::RBrace,
+                    "Fehlende schließende geschweifte Klammer.",
+                    self.curr_tok.span,
+                )?;
+
+                return Ok(Spanned {
+                    span: start_loc.until(self.curr_tok.span.end),
+                    inner: Type::Object(members, 0),
+                });
+            }
             TokenKind::Ident("Liste") => {
                 self.next()?;
                 self.expect(TokenKind::Von)?;
@@ -177,13 +222,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             TokenKind::Ident("Nichts") => Type::Nichts,
             TokenKind::Ident("Zeichenkette") => Type::String(ptr_count),
             TokenKind::Ident(ident) => {
-                // TODO: rechtschreibfehler
-                self.errors.push(Error::new(
-                    format!("Datentyp `{ident}` ist nicht bekannt."),
-                    self.curr_tok.span,
-                    self.lexer.source(),
-                ));
-                Type::Unknown
+                Type::Ident(ident.to_string(), ptr_count)
             }
             invalid => {
                 return Err(Error::new_boxed(
@@ -284,6 +323,81 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
         Ok(Parameter { name, type_ })
     }
 
+    fn object_field(&mut self) -> Result<'src, ObjectField<'src>> {
+        let type_ = self.type_()?;
+
+        let ident = match &self.curr_tok.kind {
+            TokenKind::String(value) => Spanned {
+                span: self.curr_tok.span,
+                inner: value.to_string(),
+            },
+            TokenKind::Ident(value) => Spanned {
+                span: self.curr_tok.span,
+                inner: value.to_string(),
+            },
+            other => {
+                return Err(Error::new_boxed(
+                    format!(
+                        "Erwartete entweder `Zeichenkette` oder `Identifier`, fand `{}`.",
+                        other
+                    ),
+                    self.curr_tok.span,
+                    self.lexer.source(),
+                ));
+            }
+        };
+
+        self.next()?;
+
+        self.expect(TokenKind::Auf)?;
+
+        let value = self.expression(0)?;
+
+        Ok(ObjectField {
+            key_type: type_,
+            key: ident,
+            value,
+        })
+    }
+
+    fn object(&mut self) -> Result<'src, ObjectExpr<'src>> {
+        let start_loc = self.curr_tok.span.start;
+        // skip `new` token
+        self.next()?;
+
+        self.expect(TokenKind::LBrace)?;
+
+        let mut members = vec![];
+
+        if !matches!(self.curr_tok.kind, TokenKind::RBrace | TokenKind::Eof) {
+            let field = self.object_field()?;
+            members.push(field);
+
+            while self.curr_tok.kind == TokenKind::Slash {
+                // skip slash
+                self.next()?;
+
+                if matches!(self.curr_tok.kind, TokenKind::RBrace | TokenKind::Eof) {
+                    break;
+                }
+
+                let field = self.object_field()?;
+                members.push(field);
+            }
+        }
+
+        self.expect_recoverable(
+            TokenKind::RBrace,
+            "Fehlende schließende geschweifte Klammer.",
+            self.curr_tok.span,
+        )?;
+
+        Ok(ObjectExpr {
+            span: start_loc.until(self.curr_tok.span.end),
+            members,
+        })
+    }
+
     fn block(&mut self) -> Result<'src, Block<'src>> {
         let start_loc = self.curr_tok.span.start;
 
@@ -322,6 +436,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             TokenKind::Solange => Either::Left(self.while_stmt()?),
             TokenKind::Abbrechen => Either::Left(self.break_stmt()?),
             TokenKind::Weitermachen => Either::Left(self.continue_stmt()?),
+            TokenKind::Datentyp => Either::Left(self.datentyp()?),
             _ => self.expr_stmt()?,
         })
     }
@@ -457,6 +572,27 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
         }))
     }
 
+    fn datentyp(&mut self) -> Result<'src, Statement<'src>> {
+        let start_loc = self.curr_tok.span.start;
+
+        // skip `datentyp` token
+        self.next()?;
+
+        let name = self.expect_ident()?;
+
+        self.expect(TokenKind::Auf)?;
+
+        let type_ = self.type_()?;
+
+        self.expect(TokenKind::Semicolon)?;
+
+        Ok(Statement::Datentyp(Datentyp {
+            name,
+            type_,
+            span: start_loc.until(self.curr_tok.span.end),
+        }))
+    }
+
     fn continue_stmt(&mut self) -> Result<'src, Statement<'src>> {
         let start_loc = self.curr_tok.span.start;
 
@@ -511,6 +647,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             TokenKind::Char(char) => Expression::Char(self.atom(*char)?),
             TokenKind::String(string) => Expression::String(self.atom(string.clone())?),
             TokenKind::Ident(ident) => Expression::Ident(self.atom(*ident)?),
+            TokenKind::New => Expression::Object(Box::new(self.object()?)),
             TokenKind::LBrace => Expression::Block(self.block()?.into()),
             TokenKind::Falls => Expression::If(self.falls_expr()?.into()),
             TokenKind::Not => Expression::Prefix(self.prefix_expr(PrefixOp::Not, false)?.into()),

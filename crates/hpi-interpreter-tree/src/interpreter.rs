@@ -215,6 +215,10 @@ where
 
                 json::deserialize(&string_input)
             }
+            AnalyzedCallBase::Ident("Gliedere_JSON") => {
+                let res = json::serialize(args[0].clone())?;
+                Ok(Value::String(res))
+            }
             AnalyzedCallBase::Ident("http") => {
                 // BuiltinFunction::new(ParamTypes::Normal(vec![
                 //                         Type::String(0), // method
@@ -376,7 +380,20 @@ where
             AnalyzedExpression::Member(node) => self.visit_member_expr(node),
             AnalyzedExpression::Index(node) => self.visit_index_expr(node),
             AnalyzedExpression::Grouped(expr) => self.visit_expression(expr),
+            AnalyzedExpression::Object(expr) => self.visit_object(expr),
         }
+    }
+
+    fn visit_object(&mut self, node: &AnalyzedObjectExpr<'src>) -> ExprResult {
+        let members = node
+            .members
+            .iter()
+            .map(|element| {
+                let expr = self.visit_expression(&element.value)?;
+                Ok((element.key.clone(), expr))
+            })
+            .collect::<Result<HashMap<String, Value>, InterruptKind>>()?;
+        Ok(Value::Objekt(Rc::new(RefCell::new(members))))
     }
 
     fn visit_if_expr(&mut self, node: &AnalyzedIfExpr<'src>) -> ExprResult {
