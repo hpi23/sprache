@@ -1,0 +1,81 @@
+beantrage http von Netzwerk;
+beantrage Gliedere_JSON von Textverarbeitung;
+beantrage drucke von Drucker;
+
+funk Bewerbung() ergibt Zeichenkette {
+    "a"
+}
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+
+}
+
+funk Studium() ergibt Nichts {
+    datentyp Feld auf Objekt {
+        Zeichenkette name /
+        Zeichenkette value /
+    };
+
+    datentyp Fuß auf Objekt {
+        Zeichenkette text /
+    };
+
+    datentyp Embed auf Objekt {
+        Zeichenkette title /
+        Zeichenkette description /
+        Zeichenkette url /
+        Zahl color /
+        Liste von Feld fields /
+        Fuß footer /
+    };
+
+    datentyp DiscordKörper auf Objekt {
+        Nichts contents /
+        Liste von Embed embeds /
+        Liste von Nichts attachments /
+    };
+
+    setze Liste von Feld angebote auf [
+        erstelle {
+            Zeichenkette name auf "Angebot 1" /
+            Zeichenkette value auf "Komisches Essen - 1,90€" /
+        } /
+        erstelle {
+            Zeichenkette name auf "Angebot 2" /
+            Zeichenkette value auf "Komisches Essen - 2,50€" /
+        } /
+        erstelle {
+            Zeichenkette name auf "Angebot 2" /
+            Zeichenkette value auf "Komisches Essen - 3,50€" /
+        }
+    ];
+
+    setze Embed HauptEinbettung auf erstelle {
+        Zeichenkette title auf "Mensa Griebnitzsee 20.09.2023" /
+        Zeichenkette description auf "Hallo an Alle!\nEin neuer Tag, neues Essen!" /
+        Zeichenkette url auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos/mensa-griebnitzsee" /
+        Zahl color auf 14574087 /
+        Liste von Feld fields auf angebote /
+    };
+
+    setze DiscordKörper Körper auf erstelle {
+        Nichts contents auf Nichts /
+        Liste von Embed embeds auf [ HauptEinbettung ] /
+        Liste von Nichts attachments auf [] /
+    };
+
+    setze Zeichenkette Körper_Zeichenkette auf Gliedere_JSON(Körper);
+    drucke(Körper_Zeichenkette);
+
+    setze Zeichenkette Antwort_Körper auf "";
+
+    setze Zahl Antwort_Zahl auf http(
+        "POST" /
+        "https://discordapp.com/api/webhooks/1157059983079383072/kR076YC_TA_dt2nY01DGCpbLH7KsafPaIw2Jg2oCZBzBXZSZM1bFTGKOL5Z-bjUr9yFT" /
+        Körper_Zeichenkette /
+        [ erstelle { Zeichenkette Schlüssel auf "Content-Type" / Zeichenkette Wert auf "application/json" } ] /
+        &Antwort_Körper /
+    );
+
+    drucke(Antwort_Zahl / Antwort_Körper);
+}

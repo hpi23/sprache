@@ -60,6 +60,8 @@ pub enum TokenKind<'src> {
     Ja,
     /// `nein`
     Nein,
+    /// `Nichts`
+    Nichts,
     /// `funk`
     Funk,
     /// `setze`
@@ -239,6 +241,7 @@ impl Display for TokenKind<'_> {
             Self::Datentyp => write!(f, "datentyp"),
             Self::Ja => write!(f, "ja"),
             Self::Nein => write!(f, "nein"),
+            Self::Nichts => write!(f, "Nichts"),
             Self::Funk => write!(f, "fn"),
             Self::Setze => write!(f, "setze"),
             Self::Aendere => write!(f, "ändere"),

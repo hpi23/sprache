@@ -1,7 +1,9 @@
 beantrage geld von Hasso;
 beantrage drucke von Drucker;
 beantrage http von Netzwerk;
+beantrage Gliedere_JSON von Textverarbeitung;
 beantrage Zergliedere_JSON von Textverarbeitung;
+beantrage Formatiere von Textverarbeitung;
 
 funk Bewerbung() ergibt Zeichenkette {
   "Hei"
@@ -12,21 +14,34 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
+
+}
+
+datentyp Speise auf Objekt {
+    Zeichenkette Titel /
+    Zeichenkette Beschreibung /
+    Fließkommazahl Preis /
+};
+
+funk Lade_Speiseangebot() ergibt Liste von Speise {
     setze Zeichenkette URL auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos?tx_ddfmensa_ddfmensajson%5Binterneid%5D=353&type=14529821235&cHash=2baa819c66f7bd7c19a21693a97b5f34";
     setze Zeichenkette Körper auf "";
     drucke(http(
         "GET" /
         URL /
         "" /
+        [] /
         &Körper /
     ));
 
-    // drucke(Körper);
+    //drucke(Körper);
 
     setze Speicherbox Res auf Zergliedere_JSON(Körper) als Speicherbox;
     setze Speicherbox Erster auf (Res.Nehmen("wochentage") als Liste von Speicherbox)[0];
     setze Speicherbox Datum auf Erster.Nehmen("datum") als Speicherbox;
     setze Liste von Speicherbox Angebote auf Datum.Nehmen("angebote") als Liste von Speicherbox;
+
+    setze Liste von Speise Resultat auf [];
 
     setze Zahl Zähler auf 0;
     solange Zähler < Angebote.Länge() {
@@ -35,8 +50,98 @@ funk Studium() ergibt Nichts {
             setze Zeichenkette Titel auf Angebote[Zähler].Nehmen("titel") als Zeichenkette;
             setze Fließkommazahl Preis auf Angebote[Zähler].Nehmen("preis_s") als Zeichenkette als Fließkommazahl;
             drucke(Titel / ":" / Beschreibung / "kostet" / Preis / "€");
+
+            Resultat.Hinzufügen(erstelle {
+
+            });
         }
 
         ändere Zähler auf Zähler + 1;
     }
+
+    Resultat
+}
+
+
+funk Sende_Discord_Nachricht(Liste von Speise Speiseangebot) ergibt Nichts {
+    datentyp Feld auf Objekt {
+        Zeichenkette name /
+        Zeichenkette value /
+    };
+
+    datentyp Fuß auf Objekt {
+        Zeichenkette text /
+    };
+
+    datentyp Embed auf Objekt {
+        Zeichenkette title /
+        Zeichenkette description /
+        Zeichenkette url /
+        Zahl color /
+        Liste von Feld fields /
+        Fuß footer /
+    };
+
+    datentyp DiscordKörper auf Objekt {
+        Nichts contents /
+        Liste von Embed embeds /
+        Liste von Nichts attachments /
+    };
+
+    setze Liste von Feld Felder auf [];
+    setze Zahl Zähler auf 0;
+    solange (Zähler < Speiseangebot.Länge()) {
+        Felder.Hinzufügen(
+            erstelle {
+                Zeichenkette name auf Speiseangebot[Zähler].Titel /
+                Zeichenkette value auf Formatiere("%s = %d€" / Speiseangebot[Zähler].Beschreibung / Speiseangebot[Zähler].Preis) /
+            }
+        );
+
+        Zähler += 1;
+    }
+
+     // setze Liste von Feld Felder auf [
+         // erstelle {
+             // Zeichenkette name auf "Angebot 1" /
+             // Zeichenkette value auf "Komisches Essen - 1,90€" /
+         // } /
+         // erstelle {
+             // Zeichenkette name auf "Angebot 2" /
+             // Zeichenkette value auf "Komisches Essen - 2,50€" /
+         // } /
+         // erstelle {
+             // Zeichenkette name auf "Angebot 2" /
+             // Zeichenkette value auf "Komisches Essen - 3,50€" /
+         // }
+     // ];
+
+    setze Embed HauptEinbettung auf erstelle {
+        Zeichenkette title auf "Mensa Griebnitzsee 20.09.2023" /
+        Zeichenkette description auf "Hallo an Alle!\nEin neuer Tag, neues Essen!" /
+        Zeichenkette url auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos/mensa-griebnitzsee" /
+        Zahl color auf 14574087 /
+        Liste von Feld fields auf Felder /
+    };
+
+    setze DiscordKörper Körper auf erstelle {
+        Nichts contents auf Nichts /
+        Liste von Embed embeds auf [ HauptEinbettung ] /
+        Liste von Nichts attachments auf [] /
+    };
+
+    setze Zeichenkette Körper_Zeichenkette auf Gliedere_JSON(Körper);
+    drucke(Körper_Zeichenkette);
+
+    setze Zeichenkette Antwort_Körper auf "";
+
+    setze Zahl Antwort_Zahl auf http(
+        "POST" /
+        "https://discordapp.com/api/webhooks/1157059983079383072/kR076YC_TA_dt2nY01DGCpbLH7KsafPaIw2Jg2oCZBzBXZSZM1bFTGKOL5Z-bjUr9yFT" /
+        Körper_Zeichenkette /
+        [ erstelle { Zeichenkette Schlüssel auf "Content-Type" / Zeichenkette Wert auf "application/json" } ] /
+        &Antwort_Körper /
+    );
+
+    drucke(Antwort_Zahl / Antwort_Körper);
 }

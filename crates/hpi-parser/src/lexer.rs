@@ -469,6 +469,7 @@ impl<'src> Lexer<'src> {
             "datentyp" => TokenKind::Datentyp,
             "ja" => TokenKind::Ja,
             "nein" => TokenKind::Nein,
+            "Nichts" => TokenKind::Nichts,
             "funk" => TokenKind::Funk,
             "setze" => TokenKind::Setze,
             "ändere" => TokenKind::Aendere,

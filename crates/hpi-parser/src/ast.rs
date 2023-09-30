@@ -66,11 +66,11 @@ impl Display for Type {
             Self::Object(fields, ptr) => {
                 let members = fields
                     .iter()
-                    .map(|element| format!("{} {}", element.0, element.1))
+                    .map(|element| format!("{} {}", element.1, element.0))
                     .collect::<Vec<String>>()
-                    .join("\n,");
+                    .join(" /\n");
 
-                write!(f, "{}Objekt {{\n{}\n}}", "*".repeat(*ptr), members)
+                write!(f, "{}Objekt {{\n     {}\n }}", "*".repeat(*ptr), members.replace('\n', "\n     "))
             }
             Self::Any => write!(f, "Unbekannt"),
             Self::Nichts => write!(f, "Nichts"),
@@ -309,6 +309,7 @@ pub enum Expression<'src> {
     Int(Spanned<'src, i64>),
     Float(Spanned<'src, f64>),
     Bool(Spanned<'src, bool>),
+    Nichts(Spanned<'src, ()>),
     Char(Spanned<'src, u8>),
     String(Spanned<'src, String>),
     List(Spanned<'src, Vec<Expression<'src>>>),
@@ -332,6 +333,7 @@ impl<'src> Expression<'src> {
             Self::Int(expr) => expr.span,
             Self::Float(expr) => expr.span,
             Self::Bool(expr) => expr.span,
+            Self::Nichts(expr) => expr.span,
             Self::Char(expr) => expr.span,
             Self::String(expr) => expr.span,
             Self::List(expr) => expr.span,

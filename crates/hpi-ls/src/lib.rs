@@ -78,7 +78,7 @@ impl Backend {
                         DiagnosticLevel::Error(_) => DiagnosticSeverity::ERROR,
                     }),
                     None,
-                    Some("rush-analyzer".to_string()),
+                    Some("HPI Analyse Werkzeug".to_string()),
                     format!(
                         "{}{}",
                         if let DiagnosticLevel::Error(kind) = &diagnostic.level {

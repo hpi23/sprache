@@ -1,0 +1,20 @@
+beantrage drucke von Drucker;
+
+funk Bewerbung() ergibt Zeichenkette {
+    überweise "aa";
+}
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+}
+
+funk Studium() ergibt Nichts {
+    datentyp Foo auf Objekt { Zahl foo };
+
+
+    setze Foo a auf erstelle {
+        Zahl foo auf 1 /
+        Zahl foo2 auf 1
+    };
+
+    drucke(a);
+}

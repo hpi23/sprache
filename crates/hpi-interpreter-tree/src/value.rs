@@ -55,9 +55,11 @@ impl Value {
             }
             Value::Speicherbox(_) => Type::AnyObject(0),
             Value::Objekt(inner) => {
-                let inner = inner.borrow().iter().map(|element| {
-                    (element.0.clone(), element.1.as_type())
-                }).collect();
+                let inner = inner
+                    .borrow()
+                    .iter()
+                    .map(|element| (element.0.clone(), element.1.as_type()))
+                    .collect();
 
                 Type::Object(inner, 0)
             }
@@ -114,7 +116,8 @@ fn speicherbox_datentyp_von(val: &Value, args: Vec<Value>) -> Value {
             None => Value::Unit,
         },
         (_, _) => unreachable!("the analyzer prevents this: {val}"),
-    }.as_type();
+    }
+    .as_type();
 
     Value::String(type_.to_string())
 }
@@ -145,9 +148,12 @@ impl Value {
             (Value::Speicherbox(_), "Datentyp_Von") => {
                 Value::BuiltinFunction(Box::new(self.clone()), speicherbox_datentyp_von)
             }
-            (_, "Datentyp") => {
-                Value::BuiltinFunction(Box::new(self.clone()), value_type)
-            }
+            (_, "Datentyp") => Value::BuiltinFunction(Box::new(self.clone()), value_type),
+            (Value::Objekt(members), member) => members
+                .borrow()
+                .get(member)
+                .expect("the analyzer guanrantees valid member accesses")
+                .clone(),
             (_, _) => unreachable!("the analyzer prevents this"),
         }
     }
@@ -161,15 +167,20 @@ impl Value {
             Value::Speicherbox(inner) => {
                 let inner_str = inner
                     .iter()
-                    .map(|(key, value)| format!("{key}: {}",value.to_string().replace('\n', "\n    ")))
+                    .map(|(key, value)| {
+                        format!("{key}: {}", value.to_string().replace('\n', "\n    "))
+                    })
                     .collect::<Vec<String>>()
                     .join(",\n    ");
                 format!("Speicherbox {{\n    {inner_str}\n}}")
             }
             Value::Objekt(inner) => {
-                let inner_str = inner.borrow()
+                let inner_str = inner
+                    .borrow()
                     .iter()
-                    .map(|(key, value)| format!("{key}: {}",value.to_string().replace('\n', "\n    ")))
+                    .map(|(key, value)| {
+                        format!("{key}: {}", value.to_string().replace('\n', "\n    "))
+                    })
                     .collect::<Vec<String>>()
                     .join(",\n    ");
                 format!("Objekt {{\n    {inner_str}\n}}")

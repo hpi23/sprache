@@ -14,5 +14,6 @@ clap = { version = "4.0.24", features = ["derive"] }
 hpi-analyzer = { path = "../hpi-analyzer" }
 hpi-interpreter-tree = { path = "../hpi-interpreter-tree" }
 hpi-ls = { path = "../hpi-ls" }
+reqwest = { version = "0.11.20", features = ["blocking"] }
 tempfile = "3.3.0"
 tokio = "1.26.0"

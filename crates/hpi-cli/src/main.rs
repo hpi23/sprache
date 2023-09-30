@@ -1,97 +1,62 @@
-use std::{fs, process, time::Instant};
+use std::{collections::HashMap, fs, process, time::Instant, str::FromStr, io};
 
 use anyhow::{bail, Context};
 use clap::Parser;
-use cli::{Cli, Command, CompilerBackend, RunnableBackend};
+use cli::{Cli, Command};
 
-#[cfg(feature = "llvm")]
-use cli::LlvmOpt;
-use rush_analyzer::{ast::AnalyzedProgram, Diagnostic};
-use rush_interpreter_tree::Interpreter;
+use hpi_analyzer::{ast::AnalyzedProgram, Diagnostic};
+use hpi_interpreter_tree::{HPIHttpClient, Interpreter};
+use reqwest::{
+    header::{HeaderMap, HeaderName, HeaderValue},
+    Method,
+};
 
 mod cli;
 
-mod vm;
-mod c;
+struct InterpreterHttpClient {}
 
-#[cfg(feature = "llvm")]
-mod llvm;
+impl HPIHttpClient for InterpreterHttpClient {
+    fn request(
+        &self,
+        method: String,
+        url: &str,
+        body: String,
+        headers: HashMap<String, String>,
+    ) -> Result<(u16, String), String> {
+        let client = reqwest::blocking::Client::builder()
+            .build()
+            .map_err(|err| err.to_string())?;
 
-mod riscv;
-mod wasm;
-mod x86;
+        let mut header_map = HeaderMap::new();
+        for (key, value) in headers {
+            header_map.insert(
+                HeaderName::from_str(&key).map_err(|err| err.to_string())?,
+                HeaderValue::from_str(&value).map_err(|err| err.to_string())?,
+            );
+        }
+
+        let res = client
+            .request(
+                Method::from_str(&method).map_err(|err| err.to_string())?,
+                url,
+            )
+            .body(body)
+            .headers(header_map)
+            .send()
+            .map_err(|err| err.to_string())?;
+        Ok((
+            res.status().as_u16(),
+            res.text().map_err(|err| err.to_string())?,
+        ))
+    }
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let root_args = Cli::parse();
 
     match root_args.command {
-        Command::Build(args) => {
-            #[cfg(feature = "llvm")]
-            if args.backend != CompilerBackend::Llvm {
-                if args.llvm_show_ir {
-                    bail!("cannot show llvm IR when not using LLVM backend")
-                }
-                if args.llvm_opt != LlvmOpt::None {
-                    bail!("cannot set LLVM optimization level when not using LLVM backend")
-                }
-                if args.llvm_target.is_some() {
-                    bail!("cannot set LLVM target when not using LLVM backend")
-                }
-            }
-
-            let compile_func = || -> anyhow::Result<()> {
-                let total_start = Instant::now();
-                let mut start = Instant::now();
-
-                let text = fs::read_to_string(&args.path)?;
-
-                let file_read_time = start.elapsed();
-                start = Instant::now();
-
-                let path = args.path.clone();
-                let path = path.to_string_lossy();
-                let tree = analyze(&text, &path)?;
-
-                let analyze_time = start.elapsed();
-                start = Instant::now();
-
-                match args.backend {
-                    #[cfg(feature = "llvm")]
-                    CompilerBackend::Llvm => llvm::compile(tree, args)?,
-                    CompilerBackend::Wasm => wasm::compile(tree, args)?,
-                    CompilerBackend::RiscV => riscv::compile(tree, args, &tempfile::tempdir()?)?,
-                    CompilerBackend::X86_64 => {
-                        x86::compile(tree, args)?;
-                    }
-                    CompilerBackend::C => c::compile(tree, args)?,
-                    CompilerBackend::Vm => vm::compile(tree, args)?,
-                }
-
-                if root_args.time {
-                    eprintln!("file read:        {file_read_time:?}");
-                    eprintln!("analyze:          {analyze_time:?}");
-                    eprintln!("compile:          {:?}", start.elapsed());
-                    eprintln!(
-                        "\x1b[90mtotal:            {:?}\x1b[0m",
-                        total_start.elapsed()
-                    );
-                }
-
-                Ok(())
-            };
-            compile_func().with_context(|| "compilation failed")?;
-        }
         Command::Run(args) => {
-            #[cfg(feature = "llvm")]
-            if args.backend != RunnableBackend::Llvm && args.llvm_opt != LlvmOpt::None {
-                bail!("cannot set LLVM optimization level when not using LLVM backend")
-            }
-
-            if args.backend != RunnableBackend::Vm && args.vm_speed.is_some() {
-                bail!("cannot set VM clock speed when not using the VM backend")
-            }
-
             let path = args.path.clone();
             let path = path.to_string_lossy();
 
@@ -109,32 +74,19 @@ async fn main() -> anyhow::Result<()> {
                 let analyze_time = start.elapsed();
                 start = Instant::now();
 
-                let exit_code = match args.backend {
-                    RunnableBackend::Tree => match Interpreter::new().run(tree) {
-                        Ok(code) => code,
-                        Err(err) => bail!(format!("interpreter crashed: {err}")),
-                    },
-                    RunnableBackend::Vm => vm::run(tree, args)?,
-                    #[cfg(feature = "llvm")]
-                    RunnableBackend::Llvm => {
-                        llvm::run(tree, args).with_context(|| "cannot run using `LLVM`")?
-                    }
-                    RunnableBackend::RiscV => {
-                        riscv::run(tree, args).with_context(|| "cannot run using `RISC-V`")?
-                    }
-                    RunnableBackend::X86_64 => {
-                        x86::run(tree, args).with_context(|| "cannot run using `x86_64`")?
-                    }
-                    RunnableBackend::C => c::run(tree, args)
-                        .with_context(|| "cannot run using `ANSI C transpiler`")?,
+                let http_client = InterpreterHttpClient{};
+
+                let exit_code = match Interpreter::new(io::stdout(), http_client).run(tree) {
+                    Ok(code) => code,
+                    Err(err) => bail!(format!("Laufzeitumgebung abgestürtzt: {err}")),
                 };
 
                 if root_args.time {
-                    eprintln!("file read:            {file_read_time:?}");
-                    eprintln!("analyze:              {analyze_time:?}");
-                    eprintln!("run / compile:        {:?}", start.elapsed());
+                    eprintln!("Datei Einlesen:            {file_read_time:?}");
+                    eprintln!("Syntaktische / Semantische Analyse:              {analyze_time:?}");
+                    eprintln!("Ausführung:        {:?}", start.elapsed());
                     eprintln!(
-                        "\x1b[90mtotal:                {:?}\x1b[0m",
+                        "\x1b[90mGes:                {:?}\x1b[0m",
                         total_start.elapsed()
                     );
                 }
@@ -142,7 +94,8 @@ async fn main() -> anyhow::Result<()> {
                 Ok(exit_code)
             };
 
-            let code = run_func().with_context(|| format!("running `{path}` failed",))?;
+            let code = run_func()
+                .with_context(|| format!("Ausführen der `{path}` war nicht erfolgreich.",))?;
             process::exit(code as i32);
         }
         Command::Check { file: path } => {
@@ -159,22 +112,25 @@ async fn main() -> anyhow::Result<()> {
                 analyze(&text, &path)?;
 
                 if root_args.time {
-                    eprintln!("file read:        {file_read_time:?}");
-                    eprintln!("analyze:          {:?}", start.elapsed());
+                    eprintln!("Datei Einlese:        {file_read_time:?}");
                     eprintln!(
-                        "\x1b[90mtotal:            {:?}\x1b[0m",
-                        total_start.elapsed()
+                        "Syntaktische / Semantische Analyse:          {:?}",
+                        start.elapsed()
                     );
+                    eprintln!("\x1b[90mGes:            {:?}\x1b[0m", total_start.elapsed());
                 }
 
                 Ok(())
             };
 
             check_func().with_context(|| {
-                format!("checking `{file}` failed", file = path.to_string_lossy())
+                format!(
+                    "Prüfen der Datei `{file}` spürte Mängel auf.",
+                    file = path.to_string_lossy()
+                )
             })?;
         }
-        Command::Ls => rush_ls::start_service().await,
+        Command::Ls => hpi_ls::start_service().await,
     }
 
     Ok(())
@@ -182,14 +138,14 @@ async fn main() -> anyhow::Result<()> {
 
 /// Analyzes the given rush source code, printing diagnostics alongside the way.
 fn analyze<'src>(text: &'src str, path: &'src str) -> anyhow::Result<AnalyzedProgram<'src>> {
-    match rush_analyzer::analyze(text, path) {
+    match hpi_analyzer::analyze(text, path) {
         Ok((program, diagnostics)) => {
             print_diagnostics(&diagnostics);
             Ok(program)
         }
         Err(diagnostics) => {
             print_diagnostics(&diagnostics);
-            bail!("invalid program: analyzer detected issues")
+            bail!("Invalides Programm: Das Analysewerkzeug hat Mängel aufgespürt.")
         }
     }
 }

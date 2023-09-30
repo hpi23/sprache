@@ -468,6 +468,7 @@ dependencies = [
  "hpi-analyzer",
  "hpi-interpreter-tree",
  "hpi-ls",
+ "reqwest",
  "tempfile",
  "tokio",
 ]

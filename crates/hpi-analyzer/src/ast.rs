@@ -122,6 +122,7 @@ pub struct AnalyzedForStmt<'src> {
 pub enum AnalyzedExpression<'src> {
     Block(Box<AnalyzedBlock<'src>>),
     If(Box<AnalyzedIfExpr<'src>>),
+    Nichts,
     Int(i64),
     Float(f64),
     Bool(bool),
@@ -143,6 +144,7 @@ pub enum AnalyzedExpression<'src> {
 impl AnalyzedExpression<'_> {
     pub fn result_type(&self) -> Type {
         match self {
+            Self::Nichts => Type::Nichts,
             Self::Int(_) => Type::Int(0),
             Self::Float(_) => Type::Float(0),
             Self::Bool(_) => Type::Bool(0),
@@ -169,11 +171,13 @@ impl AnalyzedExpression<'_> {
             Self::Block(expr) => expr.result_type.clone(),
             Self::Grouped(expr) => expr.result_type(),
             Self::Object(expr) => {
-                let members = expr.members.iter().map(|element| {
-                        (element.key.clone(), element.value.result_type())
-                }).collect();
+                let members = expr
+                    .members
+                    .iter()
+                    .map(|element| (element.key.clone(), element.value.result_type()))
+                    .collect();
                 Type::Object(members, 0)
-            },
+            }
         }
     }
 
@@ -185,6 +189,15 @@ impl AnalyzedExpression<'_> {
                 .iter()
                 .map(|expr| expr.constant())
                 .any(|is_constant| !is_constant),
+            AnalyzedExpression::Object(inner) => {
+                for val in &inner.members {
+                    if !val.value.constant() {
+                        return false;
+                    }
+                }
+
+                true
+            }
             AnalyzedExpression::Grouped(inner) => inner.constant(),
             _ => false,
         }
@@ -223,7 +236,6 @@ pub struct AnalyzedIdentExpr<'src> {
     pub ident: &'src str,
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnalyzedObjectField<'src> {
     pub key: String,
@@ -234,7 +246,6 @@ pub struct AnalyzedObjectField<'src> {
 pub struct AnalyzedObjectExpr<'src> {
     pub members: Vec<AnalyzedObjectField<'src>>,
 }
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnalyzedPrefixExpr<'src> {
@@ -263,7 +274,7 @@ pub struct AnalyzedAssignExpr<'src> {
 #[derive(Debug, Clone, PartialEq)]
 pub enum AnalyzedCallBase<'src> {
     Ident(&'src str),
-    Expr(Box<AnalyzedExpression<'src>>)
+    Expr(Box<AnalyzedExpression<'src>>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

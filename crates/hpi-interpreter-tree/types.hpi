@@ -1,12 +1,18 @@
-datentyp Zahl2 auf Zahl;
-setze Zahl2 ma auf 1;
+beantrage geld von Hasso;
+beantrage drucke von Drucker;
+beantrage http von Netzwerk;
+beantrage Gliedere_JSON von Textverarbeitung;
+beantrage Zergliedere_JSON von Textverarbeitung;
+beantrage Formatiere von Textverarbeitung;
 
 funk Bewerbung() ergibt Zeichenkette {
-    überweise "aa";
+  "Hei"
 }
 
 funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+  setze Zahl _ auf Matrikelnummer;
 }
 
 funk Studium() ergibt Nichts {
+    drucke(Formatiere("%d" / 42))
 }

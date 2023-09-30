@@ -1,3 +1,6 @@
+beantrage http von Netzwerk;
+
+
 funk Bewerbung() ergibt Zeichenkette {
   "Ich bin so toll"
 }

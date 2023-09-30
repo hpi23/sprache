@@ -219,7 +219,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
                     inner: result,
                 });
             }
-            TokenKind::Ident("Nichts") => Type::Nichts,
+            TokenKind::Nichts => Type::Nichts,
             TokenKind::Ident("Zeichenkette") => Type::String(ptr_count),
             TokenKind::Ident(ident) => {
                 Type::Ident(ident.to_string(), ptr_count)
@@ -644,6 +644,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             TokenKind::Float(num) => Expression::Float(self.atom(*num)?),
             TokenKind::Ja => Expression::Bool(self.atom(true)?),
             TokenKind::Nein => Expression::Bool(self.atom(false)?),
+            TokenKind::Nichts => Expression::Nichts(self.atom(())?),
             TokenKind::Char(char) => Expression::Char(self.atom(*char)?),
             TokenKind::String(string) => Expression::String(self.atom(string.clone())?),
             TokenKind::Ident(ident) => Expression::Ident(self.atom(*ident)?),

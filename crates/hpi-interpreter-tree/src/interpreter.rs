@@ -5,7 +5,7 @@ use std::{
 use hpi_analyzer::{ast::*, AssignOp, InfixOp, PrefixOp, Type};
 
 use crate::{
-    json,
+    format::{self, Formatter}, json,
     value::{InterruptKind, Value},
 };
 
@@ -15,7 +15,13 @@ type StmtResult = Result<(), InterruptKind>;
 type Scope<'src> = HashMap<&'src str, Rc<RefCell<Value>>>;
 
 pub trait HPIHttpClient {
-    fn request(&self, method: String, url: &str, body: String) -> Result<(u16, String), String>;
+    fn request(
+        &self,
+        method: String,
+        url: &str,
+        body: String,
+        headers: HashMap<String, String>,
+    ) -> Result<(u16, String), String>;
 }
 
 #[derive(Debug)]
@@ -219,6 +225,14 @@ where
                 let res = json::serialize(args[0].clone())?;
                 Ok(Value::String(res))
             }
+            AnalyzedCallBase::Ident("Formatiere") => {
+                let Value::String(inner) = &args[0] else {
+                    unreachable!("the analyzer prevents this");
+                };
+                let fmt = Formatter::new(&inner, args[1..].to_vec());
+                let res= fmt.format()?;
+                Ok(Value::String(res))
+            }
             AnalyzedCallBase::Ident("http") => {
                 // BuiltinFunction::new(ParamTypes::Normal(vec![
                 //                         Type::String(0), // method
@@ -238,13 +252,39 @@ where
                     unreachable!("the analyzer prevents this");
                 };
 
-                let Value::Ptr(body_ptr) = args[3].clone() else {
+                let Value::List(list_inner) = args[3].clone() else {
+                    unreachable!("the analyzer prevents this");
+                };
+
+                let headers = list_inner
+                    .borrow()
+                    .iter()
+                    .map(|element| {
+                        let Value::Objekt(members) = element else {
+                            unreachable!("the analyzer prevents this");
+                        };
+
+                        let Value::String(key) = members.borrow().get("Schlüssel").unwrap().clone()
+                        else {
+                            unreachable!("the analyzer prevents this");
+                        };
+
+                        let Value::String(value) = members.borrow().get("Wert").unwrap().clone()
+                        else {
+                            unreachable!("the analyzer prevents this");
+                        };
+
+                        (key, value)
+                    })
+                    .collect::<HashMap<_, _>>();
+
+                let Value::Ptr(body_ptr) = args[4].clone() else {
                     unreachable!("the analyzer prevents this");
                 };
 
                 let res = self
                     .http_client
-                    .request(method, url.as_str(), body)
+                    .request(method, url.as_str(), body, headers)
                     .map_err(|err| InterruptKind::Error(err.into()))?;
 
                 *body_ptr.borrow_mut() = Value::String(res.1);
@@ -363,6 +403,7 @@ where
 
     fn visit_expression(&mut self, node: &AnalyzedExpression<'src>) -> ExprResult {
         match node {
+            AnalyzedExpression::Nichts => Ok(Value::Unit),
             AnalyzedExpression::Block(block) => self.visit_block(block, true),
             AnalyzedExpression::If(node) => self.visit_if_expr(node),
             AnalyzedExpression::Int(num) => Ok(num.into()),

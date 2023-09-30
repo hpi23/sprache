@@ -38,7 +38,7 @@ struct Function<'src> {
 
 #[derive(Debug, Clone)]
 enum ParamTypes {
-    VarArgs(Type),
+    VarArgs(Vec<Type>, Type),
     Normal(Vec<Type>),
 }
 
@@ -184,7 +184,7 @@ impl<'src> Analyzer<'src> {
                 },
             );
         }
-        
+
         // visit all type statements
         for item in program.datentypen {
             self.statement(item.clone());
@@ -361,10 +361,16 @@ impl<'src> Analyzer<'src> {
                     BuiltinFunction::new(ParamTypes::Normal(vec![Type::Unknown]), Type::String(0)),
                 );
             }
+            ("Formatiere", "Textverarbeitung") => {
+                self.builtin_functions.insert(
+                    "Formatiere",
+                    BuiltinFunction::new(ParamTypes::VarArgs(vec![Type::String(0)], Type::Unknown), Type::String(0)),
+                );
+            }
             ("drucke", "Drucker") => {
                 self.builtin_functions.insert(
                     "drucke",
-                    BuiltinFunction::new(ParamTypes::VarArgs(Type::Unknown), Type::Nichts),
+                    BuiltinFunction::new(ParamTypes::VarArgs(vec![], Type::Unknown), Type::Nichts),
                 );
             }
             ("geld", "Hasso") => {
@@ -380,6 +386,10 @@ impl<'src> Analyzer<'src> {
                                             Type::String(0), // method
                                             Type::String(0), // url
                                             Type::String(0), // body
+                                            Type::List(Box::new(Type::Object(HashMap::from([
+                                                                                           ("Schlüssel".to_string(), Type::String(0)),
+                                                                                           ("Wert".to_string(), Type::String(0))
+                                            ]), 0)), 0), // headers
                                             Type::String(1), // body dest
                     ]), Type::Int(0)),
                 );
@@ -515,11 +525,11 @@ impl<'src> Analyzer<'src> {
 
         // check if the type conflicts with the rhs
         self.type_check(
+            &node.type_,
             &Spanned {
                 span: expr_span,
                 inner: expr.result_type(),
             },
-            &node.type_,
             false,
         );
 
@@ -848,31 +858,87 @@ impl<'src> Analyzer<'src> {
         got: &Spanned<'src, Type>,
         is_function_return_value: bool,
     ) -> Type {
-        println!("{}", got.inner);
-        println!("{}", expected.inner);
         let expected_raw = self.lookup_type(expected);
         let got_raw = self.lookup_type(got);
 
-        println!("{}", got_raw);
-        println!("{}", expected_raw);
-
         match (&expected_raw, &got_raw) {
-            (_, rhs @ Type::Unknown | rhs @ Type::Never) => rhs.clone(),
+            (_, res @ Type::Unknown | res @ Type::Never)
+            | (res @ Type::Unknown | res @ Type::Never, _) => res.clone(),
+            (Type::Object(linner, lptr), Type::Object(rinner, rptr)) if lptr == rptr => {
+                for (l_key, l_type) in linner {
+                    match rinner.get(l_key) {
+                        Some(r_type) => {
+                            let l_type = self.lookup_type(&Spanned {
+                                span: expected.span,
+                                inner: l_type.clone(),
+                            });
+                            let r_type = self.lookup_type(&Spanned {
+                                span: got.span,
+                                inner: r_type.clone(),
+                            });
+                            let res = self.type_check(
+                                &Spanned {
+                                    span: expected.span,
+                                    inner: l_type.clone(),
+                                },
+                                &Spanned {
+                                    span: got.span,
+                                    inner: r_type.clone(),
+                                },
+                                false,
+                            );
+                            if matches!(res, Type::Never | Type::Unknown) {
+                                return res;
+                            }
+                        }
+                        None => {
+                            self.error(ErrorKind::Type, format!("Erwartetes Feld mit dem Namen `{l_key}` konnte nicht aufgespürt werden."), vec!["Fügen Sie das erforderliche Feld hinzu.".into()], got.span);
+                            return Type::Unknown;
+                        }
+                    }
+                }
+
+                for key in rinner.keys() {
+                    if linner.get(key).is_none() {
+                        self.error(
+                            ErrorKind::Type,
+                            format!("Unerwartetes zusätzliches Feld `{key}` aufgespürt."),
+                            vec!["Entfernen Sie das unerwartete Feld.".into()],
+                            got.span,
+                        );
+                        return Type::Unknown;
+                    }
+                }
+
+                expected_raw
+            }
             (Type::List(linner, mut lptr), Type::List(rinner, mut rptr)) if lptr == rptr => {
-                let mut linner = *linner.clone();
-                let mut rinner = *rinner.clone();
+                let mut linner = self.lookup_type(&Spanned {
+                    span: expected.span,
+                    inner: *linner.clone(),
+                });
+                let mut rinner = self.lookup_type(&Spanned {
+                    span: got.span,
+                    inner: *rinner.clone(),
+                });
                 let mut fail = false;
 
                 loop {
                     if let Type::List(typ, ptr) = linner {
-                        linner = *typ;
+                        linner = self.lookup_type(&Spanned {
+                            span: expected.span,
+                            inner: *typ,
+                        });
                         lptr = ptr;
                     } else {
                         break;
                     }
 
                     if let Type::List(typ, ptr) = rinner {
-                        rinner = *typ;
+                        rinner = self.lookup_type(&Spanned {
+                            span: got.span,
+                            inner: *typ,
+                        });
                         rptr = ptr
                     } else {
                         break;
@@ -896,21 +962,21 @@ impl<'src> Analyzer<'src> {
                                     expected_raw, got_raw,
                                 ),
                                 vec![],
-                                expected.span,
+                                got.span,
                             );
                             if expected.span != Span::dummy() {
                                 if is_function_return_value {
                                     self.hint(
                                         "Der Funktionsrückgabewert in Frage wurde hier definiert.",
-                                        got.span,
+                                        expected.span,
                                     );
                                 } else {
                                     self.hint(
                                         format!(
                                             "Erwarte Datentyp `{}` aufgrund dieser Definition.",
-                                            got_raw,
+                                            expected_raw,
                                         ),
-                                        got.span,
+                                        expected.span,
                                     );
                                 }
                             }
@@ -921,27 +987,30 @@ impl<'src> Analyzer<'src> {
                     expected_raw.clone()
                 }
             }
-            (lhs, rhs) if lhs != rhs => {
+            (expected_, got_) if expected_ != got_ => {
                 self.error(
                     ErrorKind::Type,
                     format!(
                         "Datentypkonflikt: erwartetete `{}`, `{}` wurde aufgespürt.",
-                        lhs, rhs,
+                        expected_, got_,
                     ),
                     vec![],
-                    expected.span,
+                    got.span,
                 );
 
                 if expected.span != Span::dummy() {
                     if is_function_return_value {
                         self.hint(
                             "Der Funktionsrückgabewert in Frage wurde hier definiert.",
-                            got.span,
+                            expected.span,
                         );
                     } else {
                         self.hint(
-                            format!("Erwarte Datentyp `{}` aufgrund dieser Definition.", rhs),
-                            got.span,
+                            format!(
+                                "Erwarte Datentyp `{}` aufgrund dieser Definition.",
+                                expected_
+                            ),
+                            expected.span,
                         );
                     }
                 }
@@ -1088,12 +1157,12 @@ impl<'src> Analyzer<'src> {
 
         let result_type = self.type_check(
             &Spanned {
-                span: expr_span,
-                inner: expr.result_type(),
-            },
-            &Spanned {
                 span: node.assignee.span,
                 inner: var_type,
+            },
+            &Spanned {
+                span: expr_span,
+                inner: expr.result_type(),
             },
             false,
         );
@@ -1132,11 +1201,11 @@ impl<'src> Analyzer<'src> {
         let curr_fn = self.functions[self.curr_func_name].clone();
 
         self.type_check(
+            &curr_fn.return_type,
             &Spanned {
                 span: expr_span.unwrap_or_else(Span::dummy),
                 inner: expr_type,
             },
-            &curr_fn.return_type,
             true,
         );
 
@@ -1269,6 +1338,7 @@ impl<'src> Analyzer<'src> {
     fn expression(&mut self, node: Expression<'src>) -> AnalyzedExpression<'src> {
         let node_span = node.span();
         let res = match node {
+            Expression::Nichts(_) => AnalyzedExpression::Nichts,
             Expression::Int(node) => AnalyzedExpression::Int(node.inner),
             Expression::Float(node) => AnalyzedExpression::Float(node.inner),
             Expression::Bool(node) => AnalyzedExpression::Bool(node.inner),
@@ -2073,15 +2143,35 @@ impl<'src> Analyzer<'src> {
                         let builtin = builtin.clone();
 
                         let (result_type, args) = match builtin.param_types {
-                            ParamTypes::VarArgs(inner_type) => {
+                            ParamTypes::VarArgs(fixed, inner_type) => {
                                 let mut result_type = builtin.return_type;
-                                let args = node
-                                    .args
-                                    .into_iter()
+
+                                let mut args = vec![];
+
+                                for (idx, type_) in fixed.iter().enumerate() {
+                                    args.push(self.arg(
+                                        node.args[idx].clone(),
+                                        type_,
+                                        node.span,
+                                        &mut result_type,
+                                    ));
+                                }
+
+                                let start_idx = if fixed.is_empty() {0} else { fixed.len() - 1 };
+
+                                let mut args_temp = node.args[start_idx..]
+                                    .iter()
                                     .map(|arg| {
-                                        self.arg(arg, &inner_type, node.span, &mut result_type)
+                                        self.arg(
+                                            arg.clone(),
+                                            &inner_type,
+                                            node.span,
+                                            &mut result_type,
+                                        )
                                     })
                                     .collect();
+
+                                args.append(&mut args_temp);
                                 (result_type, args)
                             }
                             ParamTypes::Normal(param_types) => {
@@ -2240,12 +2330,12 @@ impl<'src> Analyzer<'src> {
             (arg_type, param_type) => {
                 self.type_check(
                     &Spanned {
-                        span: arg_span,
-                        inner: arg_type,
-                    },
-                    &Spanned {
                         span: Span::dummy(),
                         inner: param_type.clone(),
+                    },
+                    &Spanned {
+                        span: arg_span,
+                        inner: arg_type,
                     },
                     false,
                 );
@@ -2389,62 +2479,77 @@ impl<'src> Analyzer<'src> {
     }
 
     fn member_expr(&mut self, node: MemberExpr<'src>) -> AnalyzedExpression<'src> {
+        let expr_span = node.expr.span();
         let expr = self.expression(node.expr);
 
-        let mut members = match expr.result_type() {
+        let type_ = self.lookup_type(&Spanned {
+            span: expr_span,
+            inner: expr.result_type(),
+        });
+
+        let members = match &type_ {
             Type::AnyObject(0) => HashMap::from([
                 (
-                    "Nehmen",
+                    "Nehmen".to_string(),
                     Type::Function {
                         params: vec![Type::String(0)],
                         result_type: Box::new(Type::Any),
                     },
                 ),
                 (
-                    "Datentyp_Von",
+                    "Datentyp_Von".to_string(),
                     Type::Function {
                         params: vec![Type::String(0)],
+                        result_type: Box::new(Type::String(0)),
+                    },
+                ),
+                (
+                    "Datentyp".to_string(),
+                    Type::Function {
+                        params: vec![],
                         result_type: Box::new(Type::String(0)),
                     },
                 ),
             ]),
             Type::List(inner, 0) => HashMap::from([
                 (
-                    "Hinzufügen",
+                    "Hinzufügen".to_string(),
                     Type::Function {
                         params: vec![*inner.clone()],
                         result_type: Box::new(Type::Nichts),
                     },
                 ),
                 (
-                    "Aktualisieren",
+                    "Aktualisieren".to_string(),
                     Type::Function {
                         params: vec![Type::Int(0), *inner.clone()],
                         result_type: Box::new(Type::Nichts),
                     },
                 ),
                 (
-                    "Länge",
+                    "Länge".to_string(),
                     Type::Function {
                         params: vec![],
                         result_type: Box::new(Type::Int(0)),
                     },
                 ),
+                (
+                    "Datentyp".to_string(),
+                    Type::Function {
+                        params: vec![],
+                        result_type: Box::new(Type::String(0)),
+                    },
+                ),
             ]),
-            Type::Function {
-                params: _,
-                result_type: _,
-            } => todo!(),
-            _ => HashMap::new(),
+            Type::Object(members, 0) => members.clone(),
+            _ => HashMap::from([(
+                "Datentyp".to_string(),
+                Type::Function {
+                    params: vec![],
+                    result_type: Box::new(Type::String(0)),
+                },
+            )]),
         };
-
-        members.insert(
-            "Datentyp",
-            Type::Function {
-                params: vec![],
-                result_type: Box::new(Type::String(0)),
-            },
-        );
 
         match members.get(node.member.inner) {
             Some(result_type) => AnalyzedExpression::Member(Box::new(AnalyzedMemberExpr {
@@ -2453,11 +2558,12 @@ impl<'src> Analyzer<'src> {
                 member: node.member.inner,
             })),
             None => {
-                if !matches!(expr.result_type(), Type::Never | Type::Unknown) {
+                if !matches!(type_, Type::Never | Type::Unknown) {
                     self.error(
                         ErrorKind::Semantic,
                         format!(
-                            "Dieser Ausdruck besitzt kein Mitglied mit dem Namen `{}`.",
+                            "Dieser Ausdruck des Datentyps `{}` besitzt kein Mitglied mit dem Namen `{}`.",
+                            type_,
                             node.member.inner
                         ),
                         vec![],
