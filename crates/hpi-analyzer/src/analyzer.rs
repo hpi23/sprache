@@ -379,6 +379,24 @@ impl<'src> Analyzer<'src> {
                     BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::String(0)),
                 );
             }
+            ("zeit", "Uhr") => {
+                let timestamp_type = Type::Object(HashMap::from([
+                            ("Jahr".to_string(), Type::Int(0)),
+                            ("Monat".to_string(), Type::Int(0)),
+                            ("Kalendar_Tag".to_string(), Type::Int(0)),
+                            ("Wochentag".to_string(), Type::Int(0)),
+                            ("Stunde".to_string(), Type::Int(0)),
+                            ("Minute".to_string(), Type::Int(0)),
+                            ("Sekunde".to_string(), Type::Int(0)),
+                ]), 0);
+
+                self.types.insert("Zeitstempel", Spanned { span: node.value_name.span, inner: timestamp_type.clone() });
+
+                self.builtin_functions.insert(
+                    "zeit",
+                    BuiltinFunction::new(ParamTypes::Normal(vec![]), timestamp_type),
+                );
+            }
             ("http", "Netzwerk") => {
                 self.builtin_functions.insert(
                     "http",
@@ -2157,7 +2175,7 @@ impl<'src> Analyzer<'src> {
                                     ));
                                 }
 
-                                let start_idx = if fixed.is_empty() {0} else { fixed.len() - 1 };
+                                let start_idx = if fixed.is_empty() { 0 } else { fixed.len() - 1 };
 
                                 let mut args_temp = node.args[start_idx..]
                                     .iter()

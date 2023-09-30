@@ -1,0 +1,9 @@
+beantrage drucke von Drucker;
+beantrage Formatiere von Textverarbeitung;
+
+funk Bewerbung() ergibt Zeichenkette { "a" }
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts { drucke(Matrikelnummer) }
+funk Studium() ergibt Nichts {
+    setze Liste von Nichts Speisen auf [ Nichts / Nichts ];
+    drucke(Formatiere("Speiseangebot bereit. %d Speisen geladen." / Speisen.Länge()));
+}

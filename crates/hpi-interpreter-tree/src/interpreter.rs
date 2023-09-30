@@ -1,11 +1,19 @@
 use std::{
-    borrow::Cow, cell::RefCell, collections::HashMap, io::Write, rc::Rc, thread, time::Duration,
+    borrow::Cow,
+    cell::RefCell,
+    collections::HashMap,
+    io::Write,
+    rc::Rc,
+    thread,
+    time::{Duration, Instant},
 };
 
+use chrono::{Datelike, NaiveTime, Timelike};
 use hpi_analyzer::{ast::*, AssignOp, InfixOp, PrefixOp, Type};
 
 use crate::{
-    format::{self, Formatter}, json,
+    format::{self, Formatter},
+    json,
     value::{InterruptKind, Value},
 };
 
@@ -229,9 +237,24 @@ where
                 let Value::String(inner) = &args[0] else {
                     unreachable!("the analyzer prevents this");
                 };
-                let fmt = Formatter::new(&inner, args[1..].to_vec());
-                let res= fmt.format()?;
+                let fmt = Formatter::new(inner, args[1..].to_vec());
+                let res = fmt.format()?;
                 Ok(Value::String(res))
+            }
+            AnalyzedCallBase::Ident("zeit") => {
+                let now = chrono::offset::Local::now();
+
+                let members = HashMap::from([
+                    ("Jahr".to_string(), Value::Int(now.year() as i64)),
+                    ("Monat".to_string(), Value::Int(now.month() as i64)),
+                    ("Kalendar_Tag".to_string(), Value::Int(now.day() as i64)),
+                    ("Wochentag".to_string(), Value::Int(now.weekday() as i64)),
+                    ("Stunde".to_string(), Value::Int(now.hour() as i64)),
+                    ("Minute".to_string(), Value::Int(now.minute() as i64)),
+                    ("Sekunde".to_string(), Value::Int(now.second() as i64)),
+                ]);
+
+                Ok(Value::Objekt(Rc::new(RefCell::new(members))))
             }
             AnalyzedCallBase::Ident("http") => {
                 // BuiltinFunction::new(ParamTypes::Normal(vec![

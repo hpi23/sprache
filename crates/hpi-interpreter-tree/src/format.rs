@@ -29,7 +29,10 @@ impl<'src> Formatter<'src> {
         while let Some(curr) = self.curr_char {
             match curr {
                 '%' => self.start_escape()?,
-                other => self.output.push(other),
+                other => {
+                    self.next();
+                    self.output.push(other)
+                }
             }
         }
 
@@ -40,23 +43,22 @@ impl<'src> Formatter<'src> {
         self.curr_char = self.input_reader.next()
     }
 
-    fn start_escape(&mut self) -> Result<(), InterruptKind> {
-        self.next();
-
+    fn escape(&mut self, padding: usize) -> Result<(), InterruptKind> {
         match self.curr_char {
             Some(char) => {
                 let curr = self.input_args.get(self.inut_args_curr_pos);
+                self.inut_args_curr_pos+=1;
 
-                match (char, curr) {
-                    ('d', Some(Value::Int(inner))) => { self.output.push_str(inner.to_string().as_str())  }
-                    ('f', Some(Value::Float(inner))) => { self.output.push_str(inner.to_string().replace('.', ",").as_str()) }
-                    ('t', Some(Value::Bool(inner))) => { self.output.push_str(inner.to_string().as_str()) }
-                    ('s', Some(Value::String(inner))) => { self.output.push_str(inner) }
-                    ('v', Some(other)) => { self.output.push_str(other.to_string().as_str()) }
-                    (specifier, Some(value)) => {
-                        return Err(InterruptKind::Error(format!("Formatierungsfehler: Unzulässige Kombination aus Formatierungsanweisung `{specifier}` und Eingabewert mit dem Datentyp `{}`", value.as_type()).into()));
+                match (char, curr, padding) {
+                    ('d', Some(Value::Int(inner)), _) => { self.output.push_str(format!("{:0width$}", inner, width=padding).as_str())  }
+                    ('f', Some(Value::Float(inner)), _) => { self.output.push_str(format!("{:0width$}", inner, width=padding).as_str())  }
+                    ('t', Some(Value::Bool(inner)), 0) => { self.output.push_str(inner.to_string().as_str()) }
+                    ('s', Some(Value::String(inner)), 0) => { self.output.push_str(inner) }
+                    ('v', Some(other), 0) => { self.output.push_str(other.to_string().as_str()) }
+                    (specifier, Some(value), _) => {
+                        return Err(InterruptKind::Error(format!("Formatierungsfehler: Unzulässige Kombination aus Formatierungsanweisung `{specifier}`, Pufferung `{padding}` und Eingabewert mit dem Datentyp `{}`", value.as_type()).into()));
                     }
-                    (specifier, None) => {
+                    (specifier, None, _) => {
                         return Err(InterruptKind::Error(format!("Formatierungsfehler: Erwartete Eingabewert für Formatierungsanweisung `{specifier}`, allerdings endet hier die Eingabe.").into()));
                     }
                 }
@@ -65,6 +67,31 @@ impl<'src> Formatter<'src> {
         }
 
         self.next();
+
+        Ok(())
+    }
+
+    fn start_escape(&mut self) -> Result<(), InterruptKind> {
+        self.next();
+
+        match self.curr_char {
+            Some(char) => {
+                match char {
+                    '0' ..= '9' => {
+                        let mut padding = String::new();
+
+                        while let Some(char @ '0'..='9') = self.curr_char {
+                            padding.push(char);
+                            self.next();
+                        }
+
+                        self.escape(padding.parse().unwrap())?;
+                    }
+                    _=> self.escape(0)?
+                }
+            },
+            None => return Err(InterruptKind::Error("Formatierungsfehler: Erwartete Formatierungsanweisung, allerdings endet hier die Eingabe.".into())),
+        }
 
         Ok(())
     }

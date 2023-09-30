@@ -34,7 +34,9 @@ impl<'src> Lex<'src> for Lexer<'src> {
         loop {
             match (self.curr_char, self.next_char) {
                 (Some(' ' | '\t' | '\n' | '\r'), _) => self.next(),
-                (Some('/'), Some('/')) => self.skip_line_comment(),
+                (Some('/'), Some('/')) | (Some('#'), _) => {
+                    self.skip_line_comment(self.next_char.is_some())
+                }
                 (Some('/'), Some('*')) => self.skip_block_comment(),
                 _ => break,
             }
@@ -118,9 +120,11 @@ impl<'src> Lexer<'src> {
         self.next_char = self.reader.next()
     }
 
-    fn skip_line_comment(&mut self) {
+    fn skip_line_comment(&mut self, skip_second: bool) {
         self.next();
-        self.next();
+        if skip_second {
+            self.next();
+        }
         while !matches!(self.curr_char, Some('\n') | None) {
             self.next()
         }

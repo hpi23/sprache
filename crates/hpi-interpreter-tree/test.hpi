@@ -4,18 +4,8 @@ beantrage http von Netzwerk;
 beantrage Gliedere_JSON von Textverarbeitung;
 beantrage Zergliedere_JSON von Textverarbeitung;
 beantrage Formatiere von Textverarbeitung;
-
-funk Bewerbung() ergibt Zeichenkette {
-  "Hei"
-}
-
-funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
-  setze Zahl _ auf Matrikelnummer;
-}
-
-funk Studium() ergibt Nichts {
-
-}
+beantrage aufgeben von libSAP;
+beantrage zeit von Uhr;
 
 datentyp Speise auf Objekt {
     Zeichenkette Titel /
@@ -23,22 +13,66 @@ datentyp Speise auf Objekt {
     Fließkommazahl Preis /
 };
 
+setze Zeichenkette MENSA_URL auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos?tx_ddfmensa_ddfmensajson%5Binterneid%5D=353&type=14529821235&cHash=2baa819c66f7bd7c19a21693a97b5f34";
+setze Zeichenkette DISCORD_URL auf "https://discordapp.com/api/webhooks/1157059983079383072/kR076YC_TA_dt2nY01DGCpbLH7KsafPaIw2Jg2oCZBzBXZSZM1bFTGKOL5Z-bjUr9yFT";
+
+
+setze Zahl AUSLÖSER_STUNDE auf 22;
+setze Zahl AUSLÖSER_MINUTE auf 13;
+
+funk Bewerbung() ergibt Zeichenkette { "Hallo Welt!" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+  setze Zahl _ auf Matrikelnummer;
+}
+
+funk Studium() ergibt Nichts {
+    solange ja {
+        falls zeit().Stunde == AUSLÖSER_STUNDE && zeit().Minute == AUSLÖSER_MINUTE {
+            Aktualisiere();
+        drucke(Formatiere("Schlummere 12h (Zeit = %2d:%2d)..." / zeit().Stunde / zeit().Minute));
+            schlummere(60F * 60F * 12F);
+        }
+
+        drucke(Formatiere("Schlummere (Zeit = %2d:%2d)..." / zeit().Stunde / zeit().Minute));
+        schlummere(60F);
+    }
+}
+
+funk Aktualisiere() ergibt Nichts {
+    drucke("\t=> Lade Speiseangebot aus dem Internet herunter...");
+    setze Liste von Speise Speisen auf Lade_Speiseangebot();
+    drucke(Formatiere("\t=> Speiseangebot bereit. %d Speisen geladen." / Speisen.Länge()));
+    drucke("\t=> Sende Discord Nachricht...");
+    Sende_Discord_Nachricht(Speisen);
+    drucke("\t=> Discord Nachricht erfolgreich gesendet.");
+}
+
 funk Lade_Speiseangebot() ergibt Liste von Speise {
-    setze Zeichenkette URL auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos?tx_ddfmensa_ddfmensajson%5Binterneid%5D=353&type=14529821235&cHash=2baa819c66f7bd7c19a21693a97b5f34";
     setze Zeichenkette Körper auf "";
-    drucke(http(
+    setze Zahl Antwort_Zahl auf http(
         "GET" /
-        URL /
+        MENSA_URL /
         "" /
         [] /
         &Körper /
-    ));
+    );
 
-    //drucke(Körper);
+    falls Antwort_Zahl != 200 {
+        aufgeben(1);
+    }
 
     setze Speicherbox Res auf Zergliedere_JSON(Körper) als Speicherbox;
+
     setze Speicherbox Erster auf (Res.Nehmen("wochentage") als Liste von Speicherbox)[0];
     setze Speicherbox Datum auf Erster.Nehmen("datum") als Speicherbox;
+
+
+    falls Datum.Datentyp_Von("angebote") == "Nichts" {
+        // the weekend case
+        überweise [];
+    }
+
     setze Liste von Speicherbox Angebote auf Datum.Nehmen("angebote") als Liste von Speicherbox;
 
     setze Liste von Speise Resultat auf [];
@@ -52,7 +86,9 @@ funk Lade_Speiseangebot() ergibt Liste von Speise {
             drucke(Titel / ":" / Beschreibung / "kostet" / Preis / "€");
 
             Resultat.Hinzufügen(erstelle {
-
+                Zeichenkette Titel auf Titel /
+                Zeichenkette Beschreibung auf Beschreibung /
+                Fließkommazahl Preis auf Preis /
             });
         }
 
@@ -101,27 +137,24 @@ funk Sende_Discord_Nachricht(Liste von Speise Speiseangebot) ergibt Nichts {
         Zähler += 1;
     }
 
-     // setze Liste von Feld Felder auf [
-         // erstelle {
-             // Zeichenkette name auf "Angebot 1" /
-             // Zeichenkette value auf "Komisches Essen - 1,90€" /
-         // } /
-         // erstelle {
-             // Zeichenkette name auf "Angebot 2" /
-             // Zeichenkette value auf "Komisches Essen - 2,50€" /
-         // } /
-         // erstelle {
-             // Zeichenkette name auf "Angebot 2" /
-             // Zeichenkette value auf "Komisches Essen - 3,50€" /
-         // }
-     // ];
+    setze Zeichenkette Nachricht_Körper auf falls Felder.Länge() > 0 {
+        "Hallo an Alle!\nEin neuer Tag, neues Essen!"
+    } sonst {
+        "Heute ist die Mensa geschlossen!"
+    };
+
+    setze Zeitstempel Jetzt auf zeit();
+    setze Zeichenkette Titel auf Formatiere("Angebot Mensa Griebnitzsee vom %2d.%2d.%d" / Jetzt.Kalendar_Tag / Jetzt.Monat / Jetzt.Jahr);
 
     setze Embed HauptEinbettung auf erstelle {
-        Zeichenkette title auf "Mensa Griebnitzsee 20.09.2023" /
-        Zeichenkette description auf "Hallo an Alle!\nEin neuer Tag, neues Essen!" /
+        Zeichenkette title auf Titel /
+        Zeichenkette description auf Nachricht_Körper /
         Zeichenkette url auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos/mensa-griebnitzsee" /
         Zahl color auf 14574087 /
         Liste von Feld fields auf Felder /
+        Objekt { Zeichenkette text } footer auf erstelle {
+            Zeichenkette text auf "Powered by Mensa Scraper written in HPI script.\nhttps://sprache.hpi.church"
+        }
     };
 
     setze DiscordKörper Körper auf erstelle {
@@ -131,17 +164,18 @@ funk Sende_Discord_Nachricht(Liste von Speise Speiseangebot) ergibt Nichts {
     };
 
     setze Zeichenkette Körper_Zeichenkette auf Gliedere_JSON(Körper);
-    drucke(Körper_Zeichenkette);
 
     setze Zeichenkette Antwort_Körper auf "";
 
     setze Zahl Antwort_Zahl auf http(
         "POST" /
-        "https://discordapp.com/api/webhooks/1157059983079383072/kR076YC_TA_dt2nY01DGCpbLH7KsafPaIw2Jg2oCZBzBXZSZM1bFTGKOL5Z-bjUr9yFT" /
+        DISCORD_URL /
         Körper_Zeichenkette /
         [ erstelle { Zeichenkette Schlüssel auf "Content-Type" / Zeichenkette Wert auf "application/json" } ] /
         &Antwort_Körper /
     );
 
-    drucke(Antwort_Zahl / Antwort_Körper);
+    falls Antwort_Zahl != 204 {
+        aufgeben(Antwort_Zahl);
+    }
 }
