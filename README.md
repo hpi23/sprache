@@ -18,4 +18,4 @@ Die ~~offizielle~~ Programmiersprache des HPI.
 ### Toolchain
 
 - [Language Server](./crates/hpi-ls/)
-- [rush CLI](./crates/hpi-cli/)
+- [HPI CLI](./crates/hpi-cli/)
