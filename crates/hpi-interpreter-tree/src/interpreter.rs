@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     cell::RefCell,
     collections::HashMap,
+    env,
     io::Write,
     rc::Rc,
     thread,
@@ -204,10 +205,10 @@ where
         mut args: Vec<Value>,
     ) -> ExprResult {
         match func_name {
-            AnalyzedCallBase::Ident("aufgeben") => {
+            AnalyzedCallBase::Ident("Aufgeben") => {
                 Err(InterruptKind::Exit(args.swap_remove(0).unwrap_int()))
             }
-            AnalyzedCallBase::Ident("drucke") => {
+            AnalyzedCallBase::Ident("Drucke") => {
                 self.output
                     .write_all(
                         (args
@@ -241,7 +242,7 @@ where
                 let res = fmt.format()?;
                 Ok(Value::String(res))
             }
-            AnalyzedCallBase::Ident("zeit") => {
+            AnalyzedCallBase::Ident("Zeit") => {
                 let now = chrono::offset::Local::now();
 
                 let members = HashMap::from([
@@ -256,7 +257,7 @@ where
 
                 Ok(Value::Objekt(Rc::new(RefCell::new(members))))
             }
-            AnalyzedCallBase::Ident("http") => {
+            AnalyzedCallBase::Ident("Http") => {
                 // BuiltinFunction::new(ParamTypes::Normal(vec![
                 //                         Type::String(0), // method
                 //                         Type::String(0), // url
@@ -314,7 +315,7 @@ where
 
                 Ok(Value::Int(res.0 as i64))
             }
-            AnalyzedCallBase::Ident("schlummere") => {
+            AnalyzedCallBase::Ident("Schlummere") => {
                 #[cfg(target_arch = "wasm32")]
                 {
                     return Err(InterruptKind::Error("Im Web wird nicht geschlafen!".into()));
@@ -328,9 +329,15 @@ where
 
                 Ok(Value::Unit)
             }
-            AnalyzedCallBase::Ident("geld") => Ok(Value::String(String::from(
+            AnalyzedCallBase::Ident("Geld") => Ok(Value::String(String::from(
                 "Nun sind Sie reich, sie wurden gesponst!",
             ))),
+            AnalyzedCallBase::Ident("Umgebungsvariablen") => {
+                let inner = env::vars()
+                    .map(|(key, value)| (key, Value::String(value)))
+                    .collect();
+                Ok(Value::Speicherbox(inner))
+            }
             AnalyzedCallBase::Ident(func_name) => {
                 let func = Rc::clone(&self.functions[func_name]);
 

@@ -99,6 +99,13 @@ fn list_length(val: &Value, _args: Vec<Value>) -> Value {
     }
 }
 
+fn list_contains(val: &Value, args: Vec<Value>) -> Value {
+    match val {
+        Value::List(values) => Value::Bool(values.borrow().contains(&args[0])),
+        _ => unreachable!("the analyzer prevents this: {val:?}"),
+    }
+}
+
 fn speicherbox_nehme(val: &Value, args: Vec<Value>) -> Value {
     match (val, &args[0]) {
         (Value::Speicherbox(inner), Value::String(key)) => match inner.get(key) {
@@ -122,6 +129,20 @@ fn speicherbox_datentyp_von(val: &Value, args: Vec<Value>) -> Value {
     Value::String(type_.to_string())
 }
 
+fn speicherbox_keys(val: &Value, _args: Vec<Value>) -> Value {
+    match val {
+        Value::Speicherbox(inner) => {
+            let list_inner = inner
+                .iter()
+                .map(|(key, _)| Value::String(key.clone()))
+                .collect();
+
+            Value::List(Rc::new(RefCell::new(list_inner)))
+        }
+        _ => unreachable!("the analyzer prevents this: {val}"),
+    }
+}
+
 fn value_type(val: &Value, _args: Vec<Value>) -> Value {
     Value::String(val.as_type().to_string())
 }
@@ -141,6 +162,12 @@ impl Value {
             }
             (Value::List(_), "Länge") => {
                 Value::BuiltinFunction(Box::new(self.clone()), list_length)
+            }
+            (Value::List(_), "Enthält") => {
+                Value::BuiltinFunction(Box::new(self.clone()), list_contains)
+            }
+            (Value::Speicherbox(_), "Schlüssel") => {
+                Value::BuiltinFunction(Box::new(self.clone()), speicherbox_keys)
             }
             (Value::Speicherbox(_), "Nehmen") => {
                 Value::BuiltinFunction(Box::new(self.clone()), speicherbox_nehme)

@@ -1,0 +1,188 @@
+beantrage Geld von Hasso;
+beantrage Drucke von Drucker;
+beantrage Http von Netzwerk;
+beantrage Gliedere_JSON von Textverarbeitung;
+beantrage Zergliedere_JSON von Textverarbeitung;
+beantrage Formatiere von Textverarbeitung;
+beantrage Aufgeben von libSAP;
+beantrage Umgebungsvariablen von libSAP;
+beantrage Zeit von Uhr;
+
+datentyp Speise auf Objekt {
+    Zeichenkette Titel /
+    Zeichenkette Beschreibung /
+    Fließkommazahl Preis /
+};
+
+setze Zeichenkette MENSA_URL auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos?tx_ddfmensa_ddfmensajson%5Binterneid%5D=353&type=14529821235&cHash=2baa819c66f7bd7c19a21693a97b5f34";
+
+setze Zahl AUSLÖSER_STUNDE auf 07;
+setze Zahl AUSLÖSER_MINUTE auf 00;
+
+funk Bewerbung() ergibt Zeichenkette { "Hallo Welt!" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+  setze Zahl _ auf Matrikelnummer;
+}
+
+funk Studium() ergibt Nichts {
+    falls !Umgebungsvariablen().Schlüssel().Enthält("MENSA_DISCORD_URL") {
+        Drucke("Umgebungsvariable `MENSA_DISCORD_URL` nicht gefunden.");
+        Aufgeben(1);
+    }
+    setze Zeichenkette Discord_Url auf Umgebungsvariablen().Nehmen("MENSA_DISCORD_URL") als Zeichenkette;
+
+    Drucke(Formatiere("Benachrichtigung wird um %2d:%2d ausgeführt werden." / AUSLÖSER_STUNDE / AUSLÖSER_MINUTE));
+
+    solange ja {
+        falls Zeit().Stunde == AUSLÖSER_STUNDE && Zeit().Minute == AUSLÖSER_MINUTE {
+            Aktualisiere(Discord_Url);
+        Drucke(Formatiere("Schlummere 12h (Zeit = %2d:%2d)..." / Zeit().Stunde / Zeit().Minute));
+            Schlummere(60F * 60F * 12F);
+        }
+
+        Drucke(Formatiere("Schlummere (Zeit = %2d:%2d)..." / Zeit().Stunde / Zeit().Minute));
+        Schlummere(60F);
+    }
+}
+
+funk Aktualisiere(Zeichenkette Discord_Url) ergibt Nichts {
+    Drucke("\t=> Lade Speiseangebot aus dem Internet herunter...");
+    setze Liste von Speise Speisen auf Lade_Speiseangebot();
+    Drucke(Formatiere("\t=> Speiseangebot bereit. %d Speisen geladen." / Speisen.Länge()));
+    Drucke("\t=> Sende Discord Nachricht...");
+    Sende_Discord_Nachricht(Speisen / Discord_Url);
+    Drucke("\t=> Discord Nachricht erfolgreich gesendet.");
+}
+
+funk Lade_Speiseangebot() ergibt Liste von Speise {
+    setze Zeichenkette Körper auf "";
+    setze Zahl Antwort_Zahl auf Http(
+        "GET" /
+        MENSA_URL /
+        "" /
+        [] /
+        &Körper /
+    );
+
+    falls Antwort_Zahl != 200 {
+        Aufgeben(1);
+    }
+
+    setze Speicherbox Res auf Zergliedere_JSON(Körper) als Speicherbox;
+
+    setze Speicherbox Erster auf (Res.Nehmen("wochentage") als Liste von Speicherbox)[0];
+    setze Speicherbox Datum auf Erster.Nehmen("datum") als Speicherbox;
+
+
+    falls Datum.Datentyp_Von("angebote") == "Nichts" {
+        // the weekend case
+        überweise [];
+    }
+
+    setze Liste von Speicherbox Angebote auf Datum.Nehmen("angebote") als Liste von Speicherbox;
+
+    setze Liste von Speise Resultat auf [];
+
+    setze Zahl Zähler auf 0;
+    solange Zähler < Angebote.Länge() {
+        falls Angebote[Zähler].Datentyp_Von("preis_s") == "Zeichenkette" {
+            setze Zeichenkette Beschreibung auf Angebote[Zähler].Nehmen("beschreibung") als Zeichenkette;
+            setze Zeichenkette Titel auf Angebote[Zähler].Nehmen("titel") als Zeichenkette;
+            setze Fließkommazahl Preis auf Angebote[Zähler].Nehmen("preis_s") als Zeichenkette als Fließkommazahl;
+            Drucke(Titel / ":" / Beschreibung / "kostet" / Preis / "€");
+
+            Resultat.Hinzufügen(erstelle {
+                Zeichenkette Titel auf Titel /
+                Zeichenkette Beschreibung auf Beschreibung /
+                Fließkommazahl Preis auf Preis /
+            });
+        }
+
+        ändere Zähler auf Zähler + 1;
+    }
+
+    Resultat
+}
+
+
+funk Sende_Discord_Nachricht(Liste von Speise Speiseangebot / Zeichenkette Discord_Url) ergibt Nichts {
+    datentyp Feld auf Objekt {
+        Zeichenkette name /
+        Zeichenkette value /
+    };
+
+    datentyp Fuß auf Objekt {
+        Zeichenkette text /
+    };
+
+    datentyp Embed auf Objekt {
+        Zeichenkette title /
+        Zeichenkette description /
+        Zeichenkette url /
+        Zahl color /
+        Liste von Feld fields /
+        Fuß footer /
+    };
+
+    datentyp DiscordKörper auf Objekt {
+        Nichts contents /
+        Liste von Embed embeds /
+        Liste von Nichts attachments /
+    };
+
+    setze Liste von Feld Felder auf [];
+    setze Zahl Zähler auf 0;
+    solange (Zähler < Speiseangebot.Länge()) {
+        Felder.Hinzufügen(
+            erstelle {
+                Zeichenkette name auf Speiseangebot[Zähler].Titel /
+                Zeichenkette value auf Formatiere("%s = %d€" / Speiseangebot[Zähler].Beschreibung / Speiseangebot[Zähler].Preis) /
+            }
+        );
+
+        Zähler += 1;
+    }
+
+    setze Zeichenkette Nachricht_Körper auf falls Felder.Länge() > 0 {
+        "Hallo an Alle!\nEin neuer Tag, neues Essen!"
+    } sonst {
+        "Heute ist die Mensa geschlossen!"
+    };
+
+    setze Zeitstempel Jetzt auf Zeit();
+    setze Zeichenkette Titel auf Formatiere("Angebot Mensa Griebnitzsee vom %2d.%2d.%d" / Jetzt.Kalendar_Tag / Jetzt.Monat / Jetzt.Jahr);
+
+    setze Embed HauptEinbettung auf erstelle {
+        Zeichenkette title auf Titel /
+        Zeichenkette description auf Nachricht_Körper /
+        Zeichenkette url auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos/mensa-griebnitzsee" /
+        Zahl color auf 14574087 /
+        Liste von Feld fields auf Felder /
+        Objekt { Zeichenkette text } footer auf erstelle {
+            Zeichenkette text auf "Powered by Mensa Scraper written in HPI script.\nhttps://sprache.hpi.church"
+        }
+    };
+
+    setze DiscordKörper Körper auf erstelle {
+        Nichts contents auf Nichts /
+        Liste von Embed embeds auf [ HauptEinbettung ] /
+        Liste von Nichts attachments auf [] /
+    };
+
+    setze Zeichenkette Körper_Zeichenkette auf Gliedere_JSON(Körper);
+
+    setze Zeichenkette Antwort_Körper auf "";
+
+    setze Zahl Antwort_Zahl auf Http(
+        "POST" /
+        Discord_Url /
+        Körper_Zeichenkette /
+        [ erstelle { Zeichenkette Schlüssel auf "Content-Type" / Zeichenkette Wert auf "application/json" } ] /
+        &Antwort_Körper /
+    );
+
+    falls Antwort_Zahl != 204 {
+        Aufgeben(Antwort_Zahl);
+    }
+}

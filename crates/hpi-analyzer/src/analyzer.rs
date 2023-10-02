@@ -70,7 +70,7 @@ impl<'src> Analyzer<'src> {
     pub fn new(source: &'src str) -> Self {
         Self {
             builtin_functions: HashMap::from([(
-                "schlummere",
+                "Schlummere",
                 BuiltinFunction::new(ParamTypes::Normal(vec![Type::Float(0)]), Type::Nichts),
             )]),
             source,
@@ -367,19 +367,19 @@ impl<'src> Analyzer<'src> {
                     BuiltinFunction::new(ParamTypes::VarArgs(vec![Type::String(0)], Type::Unknown), Type::String(0)),
                 );
             }
-            ("drucke", "Drucker") => {
+            ("Drucke", "Drucker") => {
                 self.builtin_functions.insert(
-                    "drucke",
+                    "Drucke",
                     BuiltinFunction::new(ParamTypes::VarArgs(vec![], Type::Unknown), Type::Nichts),
                 );
             }
-            ("geld", "Hasso") => {
+            ("Geld", "Hasso") => {
                 self.builtin_functions.insert(
-                    "geld",
+                    "Geld",
                     BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::String(0)),
                 );
             }
-            ("zeit", "Uhr") => {
+            ("Zeit", "Uhr") => {
                 let timestamp_type = Type::Object(HashMap::from([
                             ("Jahr".to_string(), Type::Int(0)),
                             ("Monat".to_string(), Type::Int(0)),
@@ -393,13 +393,13 @@ impl<'src> Analyzer<'src> {
                 self.types.insert("Zeitstempel", Spanned { span: node.value_name.span, inner: timestamp_type.clone() });
 
                 self.builtin_functions.insert(
-                    "zeit",
+                    "Zeit",
                     BuiltinFunction::new(ParamTypes::Normal(vec![]), timestamp_type),
                 );
             }
-            ("http", "Netzwerk") => {
+            ("Http", "Netzwerk") => {
                 self.builtin_functions.insert(
-                    "http",
+                    "Http",
                     BuiltinFunction::new(ParamTypes::Normal(vec![
                                             Type::String(0), // method
                                             Type::String(0), // url
@@ -412,8 +412,11 @@ impl<'src> Analyzer<'src> {
                     ]), Type::Int(0)),
                 );
             }
-            ("aufgeben", "libSAP") => {
-                self.builtin_functions.insert("aufgeben", BuiltinFunction::new(ParamTypes::Normal(vec![Type::Int(0)]), Type::Never));
+            ("Aufgeben", "libSAP") => {
+                self.builtin_functions.insert("Aufgeben", BuiltinFunction::new(ParamTypes::Normal(vec![Type::Int(0)]), Type::Never));
+            },
+            ("Umgebungsvariablen", "libSAP") => {
+                self.builtin_functions.insert("Umgebungsvariablen", BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::AnyObject(0)));
             },
             (value, module) => self.error(
                 ErrorKind::Reference,
@@ -2508,6 +2511,13 @@ impl<'src> Analyzer<'src> {
         let members = match &type_ {
             Type::AnyObject(0) => HashMap::from([
                 (
+                    "Schlüssel".to_string(),
+                    Type::Function {
+                        params: vec![],
+                        result_type: Box::new(Type::List(Box::new(Type::String(0)), 0)),
+                    },
+                ),
+                (
                     "Nehmen".to_string(),
                     Type::Function {
                         params: vec![Type::String(0)],
@@ -2549,6 +2559,13 @@ impl<'src> Analyzer<'src> {
                     Type::Function {
                         params: vec![],
                         result_type: Box::new(Type::Int(0)),
+                    },
+                ),
+                (
+                    "Enthält".to_string(),
+                    Type::Function {
+                        params: vec![*inner.clone()],
+                        result_type: Box::new(Type::Bool(0)),
                     },
                 ),
                 (
