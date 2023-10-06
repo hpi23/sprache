@@ -116,6 +116,24 @@ fn string_split(val: &Value, args: Vec<Value>) -> Value {
     }
 }
 
+fn string_startswith(val: &Value, args: Vec<Value>) -> Value {
+    match (val, &args[0]) {
+        (Value::String(string), Value::String(startswith)) => {
+            Value::Bool(string.starts_with(startswith))
+        },
+        _ => unreachable!("the analyzer prevents this: {val:?}"),
+    }
+}
+
+fn string_replace(val: &Value, args: Vec<Value>) -> Value {
+    match (val, &args[0], &args[1]) {
+        (Value::String(string), Value::String(replacewhat), Value::String(replacewith)) => {
+            Value::String(string.replace(replacewhat, replacewith).to_string())
+        },
+        _ => unreachable!("the analyzer prevents this: {val:?}"),
+    }
+}
+
 fn speicherbox_nehme(val: &Value, args: Vec<Value>) -> Value {
     match (val, &args[0]) {
         (Value::Speicherbox(inner), Value::String(key)) => match inner.get(key) {
@@ -178,6 +196,12 @@ impl Value {
             }
             (Value::String(_), "Zertrenne") => {
                 Value::BuiltinFunction(Box::new(self.clone()), string_split)
+            }
+            (Value::String(_), "Startet_Mit") => {
+                Value::BuiltinFunction(Box::new(self.clone()), string_startswith)
+            }
+            (Value::String(_), "Ersetze") => {
+                Value::BuiltinFunction(Box::new(self.clone()), string_replace)
             }
             (Value::Speicherbox(_), "Schlüssel") => {
                 Value::BuiltinFunction(Box::new(self.clone()), speicherbox_keys)

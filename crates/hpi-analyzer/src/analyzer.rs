@@ -2585,6 +2585,20 @@ impl<'src> Analyzer<'src> {
                     },
                 ),
                 (
+                    "Startet_Mit".to_string(),
+                    Type::Function {
+                        params: vec![Type::String(0)],
+                        result_type: Box::new(Type::Bool(0)),
+                    },
+                ),
+                (
+                    "Ersetze".to_string(),
+                    Type::Function {
+                        params: vec![Type::String(0), Type::String(0)],
+                        result_type: Box::new(Type::String(0)),
+                    },
+                ),
+                (
                     "Datentyp".to_string(),
                     Type::Function {
                         params: vec![],
