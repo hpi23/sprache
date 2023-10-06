@@ -106,6 +106,16 @@ fn list_contains(val: &Value, args: Vec<Value>) -> Value {
     }
 }
 
+fn string_split(val: &Value, args: Vec<Value>) -> Value {
+    match (val, &args[0]) {
+        (Value::String(string), Value::String(split)) => {
+            let raw = string.split(split).map(|element| Value::String(element.to_string())).collect();
+            Value::List(Rc::new(RefCell::new(raw)))
+        },
+        _ => unreachable!("the analyzer prevents this: {val:?}"),
+    }
+}
+
 fn speicherbox_nehme(val: &Value, args: Vec<Value>) -> Value {
     match (val, &args[0]) {
         (Value::Speicherbox(inner), Value::String(key)) => match inner.get(key) {
@@ -165,6 +175,9 @@ impl Value {
             }
             (Value::List(_), "Enthält") => {
                 Value::BuiltinFunction(Box::new(self.clone()), list_contains)
+            }
+            (Value::String(_), "Zertrenne") => {
+                Value::BuiltinFunction(Box::new(self.clone()), string_split)
             }
             (Value::Speicherbox(_), "Schlüssel") => {
                 Value::BuiltinFunction(Box::new(self.clone()), speicherbox_keys)

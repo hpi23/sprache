@@ -1,19 +1,13 @@
 use std::{
-    borrow::Cow,
-    cell::RefCell,
-    collections::HashMap,
-    env,
-    io::Write,
-    rc::Rc,
-    thread,
-    time::{Duration, Instant},
+    borrow::Cow, cell::RefCell, collections::HashMap, env, io::Write, rc::Rc, thread,
+    time::Duration,
 };
 
-use chrono::{Datelike, NaiveTime, Timelike};
+use chrono::{Datelike, Timelike};
 use hpi_analyzer::{ast::*, AssignOp, InfixOp, PrefixOp, Type};
 
 use crate::{
-    format::{self, Formatter},
+    format::Formatter,
     json,
     value::{InterruptKind, Value},
 };

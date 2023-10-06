@@ -2104,46 +2104,46 @@ impl<'src> Analyzer<'src> {
         )
     }
 
-    fn validate_args(
-        &mut self,
-        args: Spanned<'src, Vec<Expression<'src>>>,
-        params: Spanned<'src, Vec<Parameter<'src>>>,
-        fn_name: &str,
-        span: Span<'src>,
-    ) -> Vec<AnalyzedExpression<'src>> {
-        if args.inner.len() != params.inner.len() {
-            self.error(
-                ErrorKind::Reference,
-                format!(
-                    "Die Funktion `{}` erwartet {} Argumente, allerdings wurde{} {} Stück übergeben.",
-                    fn_name,
-                    params.inner.len(),
-                    if args.inner.len() == 1 { "" } else { "n" },
-                    args.inner.len()
-                ),
-                vec![],
-                span,
-            );
-            self.hint(
-                format!(
-                    "Die Funktion `{}` wurde hier mit {} Parameter{} definiert.",
-                    fn_name,
-                    params.inner.len(),
-                    if params.inner.len() > 1 { "n" } else { "" }
-                ),
-                params.span,
-            );
-            vec![]
-        } else {
-            let mut result_type = Type::Never;
-
-            args.inner
-                .into_iter()
-                .zip(params.inner)
-                .map(|(arg, param)| self.arg(arg, &param.type_.inner, span, &mut result_type))
-                .collect()
-        }
-    }
+    // fn validate_args(
+    //     &mut self,
+    //     args: Spanned<'src, Vec<Expression<'src>>>,
+    //     params: Spanned<'src, Vec<Parameter<'src>>>,
+    //     fn_name: &str,
+    //     span: Span<'src>,
+    // ) -> Vec<AnalyzedExpression<'src>> {
+    //     if args.inner.len() != params.inner.len() {
+    //         self.error(
+    //             ErrorKind::Reference,
+    //             format!(
+    //                 "Die Funktion `{}` erwartet {} Argumente, allerdings wurde{} {} Stück übergeben.",
+    //                 fn_name,
+    //                 params.inner.len(),
+    //                 if args.inner.len() == 1 { "" } else { "n" },
+    //                 args.inner.len()
+    //             ),
+    //             vec![],
+    //             span,
+    //         );
+    //         self.hint(
+    //             format!(
+    //                 "Die Funktion `{}` wurde hier mit {} Parameter{} definiert.",
+    //                 fn_name,
+    //                 params.inner.len(),
+    //                 if params.inner.len() > 1 { "n" } else { "" }
+    //             ),
+    //             params.span,
+    //         );
+    //         vec![]
+    //     } else {
+    //         let mut result_type = Type::Never;
+    //
+    //         args.inner
+    //             .into_iter()
+    //             .zip(params.inner)
+    //             .map(|(arg, param)| self.arg(arg, &param.type_.inner, span, &mut result_type))
+    //             .collect()
+    //     }
+    // }
 
     fn call_expr(&mut self, node: CallExpr<'src>) -> AnalyzedExpression<'src> {
         match node.func {
@@ -2566,6 +2566,22 @@ impl<'src> Analyzer<'src> {
                     Type::Function {
                         params: vec![*inner.clone()],
                         result_type: Box::new(Type::Bool(0)),
+                    },
+                ),
+                (
+                    "Datentyp".to_string(),
+                    Type::Function {
+                        params: vec![],
+                        result_type: Box::new(Type::String(0)),
+                    },
+                ),
+            ]),
+            Type::String(0) => HashMap::from([
+                (
+                    "Zertrenne".to_string(),
+                    Type::Function {
+                        params: vec![Type::String(0)],
+                        result_type: Box::new(Type::List(Box::new(Type::String(0)), 0)),
                     },
                 ),
                 (
