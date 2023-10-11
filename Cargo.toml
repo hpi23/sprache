@@ -5,6 +5,7 @@ members = [
     "crates/hpi-parser",
     "crates/hpi-analyzer",
     "crates/hpi-interpreter-tree",
+    "crates/hpi-transpiler-c",
 ]
 resolver = "1"
 package.authors = ["MikMuellerDev"]

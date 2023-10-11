@@ -178,11 +178,14 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
 
                 self.expect(TokenKind::LBrace)?;
 
-                let mut members = HashMap::new();
+                let mut members = vec![];
 
                 if !matches!(self.curr_tok.kind, TokenKind::RBrace | TokenKind::Eof) {
                     let field = self.object_type_field()?;
-                    members.insert(field.0, field.1);
+                    members.push(ObjectTypeField {
+                        key: field.0,
+                        type_: Box::new(field.1),
+                    });
 
                     while self.curr_tok.kind == TokenKind::Slash {
                         // skip slash
@@ -193,7 +196,10 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
                         }
 
                         let field = self.object_type_field()?;
-                        members.insert(field.0, field.1);
+                        members.push(ObjectTypeField {
+                            key: field.0,
+                            type_: Box::new(field.1),
+                        })
                     }
                 }
 
@@ -221,9 +227,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             }
             TokenKind::Nichts => Type::Nichts,
             TokenKind::Ident("Zeichenkette") => Type::String(ptr_count),
-            TokenKind::Ident(ident) => {
-                Type::Ident(ident.to_string(), ptr_count)
-            }
+            TokenKind::Ident(ident) => Type::Ident(ident.to_string(), ptr_count),
             invalid => {
                 return Err(Error::new_boxed(
                     format!("Erwartete einen Datentyp, fand `{invalid}`."),

@@ -379,16 +379,18 @@ impl<'src> Analyzer<'src> {
                     BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::String(0)),
                 );
             }
+
             ("Zeit", "Uhr") => {
-                let timestamp_type = Type::Object(HashMap::from([
-                            ("Jahr".to_string(), Type::Int(0)),
-                            ("Monat".to_string(), Type::Int(0)),
-                            ("Kalendar_Tag".to_string(), Type::Int(0)),
-                            ("Wochentag".to_string(), Type::Int(0)),
-                            ("Stunde".to_string(), Type::Int(0)),
-                            ("Minute".to_string(), Type::Int(0)),
-                            ("Sekunde".to_string(), Type::Int(0)),
-                ]), 0);
+                let timestamp_type = Type::Object(vec![
+                        ObjectTypeField { key: "Jahr".to_string(), type_: Box::new(Type::Int(0)) },
+                        ObjectTypeField { key: "Monat".to_string(), type_: Box::new(Type::Int(0)) },
+                        ObjectTypeField { key: "Kalendar_Tag".to_string(), type_: Box::new(Type::Int(0)) },
+                        ObjectTypeField { key: "Wochentag".to_string(), type_: Box::new(Type::Int(0)) },
+                        ObjectTypeField { key: "Stunde".to_string(), type_: Box::new(Type::Int(0)) },
+                        ObjectTypeField { key: "Minute".to_string(), type_: Box::new(Type::Int(0)) },
+                        ObjectTypeField { key: "Sekunde".to_string(), type_: Box::new(Type::Int(0)) },
+
+                ], 0);
 
                 self.types.insert("Zeitstempel", Spanned { span: node.value_name.span, inner: timestamp_type.clone() });
 
@@ -404,10 +406,10 @@ impl<'src> Analyzer<'src> {
                                             Type::String(0), // method
                                             Type::String(0), // url
                                             Type::String(0), // body
-                                            Type::List(Box::new(Type::Object(HashMap::from([
-                                                                                           ("Schlüssel".to_string(), Type::String(0)),
-                                                                                           ("Wert".to_string(), Type::String(0))
-                                            ]), 0)), 0), // headers
+                                            Type::List(Box::new(Type::Object(vec![
+                                                ObjectTypeField{ key: "Schlüssel".to_string(), type_: Box::new(Type::String(0)) },
+                                                ObjectTypeField{ key: "Wert".to_string(), type_: Box::new(Type::String(0)) },
+                                            ], 0)), 0), // headers
                                             Type::String(1), // body dest
                     ]), Type::Int(0)),
                 );
@@ -885,17 +887,17 @@ impl<'src> Analyzer<'src> {
         match (&expected_raw, &got_raw) {
             (_, res @ Type::Unknown | res @ Type::Never)
             | (res @ Type::Unknown | res @ Type::Never, _) => res.clone(),
-            (Type::Object(linner, lptr), Type::Object(rinner, rptr)) if lptr == rptr => {
-                for (l_key, l_type) in linner {
-                    match rinner.get(l_key) {
+            (Type::Object(l_fields, lptr), Type::Object(r_fields, rptr)) if lptr == rptr => {
+                for l_element in l_fields {
+                    match r_fields.iter().find(|e| e.key == l_element.key) {
                         Some(r_type) => {
                             let l_type = self.lookup_type(&Spanned {
                                 span: expected.span,
-                                inner: l_type.clone(),
+                                inner: *l_element.type_.clone(),
                             });
                             let r_type = self.lookup_type(&Spanned {
                                 span: got.span,
-                                inner: r_type.clone(),
+                                inner: *r_type.type_.clone(),
                             });
                             let res = self.type_check(
                                 &Spanned {
@@ -913,17 +915,17 @@ impl<'src> Analyzer<'src> {
                             }
                         }
                         None => {
-                            self.error(ErrorKind::Type, format!("Erwartetes Feld mit dem Namen `{l_key}` konnte nicht aufgespürt werden."), vec!["Fügen Sie das erforderliche Feld hinzu.".into()], got.span);
+                            self.error(ErrorKind::Type, format!("Erwartetes Feld mit dem Namen `{}` konnte nicht aufgespürt werden.", l_element.key,), vec!["Fügen Sie das erforderliche Feld hinzu.".into()],  got.span);
                             return Type::Unknown;
                         }
                     }
                 }
 
-                for key in rinner.keys() {
-                    if linner.get(key).is_none() {
+                for key in r_fields {
+                    if !r_fields.iter().any(|v| v.key == key.key) {
                         self.error(
                             ErrorKind::Type,
-                            format!("Unerwartetes zusätzliches Feld `{key}` aufgespürt."),
+                            format!("Unerwartetes zusätzliches Feld `{}` aufgespürt.", key.key),
                             vec!["Entfernen Sie das unerwartete Feld.".into()],
                             got.span,
                         );
@@ -2606,7 +2608,10 @@ impl<'src> Analyzer<'src> {
                     },
                 ),
             ]),
-            Type::Object(members, 0) => members.clone(),
+            Type::Object(members, 0) => members
+                .iter()
+                .map(|element| (element.key.clone(), *element.type_.clone()))
+                .collect(),
             _ => HashMap::from([(
                 "Datentyp".to_string(),
                 Type::Function {

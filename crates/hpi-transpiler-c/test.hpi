@@ -1,0 +1,12 @@
+beantrage Drucke von Drucker;
+
+funk Studium() ergibt Nichts {}
+funk Bewerbung() ergibt Zeichenkette { "Hello World!" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+    Drucke(Matrikelnummer);
+    Drucke(69);
+    setze Zeichenkette string auf "Foo Bar!";
+    Drucke(string);
+}
+

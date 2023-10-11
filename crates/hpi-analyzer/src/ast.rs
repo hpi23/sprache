@@ -1,6 +1,6 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Display};
 
-use hpi_parser::ast::{AssignOp, InfixOp, PrefixOp, Type};
+use hpi_parser::ast::{AssignOp, InfixOp, PrefixOp, Type, ObjectTypeField};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnalyzedProgram<'src> {
@@ -174,7 +174,10 @@ impl AnalyzedExpression<'_> {
                 let members = expr
                     .members
                     .iter()
-                    .map(|element| (element.key.clone(), element.value.result_type()))
+                    .map(|element| ObjectTypeField {
+                        key: element.key.clone(),
+                        type_: Box::new(element.value.result_type()),
+                    } )
                     .collect();
                 Type::Object(members, 0)
             }

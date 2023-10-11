@@ -1,11 +1,14 @@
-use std::{
-    collections::HashMap,
-    fmt::{self, Debug, Display, Formatter},
-};
+use std::fmt::{self, Debug, Display, Formatter};
 
 use crate::Span;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ObjectTypeField {
+     pub key: String,
+     pub type_: Box<Type>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     Int(usize),
     Float(usize),
@@ -17,7 +20,7 @@ pub enum Type {
         params: Vec<Type>,
         result_type: Box<Type>,
     },
-    Object(HashMap<String, Type>, usize),
+    Object(Vec<ObjectTypeField>, usize),
     AnyObject(usize),
     Any,
     Nichts,
@@ -66,11 +69,16 @@ impl Display for Type {
             Self::Object(fields, ptr) => {
                 let members = fields
                     .iter()
-                    .map(|element| format!("{} {}", element.1, element.0))
+                    .map(|element| format!("{} {}", element.type_, element.key))
                     .collect::<Vec<String>>()
                     .join(" /\n");
 
-                write!(f, "{}Objekt {{\n     {}\n }}", "*".repeat(*ptr), members.replace('\n', "\n     "))
+                write!(
+                    f,
+                    "{}Objekt {{\n     {}\n }}",
+                    "*".repeat(*ptr),
+                    members.replace('\n', "\n     ")
+                )
             }
             Self::Any => write!(f, "Unbekannt"),
             Self::Nichts => write!(f, "Nichts"),
