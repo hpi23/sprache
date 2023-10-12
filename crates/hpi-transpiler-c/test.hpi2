@@ -1,0 +1,18 @@
+beantrage Drucke von Drucker;
+
+funk Studium() ergibt Nichts {}
+funk Bewerbung() ergibt Zeichenkette { "Hello World!" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+     // setze Zahl _ auf Matrikelnummer;
+     // Drucke(Matrikelnummer);
+     // Drucke(69);
+     // setze Zeichenkette String auf "Foo Bar!";
+     // Drucke(String);
+    setze Liste von Zahl Meine_Liste auf [ 1 / 2 / 3 ];
+    Drucke(Meine_Liste);
+
+     // setze Liste von Liste von Zahl list2 auf [ [ 4 / 5 ] / [ 6 / 7 ] ];
+     // Drucke(list2);
+}
+

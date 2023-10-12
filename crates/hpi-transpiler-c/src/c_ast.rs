@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
-    fmt::{Display, Formatter},
+    fmt::{Display, Formatter}, borrow::Cow,
 };
 
 use hpi_analyzer::{AssignOp, InfixOp, Type};
@@ -112,10 +112,10 @@ impl From<Type> for CType {
             Type::Bool(ptr) => Self::Bool(ptr),
             Type::Char(ptr) => Self::Char(ptr),
             Type::String(ptr) => Self::Ident(ptr + 1, "DynString".to_string()),
-            Type::List(inner, ptr) => Self::Ident(ptr, "ListNode".to_string()),
+            Type::List(_, ptr) => Self::Ident(ptr + 1, "ListNode".to_string()),
             Type::Nichts | Type::Never => Self::Void,
             Type::Unknown => panic!("tried to convert unknown type to CType"),
-            other => unreachable!("unreachable"),
+            other => unreachable!("Unsupported type conversion to CType: {other}"),
         }
     }
 }
@@ -294,7 +294,7 @@ impl Display for TypeDef {
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    Comment(&'static str),
+    Comment(Cow<'static, str>),
     VarDeclaration(VarDeclaration),
     VarDefinition(String, CType),
     Return(Option<Expression>),
@@ -451,7 +451,7 @@ impl Display for Expression {
 #[derive(Debug, Clone)]
 pub struct CallExpr {
     pub func: String,
-    pub args: VecDeque<Expression>,
+    pub args: Vec<Expression>,
 }
 
 impl Display for CallExpr {

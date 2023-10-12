@@ -56,6 +56,7 @@ impl<'src> Transpiler<'src> {
         // usages of booleans are hard to track, therefore `stdbool.h` is always included
         required_includes.insert("stdbool.h");
         required_includes.insert("/home/mik/Coding/hpi/hpi-c-tests/dynstring/dynstring.h");
+        required_includes.insert("/home/mik/Coding/hpi/hpi-c-tests/list/list.h");
 
         Self {
             in_main_fn: false,
@@ -67,7 +68,9 @@ impl<'src> Transpiler<'src> {
             loops: vec![],
             break_label_cnt: 0,
             required_corelib_functions: HashSet::new(),
-            type_descriptor_declarations: vec![],
+            type_descriptor_declarations: vec![Statement::Comment(
+                "Type definitions for runtime 'reflection'".into(),
+            )],
             type_descriptor_map: HashMap::new(),
             type_descriptor_count: 0,
             type_descriptor_setup: vec![],
@@ -208,7 +211,7 @@ impl<'src> Transpiler<'src> {
             .required_corelib_functions
             .contains("__hpi_internal_cast_float_to_char")
         {
-            let (tree, _) = hpi_analyzer::analyze(include_str!("./char.hpi"), "hpi.rush")
+            let (tree, _) = hpi_analyzer::analyze(include_str!("./char.hpi"), "char.hpi")
                 .expect("this is valid HPI code");
 
             let func = self.fn_declaration(
@@ -243,7 +246,7 @@ impl<'src> Transpiler<'src> {
             .contains("__hpi_internal_sub_char")
         {
             let (tree, _) = hpi_analyzer::analyze(include_str!("./char.hpi"), "char.hpi")
-                .expect("this is valid rush code");
+                .expect("this is valid HPI code");
 
             let func = self.fn_declaration(
                 tree.functions
@@ -266,7 +269,7 @@ impl<'src> Transpiler<'src> {
                 .contains("__hpi_internal_sub_char")
         {
             let (tree, _) = hpi_analyzer::analyze(include_str!("./char.hpi"), "char.hpi")
-                .expect("this is valid rush code");
+                .expect("this is valid HPI code");
 
             let func = self.fn_declaration(
                 tree.functions
@@ -299,7 +302,7 @@ impl<'src> Transpiler<'src> {
     }
 
     /// Required for adding the function prototypes first.
-    /// In rush, order of functions is irrelevant.
+    /// In HPI, order of functions is irrelevant.
     /// Therefore, the `C` code must also not rely on function order.
     fn fn_signature(&mut self, node: &AnalyzedFunctionDefinition<'src>) {
         let name = format!("{name}{cnt}", name = node.name, cnt = self.funcs.len());
@@ -378,9 +381,10 @@ impl<'src> Transpiler<'src> {
     fn statement(&mut self, node: AnalyzedStatement<'src>) -> Vec<Statement> {
         match node {
             AnalyzedStatement::Let(node) => self.let_stmt(node),
+            AnalyzedStatement::Aendere(node) => self.aendere_stmt(node),
             AnalyzedStatement::Return(node) => self.return_stmt(node),
             AnalyzedStatement::While(node) => self.while_stmt(node),
-            // for `break` and `continue` jumps, `goto` is used because of rush's semantics
+            // for `break` and `continue` jumps, `goto` is used because of HPI's semantics
             AnalyzedStatement::Break => {
                 let loop_ = self.loops.last_mut().expect("there is always a loop");
                 vec![Statement::Goto(loop_.break_label.clone())]
@@ -400,7 +404,25 @@ impl<'src> Transpiler<'src> {
         }
     }
 
+    fn aendere_stmt(&mut self, node: AnalyzedAendereStmt<'src>) -> Vec<Statement> {
+        let (mut stmts, expr) = self.expression(node.expr);
+        let assignee = self.resolve_name(node.assignee).to_string();
+
+        if let Some(expr) = expr {
+            stmts.push(Statement::Assign(AssignStmt {
+                assignee,
+                assignee_ptr_count: 0,
+                op: AssignOp::Basic,
+                expr,
+            }));
+        }
+
+        stmts
+    }
+
     fn let_stmt(&mut self, node: AnalyzedLetStmt<'src>) -> Vec<Statement> {
+        println!("LET: {:?}", CType::from(node.expr.result_type()));
+
         let type_ = node.expr.result_type().into();
         let (mut stmts, expr) = self.expression(node.expr);
 
@@ -435,7 +457,7 @@ impl<'src> Transpiler<'src> {
         self.break_label_cnt += 1;
 
         let mut cond_stmts = vec![];
-        comment!(self, cond_stmts, "while");
+        comment!(self, cond_stmts, "while".into());
         cond_stmts.push(Statement::Label(head_label.clone()));
 
         let (mut stmts, cond) = match self.expression(node.cond) {
@@ -490,10 +512,10 @@ impl<'src> Transpiler<'src> {
             AnalyzedExpression::Bool(value) => Some(Expression::Bool(value)),
             AnalyzedExpression::Char(value) => Some(Expression::Char(value)),
             AnalyzedExpression::Ident(ident) => match ident.result_type {
-                Type::Int(_) | Type::Float(_) | Type::Bool(_) | Type::Char(_) => Some(
-                    Expression::Ident(self.resolve_name(ident.ident).to_string()),
-                ),
-                _ => None,
+                Type::Never | Type::Any => None,
+                _ => Some(Expression::Ident(
+                    self.resolve_name(ident.ident).to_string(),
+                )),
             },
             AnalyzedExpression::Prefix(node) => return self.prefix_expr(*node),
             AnalyzedExpression::Infix(node) => return self.infix_expr(*node),
@@ -505,10 +527,52 @@ impl<'src> Transpiler<'src> {
                 return (
                     vec![],
                     Some(Expression::Call(Box::new(CallExpr {
-                        func: "dynstring_new".to_string(),
-                        args: vec![Expression::StringLiteral(inner)].into(),
+                        func: "dynstring_from".to_string(),
+                        args: vec![Expression::StringLiteral(inner)],
                     }))),
-                )
+                );
+            }
+            AnalyzedExpression::List(list) => {
+                let list_temp_ident = format!("list_temp{}", self.let_cnt);
+                self.let_cnt += 1;
+
+                let mut stmts = vec![Statement::VarDeclaration(VarDeclaration {
+                    name: list_temp_ident.clone(),
+                    type_: CType::Ident(1, "ListNode".to_string()),
+                    expr: Expression::Call(Box::new(CallExpr {
+                        func: "list_new".to_string(), // TODO: use vec in the long run?
+                        args: vec![],
+                    })),
+                })];
+
+                for (idx, value) in list.values.iter().enumerate() {
+                    let temp_ident = format!("list_idx_{}_n{}", idx, self.let_cnt);
+
+                    let (mut expr_stmts, expr) = self.expression(value.clone());
+                    stmts.append(&mut expr_stmts);
+
+                    if let Some(expr) = expr {
+                        stmts.push(Statement::VarDeclaration(VarDeclaration {
+                            name: temp_ident.clone(),
+                            type_: value.result_type().into(),
+                            expr,
+                        }));
+                        self.let_cnt += 1;
+
+                        stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                            func: "list_append".to_string(),
+                            args: vec![
+                                Expression::Ident(list_temp_ident.clone()),
+                                Expression::Prefix(Box::new(PrefixExpr {
+                                    expr: Expression::Ident(temp_ident),
+                                    op: PrefixOp::Ref,
+                                })),
+                            ],
+                        }))));
+                    }
+                }
+
+                return (stmts, Some(Expression::Ident(list_temp_ident)));
             }
             other => unreachable!("Not supported: {other:?}"),
         };
@@ -519,7 +583,7 @@ impl<'src> Transpiler<'src> {
         self.scopes.push(HashMap::new());
         let mut block = vec![];
 
-        comment!(self, block, "begin block");
+        comment!(self, block, "begin block".into());
 
         let mut stmts: Vec<Statement> = node
             .stmts
@@ -539,7 +603,7 @@ impl<'src> Transpiler<'src> {
         };
 
         self.scopes.pop();
-        comment!(self, block, "end block");
+        comment!(self, block, "end block".into());
 
         (block, expr)
     }
@@ -636,9 +700,9 @@ impl<'src> Transpiler<'src> {
             | (Type::Int(0), Type::Int(0), InfixOp::Pow) => {
                 lhs_stmts.append(&mut rhs_stmts);
                 let func = match node.op {
-                    InfixOp::Plus => "__rush_internal_add_char",
-                    InfixOp::Minus => "__rush_internal_sub_char",
-                    InfixOp::Pow => "__rush_internal_pow_int",
+                    InfixOp::Plus => "__hpi_internal_add_char",
+                    InfixOp::Minus => "__hpi_internal_sub_char",
+                    InfixOp::Pow => "__hpi_internal_pow_int",
                     _ => unreachable!("these operators cannot occur here"),
                 };
                 self.required_corelib_functions.insert(func);
@@ -736,26 +800,25 @@ impl<'src> Transpiler<'src> {
             match (type_, node.op) {
                 (Type::Int(_), AssignOp::Pow) => {
                     self.required_corelib_functions
-                        .insert("__rush_internal_pow_int");
+                        .insert("__hpi_internal_pow_int");
 
                     stmts.push(Statement::Assign(AssignStmt {
                         assignee: assignee.clone(),
                         assignee_ptr_count: node.assignee_ptr_count,
                         op: AssignOp::Basic,
                         expr: Expression::Call(Box::new(CallExpr {
-                            func: "__rush_internal_pow_int".to_string(),
+                            func: "__hpi_internal_pow_int".to_string(),
                             args: vec![
                                 Expression::Deref((node.assignee_ptr_count, assignee)),
                                 expr,
-                            ]
-                            .into(),
+                            ],
                         })),
                     }))
                 }
                 (Type::Char(_), AssignOp::Plus | AssignOp::Minus) => {
                     let func = match node.op == AssignOp::Plus {
-                        true => "__rush_internal_add_char",
-                        false => "__rush_internal_sub_char",
+                        true => "__hpi_internal_add_char",
+                        false => "__hpi_internal_sub_char",
                     };
                     self.required_corelib_functions.insert(func);
 
@@ -768,8 +831,7 @@ impl<'src> Transpiler<'src> {
                             args: vec![
                                 Expression::Deref((node.assignee_ptr_count, assignee)),
                                 expr,
-                            ]
-                            .into(),
+                            ],
                         })),
                     }))
                 }
@@ -794,13 +856,28 @@ impl<'src> Transpiler<'src> {
             Some(old) => old.clone(),
             None => {
                 // Generate type descriptor id
-                let type_descriptor = format!("type_descriptor_{}", self.type_descriptor_count);
+                let type_descriptor =
+                    format!("type_descriptor_{}", type_.to_string().replace(' ', "_"));
 
                 self.type_descriptor_declarations
                     .push(Statement::VarDefinition(
                         type_descriptor.clone(),
                         CType::Ident(0, "TypeDescriptor".to_string()),
                     ));
+
+                let mut inner_type_expr = Expression::Ident("NULL".to_string());
+
+                if let Type::List(inner, _) = &type_ {
+                    let ident = self.get_type_reflector(*inner.clone());
+                    inner_type_expr = Expression::Prefix(Box::new(PrefixExpr {
+                        expr: Expression::Ident(ident),
+                        op: PrefixOp::Ref,
+                    }));
+                };
+
+                self.type_descriptor_setup.push(Statement::Comment(
+                    format!("Type descriptor `{type_}`").into(),
+                ));
 
                 self.type_descriptor_setup
                     .push(Statement::Assign(AssignStmt {
@@ -823,8 +900,11 @@ impl<'src> Transpiler<'src> {
                         assignee: format!("{type_descriptor}.inner"),
                         assignee_ptr_count: 0,
                         op: AssignOp::Basic,
-                        expr: Expression::Ident("NULL".to_string()),
+                        expr: inner_type_expr,
                     }));
+
+                self.type_descriptor_map
+                    .insert(type_, type_descriptor.clone());
 
                 type_descriptor
             }
@@ -855,19 +935,21 @@ impl<'src> Transpiler<'src> {
 
         let mut stmts = vec![];
         let mut none_arg = false;
-        let mut args: VecDeque<Expression> = node
+
+        let mut args: Vec<Expression> = node
             .args
             .iter()
             .filter_map(|expr| {
                 let type_ = expr.result_type();
-                let (mut expr_stmts, expr) = self.expression(expr.clone());
+                let (mut expr_stmts, new_expr) = self.expression(expr.clone());
+
                 stmts.append(&mut expr_stmts);
 
-                if expr.is_none() && type_ != Type::Nichts {
+                if new_expr.is_none() && type_ != Type::Nichts {
                     none_arg = true;
                 }
 
-                expr
+                new_expr
             })
             .collect();
 
@@ -875,28 +957,31 @@ impl<'src> Transpiler<'src> {
 
         // if the function is `print_list`, insert a type descriptor
         if func == "__hpi_internal_drucke" {
-            // FIXME: this is not OK, look at entire vec, not just first element
-            args.push_front(Expression::Ident(
-                self.get_type_reflector(type_list[0].clone()),
-            ));
+            let mut new_args = vec![];
 
-            let temp_ident = format!("print_ptr_{}", self.let_cnt);
+            new_args.push(Expression::Int(args.len() as i64));
 
-            stmts.push(Statement::VarDeclaration(VarDeclaration {
-                name: temp_ident.clone(),
-                type_: type_list[0]
-                    .clone()
-                    .add_ref()
-                    .expect("This must work")
-                    .into(),
-                expr: args[1].clone(),
-            }));
-            self.let_cnt += 1;
+            for (idx, _arg) in args.clone().iter().enumerate() {
+                new_args.push(Expression::Ident(
+                    self.get_type_reflector(type_list[idx].clone()),
+                ));
 
-            args[1] = Expression::Prefix(Box::new(PrefixExpr {
-                expr: Expression::Ident(temp_ident),
-                op: PrefixOp::Ref,
-            }));
+                let temp_ident = format!("print_ptr_{}", self.let_cnt);
+
+                stmts.push(Statement::VarDeclaration(VarDeclaration {
+                    name: temp_ident.clone(),
+                    type_: type_list[idx].clone().into(),
+                    expr: args[idx].clone(),
+                }));
+                self.let_cnt += 1;
+
+                new_args.push(Expression::Prefix(Box::new(PrefixExpr {
+                    expr: Expression::Ident(temp_ident),
+                    op: PrefixOp::Ref,
+                })));
+            }
+
+            args = new_args;
         }
 
         let expr = Box::new(CallExpr {

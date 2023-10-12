@@ -17,4 +17,4 @@ struct TypeDescriptor {
 
 typedef struct TypeDescriptor TypeDescriptor;
 
-void __hpi_internal_drucke(TypeDescriptor type, ...);
+void __hpi_internal_drucke(ssize_t num_args, ...);
