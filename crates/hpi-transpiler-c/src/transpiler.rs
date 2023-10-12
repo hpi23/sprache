@@ -20,6 +20,8 @@ pub struct Transpiler<'src> {
     in_main_fn: bool,
     /// The first element is the global scope while last element is the current scope.
     scopes: Vec<HashMap<&'src str, String>>,
+    /// Type map created by the analyzer.
+    types: HashMap<&'src str, Type>,
     /// Maps a function's name to a mangeled name.
     funcs: HashMap<&'src str, String>,
     /// Counter which is increased if a variable is declared.
@@ -57,9 +59,11 @@ impl<'src> Transpiler<'src> {
         required_includes.insert("stdbool.h");
         required_includes.insert("/home/mik/Coding/hpi/hpi-c-tests/dynstring/dynstring.h");
         required_includes.insert("/home/mik/Coding/hpi/hpi-c-tests/list/list.h");
+        required_includes.insert("/home/mik/Coding/hpi/hpi-c-tests/hashmap/map.h");
 
         Self {
             in_main_fn: false,
+            types: HashMap::new(),
             scopes: vec![HashMap::new()],
             funcs: HashMap::new(),
             let_cnt: 0,
@@ -100,7 +104,16 @@ impl<'src> Transpiler<'src> {
         unreachable!("the analyzer guarantees valid variable references")
     }
 
+    fn lookup_type(&self, type_: Type) -> Type {
+        match type_ {
+            Type::Ident(ident, ptr) => self.types[ident.as_str()].clone().with_ref(ptr),
+            other => other,
+        }
+    }
+
     pub fn transpile(&mut self, tree: AnalyzedProgram<'src>) -> CProgram {
+        self.types = tree.types;
+
         let globals = tree
             .globals
             .into_iter()
@@ -281,17 +294,6 @@ impl<'src> Transpiler<'src> {
             functions.push_front(func)
         }
 
-        // let type_defs = vec![TypeDef {
-        //     name: "TypeDescriptor".to_string(),
-        //     type_: CType::Struct(StructDefinition {
-        //         fields: HashMap::from([
-        //             ("kind".to_string(), CType::Ident(0, "TypeKind".to_string())),
-        //             ("inner".to_string(), CType::Ident(1, "TypeDescriptor".to_string())),
-        //             ("ptr_count".to_string(), CType::LongLongInt(0)),
-        //         ]),
-        //     }),
-        // }];
-
         CProgram {
             includes: mem::take(&mut self.required_includes),
             globals,
@@ -336,11 +338,9 @@ impl<'src> Transpiler<'src> {
             .filter_map(|p| {
                 let ident = self.insert_into_scope(p.name);
 
-                match p.type_ {
-                    Type::Int(_) | Type::Float(_) | Type::Bool(_) | Type::Char(_) => {
-                        Some((ident, p.type_.into()))
-                    }
-                    _ => None,
+                match self.lookup_type(p.type_) {
+                    Type::Never => None,
+                    other => Some((ident, other.into())),
                 }
             })
             .collect();
@@ -574,6 +574,49 @@ impl<'src> Transpiler<'src> {
 
                 return (stmts, Some(Expression::Ident(list_temp_ident)));
             }
+            AnalyzedExpression::Object(inner) => {
+                let obj_temp_ident = format!("object_temp{}", self.let_cnt);
+                self.let_cnt += 1;
+
+                let mut stmts = vec![Statement::VarDeclaration(VarDeclaration {
+                    name: obj_temp_ident.clone(),
+                    type_: CType::Ident(1, "HashMap".to_string()),
+                    expr: Expression::Call(Box::new(CallExpr {
+                        func: "hashmap_new".to_string(), // TODO: use vec in the long run?
+                        args: vec![],
+                    })),
+                })];
+
+                for (idx, value) in inner.members.iter().enumerate() {
+                    let temp_ident = format!("object_member_{}_n{}", value.key, self.let_cnt);
+
+                    let (mut expr_stmts, expr) = self.expression(value.value.clone());
+                    stmts.append(&mut expr_stmts);
+
+                    if let Some(expr) = expr {
+                        stmts.push(Statement::VarDeclaration(VarDeclaration {
+                            name: temp_ident.clone(),
+                            type_: value.value.result_type().into(),
+                            expr,
+                        }));
+                        self.let_cnt += 1;
+
+                        stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                            func: "hashmap_insert".to_string(),
+                            args: vec![
+                                Expression::Ident(obj_temp_ident.clone()),
+                                Expression::StringLiteral(value.key.clone()),
+                                Expression::Prefix(Box::new(PrefixExpr {
+                                    expr: Expression::Ident(temp_ident),
+                                    op: PrefixOp::Ref,
+                                })),
+                            ],
+                        }))));
+                    }
+                }
+
+                return (stmts, Some(Expression::Ident(obj_temp_ident)));
+            }
             other => unreachable!("Not supported: {other:?}"),
         };
         (vec![], expr)
@@ -713,8 +756,7 @@ impl<'src> Transpiler<'src> {
                         args: vec![
                             lhs.expect("exprs cannot be `None `when used here"),
                             rhs.expect("exprs cannot be None when used here"),
-                        ]
-                        .into(),
+                        ],
                     }))),
                 )
             }
@@ -850,14 +892,18 @@ impl<'src> Transpiler<'src> {
     }
 
     fn get_type_reflector(&mut self, type_: Type) -> String {
+        let type_ = self.lookup_type(type_);
+
         let c_type_kind = CTypeKind::from(&type_);
 
         match self.type_descriptor_map.get(&type_) {
             Some(old) => old.clone(),
             None => {
                 // Generate type descriptor id
-                let type_descriptor =
-                    format!("type_descriptor_{}", type_.to_string().replace(' ', "_"));
+                let type_descriptor = format!(
+                    "type_descriptor_{}",
+                    type_.sanitized_name().replace(' ', "_")
+                );
 
                 self.type_descriptor_declarations
                     .push(Statement::VarDefinition(
@@ -876,7 +922,7 @@ impl<'src> Transpiler<'src> {
                 };
 
                 self.type_descriptor_setup.push(Statement::Comment(
-                    format!("Type descriptor `{type_}`").into(),
+                    format!("Type descriptor `{}`", type_.sanitized_name()).into(),
                 ));
 
                 self.type_descriptor_setup
@@ -897,11 +943,40 @@ impl<'src> Transpiler<'src> {
 
                 self.type_descriptor_setup
                     .push(Statement::Assign(AssignStmt {
-                        assignee: format!("{type_descriptor}.inner"),
+                        assignee: format!("{type_descriptor}.list_inner"),
                         assignee_ptr_count: 0,
                         op: AssignOp::Basic,
-                        expr: inner_type_expr,
+                        expr: inner_type_expr.clone(),
                     }));
+
+                if let Type::Object(inner, _) = type_.clone() {
+                    self.type_descriptor_setup
+                        .push(Statement::Assign(AssignStmt {
+                            assignee: format!("{type_descriptor}.obj_fields"),
+                            assignee_ptr_count: 0,
+                            op: AssignOp::Basic,
+                            expr: Expression::Call(Box::new(CallExpr {
+                                func: "hashmap_new".to_string(),
+                                args: vec![],
+                            })),
+                        }));
+
+                    for field in inner {
+                        let field_type_descriptor = self.get_type_reflector(*field.type_.clone());
+                        self.type_descriptor_setup
+                            .push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                                func: "hashmap_insert".to_string(),
+                                args: vec![
+                                    Expression::Ident(format!("{type_descriptor}.obj_fields")),
+                                    Expression::StringLiteral(field.key),
+                                    Expression::Prefix(Box::new(PrefixExpr {
+                                        expr: Expression::Ident(field_type_descriptor),
+                                        op: PrefixOp::Ref,
+                                    })),
+                                ],
+                            }))));
+                    }
+                }
 
                 self.type_descriptor_map
                     .insert(type_, type_descriptor.clone());
@@ -953,7 +1028,11 @@ impl<'src> Transpiler<'src> {
             })
             .collect();
 
-        let type_list: Vec<Type> = node.args.iter().map(|arg| arg.result_type()).collect();
+        let type_list: Vec<Type> = node
+            .args
+            .iter()
+            .map(|arg| self.lookup_type(arg.result_type()))
+            .collect();
 
         // if the function is `print_list`, insert a type descriptor
         if func == "__hpi_internal_drucke" {
@@ -974,6 +1053,11 @@ impl<'src> Transpiler<'src> {
                     expr: args[idx].clone(),
                 }));
                 self.let_cnt += 1;
+
+                stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                    func: "__hpi_internal_libSAP_reset".to_string(),
+                    args: vec![],
+                }))));
 
                 new_args.push(Expression::Prefix(Box::new(PrefixExpr {
                     expr: Expression::Ident(temp_ident),
@@ -1024,7 +1108,7 @@ impl<'src> Transpiler<'src> {
 
                 Expression::Call(Box::new(CallExpr {
                     func: func.to_string(),
-                    args: vec![expr].into(),
+                    args: vec![expr],
                 }))
             }
             _ => Expression::Cast(Box::new(CastExpr {

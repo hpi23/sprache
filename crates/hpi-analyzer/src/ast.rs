@@ -1,9 +1,10 @@
-use std::{collections::HashSet, fmt::Display};
+use std::collections::{HashMap, HashSet};
 
-use hpi_parser::ast::{AssignOp, InfixOp, PrefixOp, Type, ObjectTypeField};
+use hpi_parser::ast::{AssignOp, InfixOp, ObjectTypeField, PrefixOp, Type};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnalyzedProgram<'src> {
+    pub types: HashMap<&'src str, Type>,
     pub imports: Vec<AnalyzedBeantrageStmt<'src>>,
     pub globals: Vec<AnalyzedLetStmt<'src>>,
     pub functions: Vec<AnalyzedFunctionDefinition<'src>>,
@@ -177,7 +178,7 @@ impl AnalyzedExpression<'_> {
                     .map(|element| ObjectTypeField {
                         key: element.key.clone(),
                         type_: Box::new(element.value.result_type()),
-                    } )
+                    })
                     .collect();
                 Type::Object(members, 0)
             }

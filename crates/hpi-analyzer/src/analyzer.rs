@@ -269,6 +269,7 @@ impl<'src> Analyzer<'src> {
         match (bewerbung_fn, einschreibung_fn, studium_fn) {
             (Some(bewerbung_fn), Some(einschreibung_fn), Some(studium_fn)) => Ok((
                 AnalyzedProgram {
+                    types: self.types.iter().map(|(key, value)| (*key, value.inner.clone())).collect(),
                     imports,
                     globals,
                     functions,

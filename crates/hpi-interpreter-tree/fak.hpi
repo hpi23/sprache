@@ -1,0 +1,14 @@
+beantrage Drucke von Drucker;
+
+funk Bewerbung() ergibt Zeichenkette {
+  "Bitte nehmt mich!"
+}
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+  // yeah! es hat geklappt!
+  setze Zahl _ auf Matrikelnummer;
+}
+
+funk Studium() ergibt Nichts {
+  Drucke("aHi lol!".Ersetze("lol"/ "mom!"));
+}

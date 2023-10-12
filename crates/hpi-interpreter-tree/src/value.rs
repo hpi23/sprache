@@ -1,6 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
 use hpi_analyzer::Type;
+use hpi_parser::ast::ObjectTypeField;
 
 use crate::interpreter;
 
@@ -58,7 +59,7 @@ impl Value {
                 let inner = inner
                     .borrow()
                     .iter()
-                    .map(|element| (element.0.clone(), element.1.as_type()))
+                    .map(|(key, value)| ObjectTypeField { key: key.clone(), type_: Box::new(value.as_type()) })
                     .collect();
 
                 Type::Object(inner, 0)
@@ -109,9 +110,12 @@ fn list_contains(val: &Value, args: Vec<Value>) -> Value {
 fn string_split(val: &Value, args: Vec<Value>) -> Value {
     match (val, &args[0]) {
         (Value::String(string), Value::String(split)) => {
-            let raw = string.split(split).map(|element| Value::String(element.to_string())).collect();
+            let raw = string
+                .split(split)
+                .map(|element| Value::String(element.to_string()))
+                .collect();
             Value::List(Rc::new(RefCell::new(raw)))
-        },
+        }
         _ => unreachable!("the analyzer prevents this: {val:?}"),
     }
 }
@@ -120,7 +124,7 @@ fn string_startswith(val: &Value, args: Vec<Value>) -> Value {
     match (val, &args[0]) {
         (Value::String(string), Value::String(startswith)) => {
             Value::Bool(string.starts_with(startswith))
-        },
+        }
         _ => unreachable!("the analyzer prevents this: {val:?}"),
     }
 }
@@ -129,7 +133,7 @@ fn string_replace(val: &Value, args: Vec<Value>) -> Value {
     match (val, &args[0], &args[1]) {
         (Value::String(string), Value::String(replacewhat), Value::String(replacewith)) => {
             Value::String(string.replace(replacewhat, replacewith).to_string())
-        },
+        }
         _ => unreachable!("the analyzer prevents this: {val:?}"),
     }
 }

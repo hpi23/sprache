@@ -1,21 +1,23 @@
-fn __rush_internal_pow_int(mut base: int, mut exp: int) -> int {
-    if exp < 0 {
-        return 0;
+funk __hpi_internal_pow_int(Zahl Basis / Zahl Exponent) ergibt Zahl {
+    falls Exponent < 0 {
+        überweise 0;
     }
-    if exp == 0 {
-        return 1;
+    falls Exponent == 0 {
+        überweise 1;
     }
 
-    let mut acc = 1;
-    while exp > 1 {
-        if (exp & 1) == 1 {
-            acc *= base;
+    setze Zahl Akkumulator auf 1;
+    solange Exponent > 1 {
+        falls (Exponent & 1) == 1 {
+            Akkumulator *= Basis;
         }
-        exp /= 2;
-        base *= base;
+        Exponent := 2;
+        Basis *= Basis;
     }
 
-    acc * base
+    Akkumulator * Basis
 }
 
-fn main() {}
+funk Bewerbung() ergibt Zeichenkette { "_" }
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts { setze Zahl _ auf Matrikelnummer; }
+funk Studium() ergibt Nichts {}

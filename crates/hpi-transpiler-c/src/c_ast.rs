@@ -1,7 +1,8 @@
 use core::fmt;
 use std::{
+    borrow::Cow,
     collections::{HashMap, HashSet, VecDeque},
-    fmt::{Display, Formatter}, borrow::Cow,
+    fmt::{Display, Formatter},
 };
 
 use hpi_analyzer::{AssignOp, InfixOp, Type};
@@ -22,20 +23,26 @@ pub enum CTypeKind {
     String,
     Float,
     List,
+    Object,
     Null,
 }
 
 impl Display for CTypeKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            CTypeKind::Int => "TYPE_INT",
-            CTypeKind::Bool => "TYPE_BOOL",
-            CTypeKind::Char => "TYPE_CHAR",
-            CTypeKind::String => "TYPE_STRING",
-            CTypeKind::Float => "TYPE_FLOAT",
-            CTypeKind::List => "TYPE_LIST",
-            CTypeKind::Null => "TYPE_NULL",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                CTypeKind::Int => "TYPE_INT",
+                CTypeKind::Bool => "TYPE_BOOL",
+                CTypeKind::Char => "TYPE_CHAR",
+                CTypeKind::String => "TYPE_STRING",
+                CTypeKind::Float => "TYPE_FLOAT",
+                CTypeKind::List => "TYPE_LIST",
+                CTypeKind::Object => "TYPE_OBJECT",
+                CTypeKind::Null => "TYPE_NULL",
+            }
+        )
     }
 }
 
@@ -48,8 +55,9 @@ impl From<&Type> for CTypeKind {
             Type::Char(_) => Self::Char,
             Type::String(_) => Self::String,
             Type::List(_, _) => Self::List,
+            Type::Object(_, _) => Self::Object,
             Type::Nichts => Self::Null,
-            _ => unreachable!("These types cannot be converted: {value}")
+            _ => unreachable!("These types cannot be converted: {value}"),
         }
     }
 }
@@ -114,6 +122,7 @@ impl From<Type> for CType {
             Type::String(ptr) => Self::Ident(ptr + 1, "DynString".to_string()),
             Type::List(_, ptr) => Self::Ident(ptr + 1, "ListNode".to_string()),
             Type::Nichts | Type::Never => Self::Void,
+            Type::Object(_, ptr) => Self::Ident(ptr + 1, "HashMap".to_string()),
             Type::Unknown => panic!("tried to convert unknown type to CType"),
             other => unreachable!("Unsupported type conversion to CType: {other}"),
         }

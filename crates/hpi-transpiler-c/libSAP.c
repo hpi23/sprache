@@ -1,12 +1,19 @@
 #include "./libSAP.h"
 #include "/home/mik/Coding/hpi/hpi-c-tests/dynstring/dynstring.h"
 #include "/home/mik/Coding/hpi/hpi-c-tests/list/list.h"
+#include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
-bool newline = true;
+bool newline;
+int indent;
+
+void __hpi_internal_libSAP_reset() {
+  indent = 4;
+  newline = true;
+}
 
 void __hpi_internal_drucke(ssize_t num_args, ...) {
   va_list args;
@@ -32,7 +39,7 @@ void __hpi_internal_drucke(ssize_t num_args, ...) {
       printf("%c", *character);
       break;
     }
-    case TYPE_BOOl: {
+    case TYPE_BOOL: {
       int *bool_ = va_arg(args, int *);
       if (*bool_) {
         printf("%s", "true");
@@ -48,8 +55,8 @@ void __hpi_internal_drucke(ssize_t num_args, ...) {
       printf("[");
 
       while (list != NULL) {
-        TypeDescriptor new_type = {.kind = type.inner->kind,
-                                   .inner = type.inner->inner,
+        TypeDescriptor new_type = {.kind = type.list_inner->kind,
+                                   .list_inner = type.list_inner->list_inner,
                                    .ptr_count = 0};
 
         bool old_newline = newline;
@@ -67,9 +74,56 @@ void __hpi_internal_drucke(ssize_t num_args, ...) {
 
       break;
     }
+    case TYPE_OBJECT: {
+      HashMap **map_ptr = va_arg(args, HashMap **);
+      HashMap *map = *map_ptr;
+
+      ListNode *keys = hashmap_keys(map);
+
+      printf("Objekt {\n");
+
+      while (keys != NULL) {
+        char *key = keys->value;
+        MapGetResult res = hashmap_get(map, key);
+        assert(res.found);
+
+        MapGetResult type_res = hashmap_get(type.obj_fields, key);
+        assert(type_res.found);
+
+        TypeDescriptor type_descriptor = *(TypeDescriptor *)type_res.value;
+
+        for (int i = 0; i < indent; i++) {
+          printf(" ");
+        }
+
+        printf("%s: ", key);
+        bool old_newline = newline;
+        newline = false;
+        indent += 4;
+        __hpi_internal_drucke(1, type_descriptor, res.value);
+        indent -= 4;
+        newline = old_newline;
+
+        if (keys->next != NULL) {
+          printf(",");
+          printf("\n");
+        }
+
+        keys = keys->next;
+      }
+
+      printf("\n");
+      for (int i = 0; i < indent - 4; i++) {
+        printf(" ");
+      }
+
+      printf("}");
+
+      break;
+    }
     case TYPE_STRING: {
       DynString **string = va_arg(args, DynString **);
-      char * string_raw = dynstring_as_cstr(*string);
+      char *string_raw = dynstring_as_cstr(*string);
 
       printf("%s", string_raw);
 
@@ -78,7 +132,7 @@ void __hpi_internal_drucke(ssize_t num_args, ...) {
     }
     }
 
-    if (i < num_args) {
+    if (i < num_args && num_args > 1) {
       printf(" ");
     }
   }

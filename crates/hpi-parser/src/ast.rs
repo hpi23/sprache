@@ -4,8 +4,8 @@ use crate::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ObjectTypeField {
-     pub key: String,
-     pub type_: Box<Type>,
+    pub key: String,
+    pub type_: Box<Type>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -30,6 +30,61 @@ pub enum Type {
     Unknown,
     /// Internal use for giving types a name
     Ident(String, usize),
+}
+
+impl Type {
+    pub fn sanitized_name(&self) -> String {
+        match self {
+            Self::Int(indirections) => format!("{}Zahl", "Zeiger_auf_".repeat(*indirections)),
+            Self::Float(indirections) => {
+                format!("{}Fliesskommazahl", "Zeiger_auf_".repeat(*indirections))
+            }
+            Self::Bool(indirections) => {
+                format!("{}Wahrheitswert", "Zeiger auf ".repeat(*indirections))
+            }
+            Self::Char(indirections) => format!("{}Zeichen", "Zeiger_auf_".repeat(*indirections)),
+            Self::String(indirections) => {
+                format!("{}Zeichenkette", "Zeiger_auf_".repeat(*indirections))
+            }
+            Self::List(inner, indirections) => {
+                format!("{}Liste_von_{}", "Zeiger_auf_".repeat(*indirections), inner)
+            }
+            Self::AnyObject(indirections) => {
+                format!("{}Speicherbox", "Zeiger_auf_".repeat(*indirections))
+            }
+            Self::Function {
+                params,
+                result_type,
+            } => {
+                format!(
+                    "funk({}) ergibt {result_type}",
+                    params
+                        .iter()
+                        .map(|typ| typ.to_string())
+                        .collect::<Vec<String>>()
+                        .join(" / ")
+                )
+            }
+            Self::Object(fields, ptr) => {
+                let members = fields
+                    .iter()
+                    .map(|element| format!("{}_{}", element.type_.sanitized_name(), element.key))
+                    .collect::<Vec<String>>()
+                    .join("_DELIM_");
+
+                format!(
+                    "{}Objekt_BEGIN_{}_END",
+                    "Zeiger_auf_".repeat(*ptr),
+                    members,
+                )
+            }
+            Self::Any => "Unbekannt".to_string(),
+            Self::Nichts =>  "Nichts".to_string(),
+            Self::Never => "Niemals".to_string(),
+            Self::Unknown => "{{unknown}}".to_string(),
+            Self::Ident(inner, ptr) => format!("{}{inner}", "Zeiger_auf_".repeat(*ptr)),
+        }
+    }
 }
 
 impl Display for Type {

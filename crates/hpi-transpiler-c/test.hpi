@@ -4,13 +4,25 @@ funk Studium() ergibt Nichts {}
 funk Bewerbung() ergibt Zeichenkette { "Hello World!" }
 
 funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
-    setze Liste von Zahl Meine_Liste auf [ 1 / 2 / 3 ];
-    Drucke(Meine_Liste);
+     // Drucke("Matrikelnummer:" / Matrikelnummer);
 
-    // setze Liste von Liste von Zahl list2 auf [ [ 4 / 5 ] / [ 6 / 7 ] ];
-    // Drucke(list2);
+    datentyp Zugangsdaten auf Objekt {
+            Zeichenkette Nutzername /
+            Zeichenkette Passwort
+    };
 
-    Drucke(1 / 3,1415 / "Hallo Welt!");
-    Drucke(1 / 3,1415 / "Hallo Welt!");
+     datentyp Nutzer auf Objekt {
+        Zeichenkette Name /
+        Zugangsdaten credentials
+     };
+
+     setze Nutzer Mein_Objekt auf erstelle {
+        Zeichenkette Name auf "Mik Müller" /
+        Zugangsdaten credentials auf erstelle {
+            Zeichenkette Nutzername auf "mik" /
+            Zeichenkette Passwort auf "passw0rd"
+        }
+     };
+
+     Drucke(Mein_Objekt);
 }
-

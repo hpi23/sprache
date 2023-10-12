@@ -509,6 +509,7 @@ dependencies = [
  "chrono",
  "getrandom",
  "hpi-analyzer",
+ "hpi-parser",
  "reqwest",
  "serde",
  "serde_json",
