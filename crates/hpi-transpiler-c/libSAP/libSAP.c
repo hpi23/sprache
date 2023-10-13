@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 bool newline;
 int indent;
@@ -141,4 +142,24 @@ void __hpi_internal_drucke(ssize_t num_args, ...) {
   if (newline) {
     printf("\n");
   }
+}
+
+DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, ...) {
+  DynString *buf = dynstring_new();
+
+  va_list args;
+
+  va_start(args, fmt);
+
+  char * fmt_str = dynstring_as_cstr(fmt);
+  ssize_t fmt_len = strlen(fmt_str);
+
+  for (int i = 0; i < fmt_len; i++) {
+      if (fmt_str[i] == '%') {
+      } else {
+
+      }
+  }
+
+  return buf;
 }

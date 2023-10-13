@@ -421,18 +421,17 @@ impl<'src> Transpiler<'src> {
     }
 
     fn let_stmt(&mut self, node: AnalyzedLetStmt<'src>) -> Vec<Statement> {
-        println!("LET: {:?}", CType::from(node.expr.result_type()));
-
         let type_ = node.expr.result_type().into();
-        let (mut stmts, expr) = self.expression(node.expr);
+        let (mut stmts, expr) = self.expression(node.expr.clone());
 
         let name = self.insert_into_scope(node.name);
 
         if let Some(expr) = expr {
             let stmt = match type_ {
                 CType::Void => Statement::Expr(expr),
-                _ => Statement::VarDeclaration(VarDeclaration { name, type_, expr }),
+                _ => Statement::VarDeclaration(VarDeclaration { name, type_: type_.clone(), expr }),
             };
+
             stmts.push(stmt)
         }
 
@@ -1000,6 +999,10 @@ impl<'src> Transpiler<'src> {
                 self.required_includes.insert("./libSAP.h");
                 "__hpi_internal_drucke".to_string()
             }
+            AnalyzedCallBase::Ident("Formatiere") => {
+                self.required_includes.insert("./libSAP.h");
+                "__hpi_internal_fmt".to_string()
+            }
             AnalyzedCallBase::Ident(other) => self
                 .funcs
                 .get(other)
@@ -1034,38 +1037,74 @@ impl<'src> Transpiler<'src> {
             .map(|arg| self.lookup_type(arg.result_type()))
             .collect();
 
-        // if the function is `print_list`, insert a type descriptor
-        if func == "__hpi_internal_drucke" {
-            let mut new_args = vec![];
+        match func.as_str() {
+            "__hpi_internal_fmt" => {
+                let mut new_args = vec![];
 
-            new_args.push(Expression::Int(args.len() as i64));
+                new_args.push(Expression::Int(args.len() as i64 - 1));
 
-            for (idx, _arg) in args.clone().iter().enumerate() {
-                new_args.push(Expression::Ident(
-                    self.get_type_reflector(type_list[idx].clone()),
-                ));
+                new_args.push(args[0].clone());
 
-                let temp_ident = format!("print_ptr_{}", self.let_cnt);
+                for (idx, _arg) in args[1..].iter().enumerate() {
+                    new_args.push(Expression::Ident(
+                        self.get_type_reflector(type_list[idx + 1].clone()),
+                    ));
 
-                stmts.push(Statement::VarDeclaration(VarDeclaration {
-                    name: temp_ident.clone(),
-                    type_: type_list[idx].clone().into(),
-                    expr: args[idx].clone(),
-                }));
-                self.let_cnt += 1;
+                    let temp_ident = format!("fmt_ptr_{}", self.let_cnt);
 
-                stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
-                    func: "__hpi_internal_libSAP_reset".to_string(),
-                    args: vec![],
-                }))));
+                    stmts.push(Statement::VarDeclaration(VarDeclaration {
+                        name: temp_ident.clone(),
+                        type_: type_list[idx + 1].clone().into(),
+                        expr: _arg.clone(),
+                    }));
+                    self.let_cnt += 1;
 
-                new_args.push(Expression::Prefix(Box::new(PrefixExpr {
-                    expr: Expression::Ident(temp_ident),
-                    op: PrefixOp::Ref,
-                })));
+                    stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                        func: "__hpi_internal_libSAP_reset".to_string(),
+                        args: vec![],
+                    }))));
+
+                    new_args.push(Expression::Prefix(Box::new(PrefixExpr {
+                        expr: Expression::Ident(temp_ident),
+                        op: PrefixOp::Ref,
+                    })));
+                }
+
+                args = new_args;
             }
+            "__hpi_internal_drucke" => {
+                let mut new_args = vec![];
 
-            args = new_args;
+                new_args.push(Expression::Int(args.len() as i64));
+
+                for (idx, _arg) in args.clone().iter().enumerate() {
+                    new_args.push(Expression::Ident(
+                        self.get_type_reflector(type_list[idx].clone()),
+                    ));
+
+                    let temp_ident = format!("fmt_ptr_{}", self.let_cnt);
+
+                    stmts.push(Statement::VarDeclaration(VarDeclaration {
+                        name: temp_ident.clone(),
+                        type_: type_list[idx].clone().into(),
+                        expr: args[idx].clone(),
+                    }));
+                    self.let_cnt += 1;
+
+                    stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                        func: "__hpi_internal_libSAP_reset".to_string(),
+                        args: vec![],
+                    }))));
+
+                    new_args.push(Expression::Prefix(Box::new(PrefixExpr {
+                        expr: Expression::Ident(temp_ident),
+                        op: PrefixOp::Ref,
+                    })));
+                }
+
+                args = new_args;
+            }
+            _ => {}
         }
 
         let expr = Box::new(CallExpr {
@@ -1074,18 +1113,18 @@ impl<'src> Transpiler<'src> {
         });
 
         match node.result_type {
-            Type::Int(_) | Type::Float(_) | Type::Bool(_) | Type::Char(_) => {
+            Type::Never => {
+                if !none_arg {
+                    stmts.push(Statement::Expr(Expression::Call(expr)));
+                }
+                (stmts, None)
+            }
+            _ => {
                 let expr = match none_arg {
                     true => None,
                     false => Some(Expression::Call(expr)),
                 };
                 (stmts, expr)
-            }
-            _ => {
-                if !none_arg {
-                    stmts.push(Statement::Expr(Expression::Call(expr)));
-                }
-                (stmts, None)
             }
         }
     }
