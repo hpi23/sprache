@@ -1,4 +1,4 @@
-use std::{collections::HashMap, mem};
+use std::mem;
 
 use either::Either;
 

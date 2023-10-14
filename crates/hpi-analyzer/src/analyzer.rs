@@ -2181,7 +2181,7 @@ impl<'src> Analyzer<'src> {
                                     ));
                                 }
 
-                                let start_idx = if fixed.is_empty() { 0 } else { fixed.len() - 1 };
+                                let start_idx = if fixed.is_empty() { 0 } else { fixed.len() };
 
                                 let mut args_temp = node.args[start_idx..]
                                     .iter()

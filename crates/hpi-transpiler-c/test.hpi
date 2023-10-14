@@ -5,28 +5,6 @@ funk Studium() ergibt Nichts {}
 funk Bewerbung() ergibt Zeichenkette { "Hello World!" }
 
 funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
-      // // Drucke("Matrikelnummer:" / Matrikelnummer);
- // 
-     // datentyp Zugangsdaten auf Objekt {
-             // Zeichenkette Nutzername /
-             // Zeichenkette Passwort
-     // };
- // 
-      // datentyp Nutzer auf Objekt {
-         // Zeichenkette Name /
-         // Zugangsdaten credentials
-      // };
- // 
-      // setze Nutzer Mein_Objekt auf erstelle {
-         // Zeichenkette Name auf "Mik Müller" /
-         // Zugangsdaten credentials auf erstelle {
-             // Zeichenkette Nutzername auf "mik" /
-             // Zeichenkette Passwort auf "passw0rd"
-         // }
-      // };
- // 
-      // Drucke(Mein_Objekt);
-
-      setze Zeichenkette foo auf Formatiere("A number: %d" / 69);
-      Drucke(foo);
+      setze Zeichenkette Foo auf Formatiere("Meine Matrikelnummer: %d" / Matrikelnummer);
+      Drucke(Foo);
 }

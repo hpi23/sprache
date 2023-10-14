@@ -62,12 +62,6 @@ impl From<&Type> for CTypeKind {
     }
 }
 
-pub struct HpiTypeStruct {
-    base_type: CTypeKind,
-    inner: Box<HpiTypeStruct>,
-    ptr_count: usize,
-}
-
 /// END REFLECTION
 
 #[derive(Debug, Clone)]

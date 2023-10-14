@@ -8,7 +8,7 @@ run:
 	cargo r $(HPI_FILE)
 	bat output.c
 	gcc output.c \
-		libSAP.c \
+		libSAP/*.c \
 		~/Coding/hpi/hpi-c-tests/list/list.c \
 		~/Coding/hpi/hpi-c-tests/dynstring/dynstring.c \
 		~/Coding/hpi/hpi-c-tests/hashmap/map.c \

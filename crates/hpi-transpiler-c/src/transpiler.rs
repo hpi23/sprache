@@ -28,8 +28,6 @@ pub struct Transpiler<'src> {
     let_cnt: usize,
     /// Specifies which header files need to be included.
     required_includes: HashSet<&'static str>,
-    /// Unique ID of a type descriptor, which is incremented automatically
-    type_descriptor_count: usize,
     /// Hashmap of type descriptors and their C-structs
     type_descriptor_map: HashMap<Type, String>,
     /// List of type descriptors which need to be set up
@@ -76,7 +74,6 @@ impl<'src> Transpiler<'src> {
                 "Type definitions for runtime 'reflection'".into(),
             )],
             type_descriptor_map: HashMap::new(),
-            type_descriptor_count: 0,
             type_descriptor_setup: vec![],
         }
     }
@@ -147,7 +144,11 @@ impl<'src> Transpiler<'src> {
                 AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
                     result_type: Type::Nichts,
                     func: AnalyzedCallBase::Ident("einschreibung"),
-                    args: vec![AnalyzedExpression::Int(42)],
+                    args: vec![AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
+                        result_type: Type::Int(0),
+                        func: AnalyzedCallBase::Ident("__hpi_internal_generate_matrikelnummer"),
+                        args: vec![],
+                    }))],
                 }))),
                 AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
                     result_type: Type::String(0),
@@ -429,7 +430,11 @@ impl<'src> Transpiler<'src> {
         if let Some(expr) = expr {
             let stmt = match type_ {
                 CType::Void => Statement::Expr(expr),
-                _ => Statement::VarDeclaration(VarDeclaration { name, type_: type_.clone(), expr }),
+                _ => Statement::VarDeclaration(VarDeclaration {
+                    name,
+                    type_: type_.clone(),
+                    expr,
+                }),
             };
 
             stmts.push(stmt)
@@ -586,7 +591,7 @@ impl<'src> Transpiler<'src> {
                     })),
                 })];
 
-                for (idx, value) in inner.members.iter().enumerate() {
+                for value in inner.members.iter() {
                     let temp_ident = format!("object_member_{}_n{}", value.key, self.let_cnt);
 
                     let (mut expr_stmts, expr) = self.expression(value.value.clone());
@@ -996,12 +1001,16 @@ impl<'src> Transpiler<'src> {
             AnalyzedCallBase::Ident("einschreibung") => "einschreibung".to_string(),
             AnalyzedCallBase::Ident("studium") => "studium".to_string(),
             AnalyzedCallBase::Ident("Drucke") => {
-                self.required_includes.insert("./libSAP.h");
+                self.required_includes.insert("./libSAP/libSAP.h");
                 "__hpi_internal_drucke".to_string()
             }
             AnalyzedCallBase::Ident("Formatiere") => {
-                self.required_includes.insert("./libSAP.h");
+                self.required_includes.insert("./libSAP/libSAP.h");
                 "__hpi_internal_fmt".to_string()
+            }
+            AnalyzedCallBase::Ident("__hpi_internal_generate_matrikelnummer") => {
+                self.required_includes.insert("./libSAP/libSAP.h");
+                "__hpi_internal_generate_matrikelnummer".to_string()
             }
             AnalyzedCallBase::Ident(other) => self
                 .funcs
