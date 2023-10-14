@@ -1,4 +1,5 @@
 #include "./libSAP.h"
+#include "./format.h"
 #include "/home/mik/Coding/hpi/hpi-c-tests/dynstring/dynstring.h"
 #include "/home/mik/Coding/hpi/hpi-c-tests/list/list.h"
 #include <assert.h>
@@ -7,6 +8,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 bool newline;
 int indent;
@@ -14,6 +16,11 @@ int indent;
 void __hpi_internal_libSAP_reset() {
   indent = 4;
   newline = true;
+}
+
+int64_t __hpi_internal_generate_matrikelnummer() {
+  // TODO: use lfsr instead of just time
+  return time(NULL);
 }
 
 void __hpi_internal_drucke(ssize_t num_args, ...) {
@@ -145,21 +152,28 @@ void __hpi_internal_drucke(ssize_t num_args, ...) {
 }
 
 DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, ...) {
-  DynString *buf = dynstring_new();
-
   va_list args;
 
   va_start(args, fmt);
 
-  char * fmt_str = dynstring_as_cstr(fmt);
-  ssize_t fmt_len = strlen(fmt_str);
+  char *fmt_str = dynstring_as_cstr(fmt);
 
-  for (int i = 0; i < fmt_len; i++) {
-      if (fmt_str[i] == '%') {
-      } else {
+  ListNode *input_args_temp = list_new();
+  ListNode *input_args = input_args_temp;
 
-      }
+  for (int i = 0; i < num_args; i++) {
+    FmtArg *fmt_arg = malloc(sizeof(FmtArg));
+    TypeDescriptor fmt_type = va_arg(args, TypeDescriptor);
+    FmtArg *arg = (FmtArg *)malloc(sizeof(FmtArg));
+    arg->value = va_arg(args, void *);
+    arg->type = fmt_type;
+    list_append(input_args, arg);
   }
 
-  return buf;
+  Formatter *formatter = formatter_new(fmt_str, input_args);
+  DynString *output = formatter_fmt(formatter);
+
+  list_free(input_args_temp);
+
+  return output;
 }

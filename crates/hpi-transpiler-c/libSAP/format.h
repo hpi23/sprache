@@ -16,5 +16,5 @@ typedef struct {
   DynString *output_buf;
 } Formatter;
 
-Formatter *formatter_new(char *fmt, Vec *input_args);
+Formatter *formatter_new(char *fmt, ListNode *input_args);
 DynString *formatter_fmt(Formatter *formatter);
