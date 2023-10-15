@@ -117,6 +117,7 @@ impl From<Type> for CType {
             Type::List(_, ptr) => Self::Ident(ptr + 1, "ListNode".to_string()),
             Type::Nichts | Type::Never => Self::Void,
             Type::Object(_, ptr) => Self::Ident(ptr + 1, "HashMap".to_string()),
+            Type::AnyObject(ptr) => Self::Ident(ptr + 1, "HashMap".to_string()),
             Type::Unknown => panic!("tried to convert unknown type to CType"),
             other => unreachable!("Unsupported type conversion to CType: {other}"),
         }

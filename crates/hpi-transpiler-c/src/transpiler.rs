@@ -32,6 +32,8 @@ pub struct Transpiler<'src> {
     type_descriptor_map: HashMap<Type, String>,
     /// List of type descriptors which need to be set up
     type_descriptor_declarations: Vec<Statement>,
+    /// Global variable setup function
+    global_variable_setup: Vec<Statement>,
     /// Type descriptor setup function
     type_descriptor_setup: Vec<Statement>,
     /// If set to `true`, the transpiler will emit some comments in the `C` code.
@@ -75,6 +77,7 @@ impl<'src> Transpiler<'src> {
             )],
             type_descriptor_map: HashMap::new(),
             type_descriptor_setup: vec![],
+            global_variable_setup: vec![],
         }
     }
 
@@ -114,7 +117,7 @@ impl<'src> Transpiler<'src> {
         let globals = tree
             .globals
             .into_iter()
-            .flat_map(|g| self.let_stmt(g))
+            .flat_map(|g| self.let_stmt(g, true))
             .collect();
 
         for func in &tree.functions {
@@ -134,6 +137,11 @@ impl<'src> Transpiler<'src> {
                 AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
                     result_type: Type::String(0),
                     func: AnalyzedCallBase::Ident("type_descriptor_setup"),
+                    args: vec![],
+                }))),
+                AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
+                    result_type: Type::String(0),
+                    func: AnalyzedCallBase::Ident("global_variable_setup"),
                     args: vec![],
                 }))),
                 AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
@@ -191,6 +199,13 @@ impl<'src> Transpiler<'src> {
             type_: Type::Nichts.into(),
             params: vec![],
             body: self.type_descriptor_setup.clone(),
+        });
+
+        functions.push_back(FnDefinition {
+            name: "global_variable_setup".to_string(),
+            type_: Type::Nichts.into(),
+            params: vec![],
+            body: self.global_variable_setup.clone(),
         });
 
         self.in_main_fn = true;
@@ -381,7 +396,7 @@ impl<'src> Transpiler<'src> {
 
     fn statement(&mut self, node: AnalyzedStatement<'src>) -> Vec<Statement> {
         match node {
-            AnalyzedStatement::Let(node) => self.let_stmt(node),
+            AnalyzedStatement::Let(node) => self.let_stmt(node, false),
             AnalyzedStatement::Aendere(node) => self.aendere_stmt(node),
             AnalyzedStatement::Return(node) => self.return_stmt(node),
             AnalyzedStatement::While(node) => self.while_stmt(node),
@@ -421,11 +436,40 @@ impl<'src> Transpiler<'src> {
         stmts
     }
 
-    fn let_stmt(&mut self, node: AnalyzedLetStmt<'src>) -> Vec<Statement> {
+    fn let_stmt(&mut self, node: AnalyzedLetStmt<'src>, is_global: bool) -> Vec<Statement> {
         let type_ = node.expr.result_type().into();
         let (mut stmts, expr) = self.expression(node.expr.clone());
 
         let name = self.insert_into_scope(node.name);
+
+        if is_global {
+            match node.expr.result_type() {
+                Type::String(0) => {
+                    self.global_variable_setup.push(Statement::Comment(
+                        format!("Setup for global variable `{name}`").into(),
+                    ));
+                    self.global_variable_setup.append(&mut stmts);
+
+                    if let Some(expr) = expr {
+                        self.global_variable_setup
+                            .push(Statement::Assign(AssignStmt {
+                                assignee: name.clone(),
+                                assignee_ptr_count: 0,
+                                op: AssignOp::Basic,
+                                expr,
+                            }));
+                    }
+
+                    return vec![Statement::VarDefinition(
+                        name,
+                        node.expr.result_type().into(),
+                    )];
+                }
+                Type::List(_, _) => todo!(),
+                Type::Object(_, _) => todo!(),
+                _ => {}
+            }
+        }
 
         if let Some(expr) = expr {
             let stmt = match type_ {
@@ -621,7 +665,58 @@ impl<'src> Transpiler<'src> {
 
                 return (stmts, Some(Expression::Ident(obj_temp_ident)));
             }
-            other => unreachable!("Not supported: {other:?}"),
+            AnalyzedExpression::Index(index) => {
+                let (mut base_stmts, base_expr) = self.expression(index.expr.clone());
+                let (mut index_stmts, index_expr) = self.expression(index.index.clone());
+
+                base_stmts.append(&mut index_stmts);
+
+                match (index.expr.result_type(), index.index.result_type()) {
+                    (Type::List(_, 0), Type::Int(0)) => {
+                        self.required_includes.insert("./libSAP/libList.h");
+
+                        // let get_result_ident = format!("list_index_res{}", self.let_cnt);
+                        // self.let_cnt += 1;
+
+                        let list_index_call_expr = Expression::Call(Box::new(CallExpr {
+                            func: "__hpi_internal_list_index".to_string(),
+                            args: vec![
+                                base_expr.expect("unreachable"),
+                                index_expr.expect("unreachable"),
+                            ],
+                        }));
+
+                        // base_stmts.push(Statement::VarDeclaration(VarDeclaration {
+                        //     name: get_result_ident.clone(),
+                        //     type_: CType::Ident(0, "ListGetResult".to_string()),
+                        //     expr: list_index_call_expr.clone(),
+                        // }));
+
+                        let deref_expr = Expression::Prefix(Box::new(PrefixExpr {
+                            expr: Expression::Cast(Box::new(CastExpr {
+                                expr: list_index_call_expr,
+                                type_: index
+                                    .result_type
+                                    .add_ref()
+                                    .expect("This cannot fail")
+                                    .into(),
+                            })),
+                            op: PrefixOp::Deref,
+                        }));
+
+                        return (base_stmts, Some(deref_expr));
+                    }
+                    (_, _) => todo!("TODO"),
+                }
+            }
+            AnalyzedExpression::Member(node) => {
+                let (base_stmts, base_expr) = self.expression(node.expr);
+
+                // TODO: compile member access
+
+                return (base_stmts, base_expr);
+            }
+            AnalyzedExpression::Nichts => return (vec![], None),
         };
         (vec![], expr)
     }
@@ -665,7 +760,8 @@ impl<'src> Transpiler<'src> {
         stmts.append(&mut cond_stmts);
 
         let res_ident = match node.result_type {
-            Type::Int(_) | Type::Float(_) | Type::Bool(_) | Type::Char(_) => {
+            Type::Never => None,
+            _ => {
                 self.let_cnt += 1;
                 let ident = format!("if_res{}", self.let_cnt);
                 stmts.push(Statement::VarDefinition(
@@ -674,7 +770,6 @@ impl<'src> Transpiler<'src> {
                 ));
                 Some(ident)
             }
-            _ => None,
         };
 
         let then_block = match self.block_expr(node.then_block) {
@@ -991,22 +1086,75 @@ impl<'src> Transpiler<'src> {
     }
 
     fn call_expr(&mut self, node: AnalyzedCallExpr<'src>) -> (Vec<Statement>, Option<Expression>) {
+        let mut stmts = vec![];
+        let mut args = vec![];
+
+        let mut none_arg = false;
+
+        // TODO: this is ugly
+
+        for expr in node.args.iter() {
+            let type_ = expr.result_type();
+            let (mut expr_stmts, new_expr) = self.expression(expr.clone());
+
+            stmts.append(&mut expr_stmts);
+
+            if new_expr.is_none() && type_ != Type::Nichts {
+                none_arg = true;
+            }
+
+            if let Some(expr) = new_expr {
+                args.push(expr);
+            }
+        }
+
+        let type_list: Vec<Type> = node
+            .args
+            .iter()
+            .map(|arg| self.lookup_type(arg.result_type()))
+            .collect();
+
         let func = match node.func {
-            AnalyzedCallBase::Ident("exit") => {
+            AnalyzedCallBase::Ident("Aufgeben") => {
                 self.required_includes.insert("stdlib.h");
                 "exit".to_string()
             }
             AnalyzedCallBase::Ident("type_descriptor_setup") => "type_descriptor_setup".to_string(),
+            AnalyzedCallBase::Ident("global_variable_setup") => "global_variable_setup".to_string(),
             AnalyzedCallBase::Ident("bewerbung") => "bewerbung".to_string(),
             AnalyzedCallBase::Ident("einschreibung") => "einschreibung".to_string(),
             AnalyzedCallBase::Ident("studium") => "studium".to_string(),
+            AnalyzedCallBase::Ident("Zergliedere_JSON") => {
+                self.required_includes.insert("./libSAP/libJson.h");
+                "__hpi_internal_parse_json".to_string()
+            }
+            AnalyzedCallBase::Ident("Gliedere_JSON") => {
+                self.required_includes.insert("./libSAP/libJson.h");
+                "__hpi_internal_marshal_json".to_string()
+            }
             AnalyzedCallBase::Ident("Drucke") => {
                 self.required_includes.insert("./libSAP/libSAP.h");
-                "__hpi_internal_drucke".to_string()
+                "__hpi_internal_print".to_string()
+            }
+            AnalyzedCallBase::Ident("Umgebungsvariablen") => {
+                self.required_includes.insert("./libSAP/libSAP.h");
+                "__hpi_internal_env".to_string()
+            }
+            AnalyzedCallBase::Ident("Http") => {
+                self.required_includes.insert("./libSAP/libHttp.h");
+                "__hpi_internal_http".to_string()
             }
             AnalyzedCallBase::Ident("Formatiere") => {
                 self.required_includes.insert("./libSAP/libSAP.h");
                 "__hpi_internal_fmt".to_string()
+            }
+            AnalyzedCallBase::Ident("Zeit") => {
+                self.required_includes.insert("./libSAP/libSAP.h");
+                "__hpi_internal_time".to_string()
+            }
+            AnalyzedCallBase::Ident("Schlummere") => {
+                self.required_includes.insert("./libSAP/libSAP.h");
+                "__hpi_internal_sleep".to_string()
             }
             AnalyzedCallBase::Ident("__hpi_internal_generate_matrikelnummer") => {
                 self.required_includes.insert("./libSAP/libSAP.h");
@@ -1017,34 +1165,60 @@ impl<'src> Transpiler<'src> {
                 .get(other)
                 .unwrap_or_else(|| panic!("the analyzer guarantees valid function calls: {other}"))
                 .clone(),
-            AnalyzedCallBase::Expr(_) => unreachable!("Not supported"),
-        };
+            AnalyzedCallBase::Expr(inner) => match *inner {
+                AnalyzedExpression::Member(member) => {
+                    let (mut member_stmts, member_expr) = self.expression(member.expr.clone());
+                    stmts.append(&mut member_stmts);
 
-        let mut stmts = vec![];
-        let mut none_arg = false;
+                    match (member.expr.result_type(), member.member) {
+                        (Type::List(_, 0), "Länge") => {
+                            args.push(member_expr.expect("A list always produces a value"));
+                            "__hpi_internal_list_len".to_string()
+                        }
+                        (Type::List(_, 0), "Hinzufügen") => "__hpi_internal_list_push".to_string(),
+                        (Type::List(_, 0), "Enthält") => {
+                            self.required_includes.insert("./libSAP/libList.h");
+                            let temp_ident = format!("contains_ptr_{}", self.let_cnt);
 
-        let mut args: Vec<Expression> = node
-            .args
-            .iter()
-            .filter_map(|expr| {
-                let type_ = expr.result_type();
-                let (mut expr_stmts, new_expr) = self.expression(expr.clone());
+                            stmts.push(Statement::VarDeclaration(VarDeclaration {
+                                name: temp_ident.clone(),
+                                type_: type_list[0].clone().into(),
+                                expr: args
+                                    .pop()
+                                    .expect("This function always takes exactly 3 args"),
+                            }));
+                            self.let_cnt += 1;
 
-                stmts.append(&mut expr_stmts);
+                            args.push(member_expr.expect("A list always produces a value"));
 
-                if new_expr.is_none() && type_ != Type::Nichts {
-                    none_arg = true;
+                            args.push(Expression::Ident(
+                                self.get_type_reflector(node.args[0].result_type()),
+                            ));
+
+                            args.push(Expression::Prefix(Box::new(PrefixExpr {
+                                expr: Expression::Ident(temp_ident),
+                                op: PrefixOp::Ref,
+                            })));
+
+                            "__hpi_internal_list_contains".to_string()
+                        }
+                        (Type::AnyObject(0), "Nehmen") => "__hpi_internal_anyobj_take".to_string(),
+                        (Type::AnyObject(0), "Schlüssel") => {
+                            "__hpi_internal_anyobj_keys".to_string()
+                        }
+                        (Type::String(0), "Zertrenne") => "__hpi_internal_string_split".to_string(),
+                        (Type::String(0), "Startet_Mit") => {
+                            "__hpi_internal_string_starts_with".to_string()
+                        }
+                        (Type::String(0), "Ersetze") => "__hpi_internal_string_replace".to_string(),
+                        (base_type, member) => {
+                            unreachable!("Not supported: member `{member}` of base `{base_type}`")
+                        }
+                    }
                 }
-
-                new_expr
-            })
-            .collect();
-
-        let type_list: Vec<Type> = node
-            .args
-            .iter()
-            .map(|arg| self.lookup_type(arg.result_type()))
-            .collect();
+                other => unreachable!("Not supported: {other:?}"),
+            },
+        };
 
         match func.as_str() {
             "__hpi_internal_fmt" => {
@@ -1081,7 +1255,7 @@ impl<'src> Transpiler<'src> {
 
                 args = new_args;
             }
-            "__hpi_internal_drucke" => {
+            "__hpi_internal_print" => {
                 let mut new_args = vec![];
 
                 new_args.push(Expression::Int(args.len() as i64));
