@@ -48,11 +48,11 @@ void __hpi_internal_drucke(ssize_t num_args, ...) {
       break;
     }
     case TYPE_BOOL: {
-      int *bool_ = va_arg(args, int *);
+      bool *bool_ = va_arg(args, bool *);
       if (*bool_) {
-        printf("%s", "true");
+        printf("%s", "ja");
       } else {
-        printf("%s", "false");
+        printf("%s", "nein");
       }
       break;
     }

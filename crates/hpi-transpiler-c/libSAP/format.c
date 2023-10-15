@@ -197,9 +197,9 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
     assert(arg.type.ptr_count == 0);
 
     if (*(bool *)arg.value) {
-      dynstring_push_string(fmt->output_buf, "true");
+      dynstring_push_string(fmt->output_buf, "ja");
     } else {
-      dynstring_push_string(fmt->output_buf, "false");
+      dynstring_push_string(fmt->output_buf, "nein");
     }
 
     break;
