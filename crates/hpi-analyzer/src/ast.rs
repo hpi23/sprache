@@ -244,6 +244,7 @@ pub struct AnalyzedIdentExpr<'src> {
 pub struct AnalyzedObjectField<'src> {
     pub key: String,
     pub value: AnalyzedExpression<'src>,
+    pub result_type: Type,
 }
 
 #[derive(Debug, Clone, PartialEq)]

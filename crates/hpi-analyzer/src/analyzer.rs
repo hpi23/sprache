@@ -269,7 +269,11 @@ impl<'src> Analyzer<'src> {
         match (bewerbung_fn, einschreibung_fn, studium_fn) {
             (Some(bewerbung_fn), Some(einschreibung_fn), Some(studium_fn)) => Ok((
                 AnalyzedProgram {
-                    types: self.types.iter().map(|(key, value)| (*key, value.inner.clone())).collect(),
+                    types: self
+                        .types
+                        .iter()
+                        .map(|(key, value)| (*key, value.inner.clone()))
+                        .collect(),
                     imports,
                     globals,
                     functions,
@@ -842,9 +846,12 @@ impl<'src> Analyzer<'src> {
         let result_type = match never_type_span {
             Some(_) => Type::Never,
             // None => expr.clone().map_or(Type::Nichts, |expr| expr.result_type().clone()),
-            None => expr
-                .as_ref()
-                .map_or(Type::Nichts, |expr| expr.result_type()),
+            None => expr.as_ref().map_or(Type::Nichts, |expr| {
+                self.lookup_type(&Spanned {
+                    span: node.expr.expect("this cannot be None").span(),
+                    inner: expr.result_type(),
+                })
+            }),
         };
 
         if new_scope {
@@ -1207,12 +1214,17 @@ impl<'src> Analyzer<'src> {
     fn return_stmt(&mut self, node: UeberweiseStmt<'src>) -> AnalyzedStatement<'src> {
         // if there is an expression, visit it
         let expr_span = node.expr.as_ref().map(|expr| expr.span());
-        let expr = node.expr.map(|expr| self.expression(expr));
+        let expr = node
+            .expr
+            .map(|ref expr| (self.expression(expr.clone()), expr.span()));
 
         // get the return type based on the expr (Unit as fallback)
-        let expr_type = expr
-            .as_ref()
-            .map_or(Type::Nichts, |expr| expr.result_type());
+        let expr_type = expr.as_ref().map_or(Type::Nichts, |expr| {
+            self.lookup_type(&Spanned {
+                span: expr.1,
+                inner: expr.0.result_type(),
+            })
+        });
 
         if expr_type == Type::Never {
             self.warn_unreachable(
@@ -1233,7 +1245,7 @@ impl<'src> Analyzer<'src> {
             true,
         );
 
-        AnalyzedStatement::Return(expr)
+        AnalyzedStatement::Return(expr.map(|(expr, _)| expr))
     }
 
     /// Analyzes a [`WhileStmt`].
@@ -1244,18 +1256,22 @@ impl<'src> Analyzer<'src> {
         let mut never_loops = false;
 
         let cond_span = node.cond.span();
-        let cond = self.expression(node.cond);
+        let cond = self.expression(node.cond.clone());
+        let cond_result_type = self.lookup_type(&Spanned {
+            span: node.cond.span(),
+            inner: cond.result_type(),
+        });
 
         // check that the condition is of type bool
         if !matches!(
-            cond.result_type(),
+            cond_result_type,
             Type::Bool(0) | Type::Never | Type::Unknown
         ) {
             self.error(
                 ErrorKind::Type,
                 format!(
                     "Erwartete einen Ausdruck mit dem Datentyp `Wahrheitswert`, spürte hingegen `{}` auf.",
-                    cond.result_type()
+                    cond_result_type,
                 ),
                 vec!["Eine Bedingung muss immer ein Wahrheitswert (`ja` / `nein`) sein.".into()],
                 cond_span,
@@ -1394,7 +1410,7 @@ impl<'src> Analyzer<'src> {
             Expression::Block(node) => self.block_expr(*node),
             Expression::Object(node) => self.object_expr(*node),
             Expression::Grouped(node) => {
-                let expr = self.expression(*node.inner);
+                let expr = self.expression(*node.inner.clone());
                 match expr.as_constant() {
                     Some(expr) => expr,
                     None => AnalyzedExpression::Grouped(expr.into()),
@@ -1402,7 +1418,12 @@ impl<'src> Analyzer<'src> {
             }
         };
 
-        if self.check_any(res.result_type()) && self.create_err_if_expr_contains_any {
+        let res_result_type = self.lookup_type(&Spanned {
+            span: node_span,
+            inner: res.result_type(),
+        });
+
+        if self.check_any(res_result_type.clone()) && self.create_err_if_expr_contains_any {
             self.error(
                 ErrorKind::Semantic,
                 "Implizite Nutzung des `Unbekannt` Datentypen: explizite Annotation erforderlich.",
@@ -1416,7 +1437,7 @@ impl<'src> Analyzer<'src> {
         }
 
         // if this is a `!` expression, count it like a loop termination
-        if res.result_type() == Type::Never {
+        if res_result_type == Type::Never {
             self.current_loop_is_terminated = true;
         }
 
@@ -1438,17 +1459,21 @@ impl<'src> Analyzer<'src> {
             .iter()
             .map(|element| {
                 let expr = self.expression(element.value.clone());
+
+                let result_type = self.lookup_type(&element.key_type);
+
                 self.type_check(
                     &element.key_type,
                     &Spanned {
                         span: element.value.span(),
-                        inner: expr.result_type(),
+                        inner: result_type.clone(),
                     },
                     false,
                 );
                 AnalyzedObjectField {
                     key: element.key.inner.clone(),
                     value: expr,
+                    result_type,
                 }
             })
             .collect();
@@ -1467,18 +1492,22 @@ impl<'src> Analyzer<'src> {
 
     fn if_expr(&mut self, node: IfExpr<'src>) -> AnalyzedExpression<'src> {
         let cond_span = node.cond.span();
-        let cond = self.expression(node.cond);
+        let cond = self.expression(node.cond.clone());
+        let cond_result_type = self.lookup_type(&Spanned {
+            span: node.cond.span(),
+            inner: cond.result_type(),
+        });
 
         // check that the condition is of type bool
         if !matches!(
-            cond.result_type(),
+            cond_result_type,
             Type::Bool(0) | Type::Never | Type::Unknown
         ) {
             self.error(
                 ErrorKind::Type,
                 format!(
                     "Eine falls-Verzweigung benötigt eine Bedingung, die einen Wert mit dem Datentyp `Wahrheitswert` erzeugt.\n Stattdessen wurde ein Wert mit dem Datentyp `{}` aufgespürt.",
-                    cond.result_type()
+                    cond_result_type
                 ),
                 vec!["Eine Bedingung muss immer ein Wahrheitswert sein.".into()],
                 cond_span,
@@ -1604,7 +1633,12 @@ impl<'src> Analyzer<'src> {
             .map(move |element| {
                 let expr = self.expression(element.clone());
                 if let Some(old_type) = type_.clone() {
-                    if old_type != expr.result_type() {
+                    let expr_result_type = self.lookup_type(&Spanned {
+                        span: element.span(),
+                        inner: expr.result_type(),
+                    });
+
+                    if old_type != expr_result_type {
                         self.error(
                             ErrorKind::Semantic,
                             "Illegaler Datentyp in dieser Liste gefunden",
@@ -1629,8 +1663,15 @@ impl<'src> Analyzer<'src> {
         for scope in self.scopes.iter_mut().rev() {
             if let Some(var) = scope.get_mut(node.inner) {
                 var.used = true;
+
+                let inner = var.type_.clone();
+                let result_type = self.lookup_type(&Spanned {
+                    span: node.span,
+                    inner,
+                });
+
                 return AnalyzedExpression::Ident(AnalyzedIdentExpr {
-                    result_type: var.type_.clone(),
+                    result_type,
                     ident: node.inner,
                 });
             };
@@ -1659,8 +1700,13 @@ impl<'src> Analyzer<'src> {
         let expr_span = node.expr.span();
         let expr = self.expression(node.expr);
 
+        let expr_result_type = self.lookup_type(&Spanned {
+            span: expr_span,
+            inner: expr.result_type(),
+        });
+
         let result_type = match node.op {
-            PrefixOp::Not => match expr.result_type() {
+            PrefixOp::Not => match expr_result_type {
                 Type::Bool(0) => Type::Bool(0),
                 Type::Int(0) => Type::Int(0),
                 Type::Unknown => Type::Unknown,
@@ -1673,7 +1719,7 @@ impl<'src> Analyzer<'src> {
                         ErrorKind::Type,
                         format!(
                             "Der Präfixoperator `!` kann nicht auf Werten des Datentyps `{}` angewandt werden.",
-                            expr.result_type()
+                            expr_result_type,
                         ),
                         vec![],
                         node.span,
@@ -1681,7 +1727,7 @@ impl<'src> Analyzer<'src> {
                     Type::Unknown
                 }
             },
-            PrefixOp::Neg => match expr.result_type() {
+            PrefixOp::Neg => match expr_result_type {
                 Type::Int(0) => Type::Int(0),
                 Type::Float(0) => Type::Float(0),
                 Type::Unknown => Type::Unknown,
@@ -1694,7 +1740,7 @@ impl<'src> Analyzer<'src> {
                         ErrorKind::Type,
                         format!(
                             "Der Präfixoperator `-` kann nicht auf Werten des Datentyps `{}` angewandt werden.",
-                            expr.result_type()
+                            expr_result_type,
                         ),
                         vec![],
                         node.span,
@@ -1704,43 +1750,55 @@ impl<'src> Analyzer<'src> {
             },
             PrefixOp::Ref => {
                 match &expr {
-                    AnalyzedExpression::Ident(ident) => match ident.result_type.clone().add_ref() {
-                        Some(res) => {
-                            let var = self
-                                .scopes
-                                .iter_mut()
-                                .rev()
-                                .find_map(|s| s.get_mut(ident.ident))
-                                .expect("variable references are valid here");
+                    AnalyzedExpression::Ident(ident) => {
+                        let ident_result_type = self.lookup_type(&Spanned {
+                            span: expr_span,
+                            inner: ident.result_type.clone(),
+                        });
 
-                            // references (`&`) count as mutable variable accesses
-                            var.mutated = true;
+                        match ident_result_type.clone().add_ref() {
+                            Some(res) => {
+                                let var = self
+                                    .scopes
+                                    .iter_mut()
+                                    .rev()
+                                    .find_map(|s| s.get_mut(ident.ident))
+                                    .expect("variable references are valid here");
 
-                            res
-                        }
-                        None if ident.result_type == Type::Unknown => Type::Unknown,
-                        None => {
-                            self.error(
+                                // references (`&`) count as mutable variable accesses
+                                var.mutated = true;
+
+                                res
+                            }
+                            None if ident_result_type == Type::Unknown => Type::Unknown,
+                            None => {
+                                self.error(
                             ErrorKind::Type,
-                            format!("Variablen des Datentyps `{}` können nicht referenziert werden.", ident.result_type),
+                            format!("Variablen des Datentyps `{}` können nicht referenziert werden.", ident_result_type),
                             vec![],
                             node.span,
                         );
-                            Type::Unknown
+                                Type::Unknown
+                            }
                         }
-                    },
+                    }
                     _ => unreachable!("parser guarantees that only identifiers are referenced"),
                 }
             }
             PrefixOp::Deref => match &expr {
                 // TODO: improve this
                 AnalyzedExpression::Ident(ident) => {
-                    match ident.result_type.clone().sub_deref() {
+                    let ident_result_type = self.lookup_type(&Spanned {
+                        span: expr_span,
+                        inner: ident.result_type.clone(),
+                    });
+
+                    match ident_result_type.clone().sub_deref() {
                         Some(res) => res,
                         None => {
                             self.error(
                             ErrorKind::Type,
-                            format!("Wert des Datentyps `{}` kann nicht dereferenziert werden.", ident.result_type),
+                            format!("Wert des Datentyps `{}` kann nicht dereferenziert werden.", ident_result_type),
                             vec!["Nur Zeiger `Zeiger auf` können dereferenziert werden.".into()],
                             node.span,
                         );
@@ -1750,12 +1808,17 @@ impl<'src> Analyzer<'src> {
                     }
                 }
                 AnalyzedExpression::Prefix(expr) => {
-                    match expr.result_type.clone().sub_deref() {
+                    let expr_result_type = self.lookup_type(&Spanned {
+                        span: expr_span,
+                        inner: expr.result_type.clone(),
+                    });
+
+                    match expr_result_type.clone().sub_deref() {
                         Some(res) => res,
                         None => {
                             self.error(
                             ErrorKind::Type,
-                            format!("Wert des Datentyps `{}` kann nicht dereferenziert werden.", expr.result_type),
+                            format!("Wert des Datentyps `{}` kann nicht dereferenziert werden.", expr_result_type),
                             vec!["Nur Zeiger `Zeiger auf` können dereferenziert werden.".into()],
                             node.span,
                         );
