@@ -328,7 +328,7 @@ impl<'src> Analyzer<'src> {
 
     fn lookup_type(&mut self, input: &Spanned<'src, Type>) -> Type {
         match &input.inner {
-            Type::Ident(ident, 0) => match self.types.get(ident.as_str()) {
+            Type::Ident(ident, ptr) => match self.types.get(ident.as_str()) {
                 None => {
                     self.error(
                         ErrorKind::Type,
@@ -338,8 +338,16 @@ impl<'src> Analyzer<'src> {
                     );
                     Type::Unknown
                 }
-                Some(typ_) => typ_.inner.clone(),
+                Some(typ_) => typ_.inner.clone().with_ref(*ptr),
             },
+            Type::List(inner, ptr) => {
+                let new_inner = self.lookup_type(&Spanned {
+                    span: input.span,
+                    inner: *inner.clone(),
+                });
+
+                Type::List(Box::new(new_inner), *ptr)
+            }
             other => other.clone(),
         }
     }
@@ -1625,20 +1633,21 @@ impl<'src> Analyzer<'src> {
         &mut self,
         node: Spanned<'src, Vec<Expression<'src>>>,
     ) -> AnalyzedExpression<'src> {
-        let type_: Option<Type> = None;
+        let mut type_: Option<Type> = None;
 
         let new_list = node
             .inner
             .iter()
-            .map(move |element| {
+            .map(|element| {
                 let expr = self.expression(element.clone());
-                if let Some(old_type) = type_.clone() {
-                    let expr_result_type = self.lookup_type(&Spanned {
-                        span: element.span(),
-                        inner: expr.result_type(),
-                    });
 
-                    if old_type != expr_result_type {
+                let expr_result_type = self.lookup_type(&Spanned {
+                    span: element.span(),
+                    inner: expr.result_type(),
+                });
+
+                if let Some(ref old_type) = type_ {
+                    if old_type != &expr_result_type {
                         self.error(
                             ErrorKind::Semantic,
                             "Illegaler Datentyp in dieser Liste gefunden",
@@ -1649,12 +1658,17 @@ impl<'src> Analyzer<'src> {
                             element.span(),
                         )
                     }
+                } else {
+                    type_ = Some(expr_result_type);
                 }
                 expr
             })
             .collect();
 
-        AnalyzedExpression::List(AnalyzedListExpression { values: new_list })
+        AnalyzedExpression::List(AnalyzedListExpression {
+            values: new_list,
+            inner_type: type_.unwrap_or(Type::Unknown),
+        })
     }
 
     /// Searches all scopes for the requested variable.
@@ -2716,9 +2730,13 @@ impl<'src> Analyzer<'src> {
 
     fn index_expr(&mut self, node: IndexExpr<'src>) -> AnalyzedExpression<'src> {
         let expr = self.expression(node.expr);
-        let index = self.expression(node.index);
+        let index = self.expression(node.index.clone());
+        let index_type = self.lookup_type(&Spanned {
+            span: node.index.span(),
+            inner: index.result_type(),
+        });
 
-        match (expr.result_type(), index.result_type()) {
+        match (expr.result_type(), index_type) {
             (Type::List(inner, 0), Type::Int(0)) => {
                 AnalyzedExpression::Index(Box::new(AnalyzedIndexExpr {
                     result_type: *inner,

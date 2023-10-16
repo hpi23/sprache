@@ -151,15 +151,7 @@ impl AnalyzedExpression<'_> {
             Self::Bool(_) => Type::Bool(0),
             Self::Char(_) => Type::Char(0),
             Self::String(_) => Type::String(0),
-            Self::List(expr) => {
-                let mut inner_type = Type::Unknown;
-
-                if let Some(first) = expr.values.first() {
-                    inner_type = first.result_type();
-                }
-
-                Type::List(Box::new(inner_type), 0)
-            }
+            Self::List(expr) => Type::List(Box::new(expr.inner_type.clone()), 0),
             Self::Ident(expr) => expr.result_type.clone(),
             Self::Prefix(expr) => expr.result_type.clone(),
             Self::Infix(expr) => *expr.result_type.clone(),
@@ -232,6 +224,7 @@ pub struct AnalyzedIfExpr<'src> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnalyzedListExpression<'src> {
     pub values: Vec<AnalyzedExpression<'src>>,
+    pub inner_type: Type,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
