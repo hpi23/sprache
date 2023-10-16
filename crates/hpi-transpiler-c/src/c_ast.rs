@@ -88,7 +88,7 @@ impl Display for CType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             CType::Int(ptr) => write!(f, "int{}", "*".repeat(*ptr)),
-            CType::LongLongInt(ptr) => write!(f, "long long int{}", "*".repeat(*ptr)),
+            CType::LongLongInt(ptr) => write!(f, "int64_t{}", "*".repeat(*ptr)),
             CType::Bool(ptr) => write!(f, "bool{}", "*".repeat(*ptr)),
             CType::Char(ptr) => write!(f, "char{}", "*".repeat(*ptr)),
             CType::Double(ptr) => write!(f, "double{}", "*".repeat(*ptr)),

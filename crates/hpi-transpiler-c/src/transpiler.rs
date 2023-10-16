@@ -579,7 +579,7 @@ impl<'src> Transpiler<'src> {
                     vec![],
                     Some(Expression::Call(Box::new(CallExpr {
                         func: "dynstring_from".to_string(),
-                        args: vec![Expression::StringLiteral(inner)],
+                        args: vec![Expression::StringLiteral(inner.replace('\n', "\\n"))],
                     }))),
                 );
             }

@@ -7,11 +7,14 @@ CFLAGS:=-ggdb3
 run: main
 	./main
 
+dbg: main
+	gdb ./main
+
 output.c: $(HPI_FILE) src/*.rs
 	cargo r $(HPI_FILE)
 	bat output.c
 
-main: output.c libSAP/*.c
+main: output.c libSAP/*.c libSAP/*.h
 	gcc output.c \
 		libSAP/*.c \
 		~/Coding/hpi/hpi-c-tests/list/list.c \
@@ -24,5 +27,3 @@ valgrind: main
          --show-leak-kinds=all \
          --track-origins=yes \
          --verbose ./main
-run: main
-	./main
