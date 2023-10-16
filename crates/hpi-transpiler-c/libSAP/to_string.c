@@ -76,7 +76,7 @@ DynString *to_string(TypeDescriptor type, void *value) {
 
       dynstring_push_fmt(output, "%s: ", key);
       indent_str += 4;
-      to_string(type_descriptor, res.value);
+      dynstring_push(output, to_string(type_descriptor, res.value));
       indent_str -= 4;
 
       if (keys->next != NULL) {
@@ -115,7 +115,7 @@ DynString *to_string(TypeDescriptor type, void *value) {
       dynstring_push_string(output, key);
       indent_str += 4;
       dynstring_push_string(output, ": ");
-      dynstring_push(output, to_string(item->type, &item->value));
+      dynstring_push(output, to_string(item->type, item->value));
       indent_str -= 4;
 
       if (i + 1 < keys_len) {

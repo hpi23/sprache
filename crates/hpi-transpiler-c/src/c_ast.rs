@@ -442,6 +442,7 @@ pub enum Expression {
     StringLiteral(String),
     Float(f64),
     Ident(String),
+    Member(Box<MemberExpr>),
     Grouped(Box<Expression>),
 }
 
@@ -449,6 +450,7 @@ impl Display for Expression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Expression::Call(node) => write!(f, "{node}"),
+            Expression::Member(node) => write!(f, "{node}"),
             Expression::Prefix(node) => write!(f, "{node}"),
             Expression::Infix(node) => write!(f, "{node}"),
             Expression::Deref((count, ident)) => {
@@ -580,5 +582,24 @@ pub struct CastExpr {
 impl Display for CastExpr {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "({type_}) {expr}", type_ = self.type_, expr = self.expr)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MemberExpr {
+    pub expr: Expression,
+    pub member: String,
+    pub base_is_ptr: bool,
+}
+
+impl Display for MemberExpr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}{}{}",
+            self.expr,
+            if self.base_is_ptr { "->" } else { "." },
+            self.member
+        )
     }
 }

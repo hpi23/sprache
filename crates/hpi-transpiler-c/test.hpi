@@ -11,7 +11,7 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
-    // setze Zeichenkette foo auf Umgebungsvariablen().Nehmen("PWD") als Zeichenkette;
-    // Drucke(foo);
-    Drucke(Umgebungsvariablen().Nehmen("PWD"));
+    //Drucke(Umgebungsvariablen());
+    setze Zeichenkette foo auf Umgebungsvariablen().Nehmen("PWD") als Zeichenkette;
+    Drucke(foo);
 }

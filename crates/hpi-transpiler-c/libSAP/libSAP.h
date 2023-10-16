@@ -10,4 +10,3 @@ int64_t __hpi_internal_generate_matrikelnummer();
 DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, ...);
 void __hpi_internal_sleep(double duration);
 AnyObject *__hpi_internal_env();
-

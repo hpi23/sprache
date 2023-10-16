@@ -14,7 +14,7 @@ typedef struct {
 
 // AnyObj utility functions
 AnyObject *anyobj_new();
-ListNode *__hpi_internal_anyobj_keys(HashMap obj);
+ListNode *__hpi_internal_anyobj_keys(AnyObject * obj);
 AnyValue __hpi_internal_anyobj_take(AnyObject *obj, DynString *key);
 void anyobj_insert(AnyObject *obj, char *key, AnyValue value);
 

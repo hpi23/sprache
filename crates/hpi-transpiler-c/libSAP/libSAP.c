@@ -109,7 +109,10 @@ AnyObject *__hpi_internal_env() {
     TypeDescriptor string_type_descriptor = {.kind = TYPE_STRING,
                                              .ptr_count = 0};
 
-    AnyValue anyvalue = {.type = string_type_descriptor, .value = value.value};
+    DynString **val = malloc(sizeof(DynString *));
+    *val = value.value;
+
+    AnyValue anyvalue = {.type = string_type_descriptor, .value = val};
 
     anyobj_insert(obj, key_cstr, anyvalue);
 
@@ -118,4 +121,8 @@ AnyObject *__hpi_internal_env() {
   }
 
   return obj;
+}
+
+ListNode * __hpi_internal_string_split(DynString * base, DynString * delim) {
+    return dynstring_split(base, delim, 0);
 }

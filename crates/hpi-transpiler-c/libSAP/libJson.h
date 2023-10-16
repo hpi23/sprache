@@ -1,3 +1,5 @@
+#include "./libAnyObj.h"
 #include "/home/mik/Coding/hpi/hpi-c-tests/dynstring/dynstring.h"
 
-void *__hpi_internal_parse_json(DynString *input);
+AnyValue __hpi_internal_parse_json(DynString *input);
+DynString *__hpi_internal_marshal_json(TypeDescriptor type, void * value);

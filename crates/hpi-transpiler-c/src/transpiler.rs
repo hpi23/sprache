@@ -1096,7 +1096,7 @@ impl<'src> Transpiler<'src> {
 
     fn call_expr(&mut self, node: AnalyzedCallExpr<'src>) -> (Vec<Statement>, Option<Expression>) {
         let mut stmts = vec![];
-        let mut args = vec![];
+        let mut args = VecDeque::new();
 
         let mut none_arg = false;
 
@@ -1113,7 +1113,7 @@ impl<'src> Transpiler<'src> {
             }
 
             if let Some(expr) = new_expr {
-                args.push(expr);
+                args.push_back(expr);
             }
         }
 
@@ -1139,6 +1139,22 @@ impl<'src> Transpiler<'src> {
             }
             AnalyzedCallBase::Ident("Gliedere_JSON") => {
                 self.required_includes.insert("./libSAP/libJson.h");
+
+                let marshal_ident = format!("marshal_temp{}", self.let_cnt);
+                self.let_cnt += 1;
+
+                stmts.push(Statement::VarDeclaration(VarDeclaration {
+                    name: marshal_ident.clone(),
+                    type_: type_list[0].clone().into(),
+                    expr: args.pop_back().unwrap(),
+                }));
+
+                args.push_back(Expression::Ident(
+                    self.get_type_reflector(type_list[0].clone()),
+                ));
+
+                args.push_back(Expression::Ident(marshal_ident));
+
                 "__hpi_internal_marshal_json".to_string()
             }
             AnalyzedCallBase::Ident("Drucke") => {
@@ -1158,7 +1174,7 @@ impl<'src> Transpiler<'src> {
                 "__hpi_internal_fmt".to_string()
             }
             AnalyzedCallBase::Ident("Zeit") => {
-                self.required_includes.insert("./libSAP/libSAP.h");
+                self.required_includes.insert("./libSAP/libTime.h");
                 "__hpi_internal_time".to_string()
             }
             AnalyzedCallBase::Ident("Schlummere") => {
@@ -1180,7 +1196,7 @@ impl<'src> Transpiler<'src> {
 
                     match (member.expr.result_type(), member.member) {
                         (Type::List(_, 0), "Länge") => {
-                            args.push(member_expr.expect("A list always produces a value"));
+                            args.push_back(member_expr.expect("A list always produces a value"));
                             "__hpi_internal_list_len".to_string()
                         }
                         (Type::List(_, 0), "Hinzufügen") => "__hpi_internal_list_push".to_string(),
@@ -1192,18 +1208,18 @@ impl<'src> Transpiler<'src> {
                                 name: temp_ident.clone(),
                                 type_: type_list[0].clone().into(),
                                 expr: args
-                                    .pop()
+                                    .pop_back()
                                     .expect("This function always takes exactly 3 args"),
                             }));
                             self.let_cnt += 1;
 
-                            args.push(member_expr.expect("A list always produces a value"));
+                            args.push_back(member_expr.expect("A list always produces a value"));
 
-                            args.push(Expression::Ident(
+                            args.push_back(Expression::Ident(
                                 self.get_type_reflector(node.args[0].result_type()),
                             ));
 
-                            args.push(Expression::Prefix(Box::new(PrefixExpr {
+                            args.push_back(Expression::Prefix(Box::new(PrefixExpr {
                                 expr: Expression::Ident(temp_ident),
                                 op: PrefixOp::Ref,
                             })));
@@ -1211,14 +1227,19 @@ impl<'src> Transpiler<'src> {
                             "__hpi_internal_list_contains".to_string()
                         }
                         (Type::AnyObject(0), "Nehmen") => {
-                            args.push(member_expr.expect("An anyobj always produces a value"));
+                            args.push_front(
+                                member_expr.expect("An anyobj always produces a value"),
+                            );
                             "__hpi_internal_anyobj_take".to_string()
                         }
                         (Type::AnyObject(0), "Schlüssel") => {
-                            args.push(member_expr.expect("An anyobj always produces a value"));
+                            args.push_back(member_expr.expect("An anyobj always produces a value"));
                             "__hpi_internal_anyobj_keys".to_string()
                         }
-                        (Type::String(0), "Zertrenne") => "__hpi_internal_string_split".to_string(),
+                        (Type::String(0), "Zertrenne") => {
+                            args.push_front(member_expr.expect("A string always produces a value"));
+                            "__hpi_internal_string_split".to_string()
+                        }
                         (Type::String(0), "Startet_Mit") => {
                             "__hpi_internal_string_starts_with".to_string()
                         }
@@ -1240,7 +1261,7 @@ impl<'src> Transpiler<'src> {
 
                 new_args.push(args[0].clone());
 
-                for (idx, _arg) in args[1..].iter().enumerate() {
+                for (idx, _arg) in args.iter().skip(1).enumerate() {
                     new_args.push(Expression::Ident(
                         self.get_type_reflector(type_list[idx + 1].clone()),
                     ));
@@ -1265,7 +1286,7 @@ impl<'src> Transpiler<'src> {
                     })));
                 }
 
-                args = new_args;
+                args = new_args.into();
             }
             "__hpi_internal_print" => {
                 let mut new_args = vec![];
@@ -1297,14 +1318,14 @@ impl<'src> Transpiler<'src> {
                     })));
                 }
 
-                args = new_args;
+                args = new_args.into();
             }
             _ => {}
         }
 
         let expr = Box::new(CallExpr {
             func: func.to_string(),
-            args,
+            args: args.into(),
         });
 
         match node.result_type {
@@ -1326,7 +1347,7 @@ impl<'src> Transpiler<'src> {
 
     fn cast_expr(&mut self, node: AnalyzedCastExpr<'src>) -> (Vec<Statement>, Option<Expression>) {
         let type_ = node.expr.result_type();
-        let (stmts, expr) = match self.expression(node.expr) {
+        let (mut stmts, expr) = match self.expression(node.expr) {
             (stmts, Some(expr)) => (stmts, expr),
             (stmts, None) => return (stmts, None),
         };
@@ -1347,7 +1368,43 @@ impl<'src> Transpiler<'src> {
             }
             (Type::Any, as_type) => {
                 // TODO: insert runtime cast validation
-                todo!()
+
+                // void __hpi_internal_validate_runtime_cast(TypeDescriptor as_type, TypeDescriptor from_type);
+
+                let from_expr_ident = format!("runtime_cast_from{}", self.let_cnt);
+                self.let_cnt += 1;
+
+                stmts.push(Statement::VarDeclaration(VarDeclaration {
+                    name: from_expr_ident.clone(),
+                    type_: CType::Ident(0, "AnyValue".to_string()),
+                    expr,
+                }));
+
+                // validate that this cast is legal
+                stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                    func: "__hpi_internal_validate_runtime_cast".to_string(),
+                    args: vec![
+                        Expression::Ident(self.get_type_reflector(as_type.clone())),
+                        Expression::Member(Box::new(MemberExpr {
+                            expr: Expression::Ident(from_expr_ident.clone()),
+                            member: "type".to_string(),
+                            base_is_ptr: false,
+                        })),
+                    ],
+                }))));
+
+                // source is a AnyValue*
+                Expression::Prefix(Box::new(PrefixExpr {
+                    expr: Expression::Cast(Box::new(CastExpr {
+                        expr: Expression::Member(Box::new(MemberExpr {
+                            expr: Expression::Ident(from_expr_ident),
+                            member: "value".to_string(),
+                            base_is_ptr: false,
+                        })),
+                        type_: as_type.clone().add_ref().unwrap().into(),
+                    })),
+                    op: PrefixOp::Deref,
+                }))
             }
             _ => Expression::Cast(Box::new(CastExpr {
                 expr,

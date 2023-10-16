@@ -18,18 +18,13 @@ Formatter *formatter_new(char *fmt, ListNode *input_args) {
   formatter->input_args_pos = 0;
   formatter->output_buf = dynstring_new();
 
-  printf("fmt-len: %ld\n", strlen(formatter->fmt));
-  printf("BEF: `%d`\n", formatter->curr_char);
   formatter_next(formatter);
-  printf("AF: `%d`\n", formatter->curr_char);
 
   return formatter;
 }
 
 DynString *formatter_fmt(Formatter *fmt) {
   while (fmt->curr_char > 0) {
-    printf("Formatting...\n");
-
     if (fmt->curr_char == '%') {
       formatter_start_escape(fmt);
       continue;
@@ -43,7 +38,6 @@ DynString *formatter_fmt(Formatter *fmt) {
 
 void formatter_next(Formatter *fmt) {
   if (strlen(fmt->fmt) <= fmt->fmt_idx) {
-    printf("Stopping, no advance: %ld | %ld\n", strlen(fmt->fmt), fmt->fmt_idx);
     fmt->curr_char = -1;
     return;
   }
