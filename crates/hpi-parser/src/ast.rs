@@ -72,14 +72,10 @@ impl Type {
                     .collect::<Vec<String>>()
                     .join("_DELIM_");
 
-                format!(
-                    "{}Objekt_BEGIN_{}_END",
-                    "Zeiger_auf_".repeat(*ptr),
-                    members,
-                )
+                format!("{}Objekt_BEGIN_{}_END", "Zeiger_auf_".repeat(*ptr), members,)
             }
             Self::Any => "Unbekannt".to_string(),
-            Self::Nichts =>  "Nichts".to_string(),
+            Self::Nichts => "Nichts".to_string(),
             Self::Never => "Niemals".to_string(),
             Self::Unknown => "{{unknown}}".to_string(),
             Self::Ident(inner, ptr) => format!("{}{inner}", "Zeiger_auf_".repeat(*ptr)),
@@ -165,6 +161,8 @@ impl Type {
             Type::Char(ptr) => Type::Char(ptr + 1),
             Type::String(ptr) => Type::String(ptr + 1),
             Type::List(inner, ptr) => Type::List(inner, ptr + 1),
+            Type::AnyObject(ptr) => Type::AnyObject(ptr + 1),
+            Type::Object(fields, ptr) => Type::Object(fields, ptr + 1),
             _ => return None,
         })
     }
@@ -180,6 +178,8 @@ impl Type {
             Type::Char(ptr) => Type::Char(ptr - 1),
             Type::String(ptr) => Type::String(ptr - 1),
             Type::List(inner, ptr) => Type::List(inner, ptr - 1),
+            Type::AnyObject(ptr) => Type::AnyObject(ptr - 1),
+            Type::Object(fields, ptr) => Type::Object(fields, ptr - 1),
             _ => return None,
         })
     }
