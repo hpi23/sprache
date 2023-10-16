@@ -1340,6 +1340,10 @@ impl<'src> Transpiler<'src> {
                     args: vec![expr],
                 }))
             }
+            (Type::Any, as_type) => {
+                // TODO: insert runtime cast validation
+                todo!()
+            }
             _ => Expression::Cast(Box::new(CastExpr {
                 expr,
                 type_: node.result_type.into(),

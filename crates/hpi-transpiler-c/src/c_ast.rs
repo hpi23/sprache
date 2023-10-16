@@ -25,7 +25,7 @@ pub enum CTypeKind {
     List,
     Object,
     AnyObject,
-    Null,
+    None,
 }
 
 impl Display for CTypeKind {
@@ -42,7 +42,7 @@ impl Display for CTypeKind {
                 CTypeKind::List => "TYPE_LIST",
                 CTypeKind::Object => "TYPE_OBJECT",
                 CTypeKind::AnyObject => "TYPE_ANY_OBJECT",
-                CTypeKind::Null => "TYPE_NULL",
+                CTypeKind::None => "TYPE_NONE",
             }
         )
     }
@@ -59,7 +59,7 @@ impl From<&Type> for CTypeKind {
             Type::List(_, _) => Self::List,
             Type::Object(_, _) => Self::Object,
             Type::AnyObject(_) => Self::AnyObject,
-            Type::Nichts => Self::Null,
+            Type::Nichts => Self::None,
             _ => unreachable!("These types cannot be converted: {value}"),
         }
     }

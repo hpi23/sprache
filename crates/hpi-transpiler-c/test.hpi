@@ -1,10 +1,12 @@
 beantrage Drucke von Drucker;
 beantrage Formatiere von Textverarbeitung;
+beantrage Umgebungsvariablen von libSAP;
 
 funk Studium() ergibt Nichts {}
 funk Bewerbung() ergibt Zeichenkette { "Hello World!" }
 
 funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
-      setze Zeichenkette Foo auf Formatiere("Meine Matrikelnummer: %d" / Matrikelnummer);
-      Drucke(Foo);
+    Drucke(Matrikelnummer);
+     setze Zeichenkette Foo auf Umgebungsvariablen().Nehmen("PWD") als Zeichenkette;
+     Drucke(Foo);
 }
