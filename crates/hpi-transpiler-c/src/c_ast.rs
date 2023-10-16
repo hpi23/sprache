@@ -24,6 +24,7 @@ pub enum CTypeKind {
     Float,
     List,
     Object,
+    AnyObject,
     Null,
 }
 
@@ -40,6 +41,7 @@ impl Display for CTypeKind {
                 CTypeKind::Float => "TYPE_FLOAT",
                 CTypeKind::List => "TYPE_LIST",
                 CTypeKind::Object => "TYPE_OBJECT",
+                CTypeKind::AnyObject => "TYPE_ANY_OBJECT",
                 CTypeKind::Null => "TYPE_NULL",
             }
         )
@@ -56,6 +58,7 @@ impl From<&Type> for CTypeKind {
             Type::String(_) => Self::String,
             Type::List(_, _) => Self::List,
             Type::Object(_, _) => Self::Object,
+            Type::AnyObject(_) => Self::AnyObject,
             Type::Nichts => Self::Null,
             _ => unreachable!("These types cannot be converted: {value}"),
         }
@@ -73,7 +76,7 @@ pub enum CType {
     Ident(usize, String),
     Struct(StructDefinition),
     Double(usize),
-    Void,
+    Void(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -101,7 +104,7 @@ impl Display for CType {
                     .join(";\n");
                 write!(f, "struct {{\n{inner}\n}}")
             }
-            CType::Void => write!(f, "void"),
+            CType::Void(ptr) => write!(f, "void{}", "*".repeat(*ptr)),
         }
     }
 }
@@ -115,9 +118,9 @@ impl From<Type> for CType {
             Type::Char(ptr) => Self::Char(ptr),
             Type::String(ptr) => Self::Ident(ptr + 1, "DynString".to_string()),
             Type::List(_, ptr) => Self::Ident(ptr + 1, "ListNode".to_string()),
-            Type::Nichts | Type::Never => Self::Void,
+            Type::Nichts | Type::Never => Self::Void(0),
             Type::Object(_, ptr) => Self::Ident(ptr + 1, "HashMap".to_string()),
-            Type::AnyObject(ptr) => Self::Ident(ptr + 1, "HashMap".to_string()),
+            Type::AnyObject(ptr) => Self::Ident(ptr + 1, "AnyObject".to_string()),
             Type::Unknown => panic!("tried to convert unknown type to CType"),
             other => unreachable!("Unsupported type conversion to CType: {other}"),
         }
@@ -315,7 +318,13 @@ impl Display for Statement {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Statement::VarDeclaration(node) => write!(f, "{node}"),
-            Statement::VarDefinition(ident, type_) => write!(f, "{type_} {ident};"),
+            Statement::VarDefinition(ident, type_) => {
+                let new_type = match type_ {
+                    CType::Void(0) => CType::Void(1),
+                    _ => type_.clone(),
+                };
+                write!(f, "{new_type} {ident};")
+            }
             Statement::Return(expr) => match expr {
                 Some(expr) => write!(f, "return {expr};"),
                 None => write!(f, "return;"),
@@ -341,10 +350,15 @@ pub struct VarDeclaration {
 
 impl Display for VarDeclaration {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let new_type = match self.type_ {
+            CType::Void(0) => CType::Void(1),
+            _ => self.type_.clone(),
+        };
+
         write!(
             f,
             "{type_} {ident} = {expr};",
-            type_ = self.type_,
+            type_ = new_type,
             ident = self.name,
             expr = self.expr
         )
@@ -445,7 +459,14 @@ impl Display for Expression {
             Expression::Bool(val) => write!(f, "{val}"),
             Expression::Char(val) => write!(f, "{val}"),
             Expression::StringLiteral(inner) => write!(f, "\"{inner}\""),
-            Expression::Float(val) => write!(f, "{val}"),
+            Expression::Float(val) => {
+                // check if number is int
+                if *val == (*val as i64) as f64 {
+                    write!(f, "{val:.1}")
+                } else {
+                    write!(f, "{val}")
+                }
+            }
             Expression::Ident(ident) => write!(f, "{ident}"),
             Expression::Grouped(node) => write!(f, "({node})"),
         }

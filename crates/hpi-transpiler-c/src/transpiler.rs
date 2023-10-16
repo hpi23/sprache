@@ -473,7 +473,7 @@ impl<'src> Transpiler<'src> {
 
         if let Some(expr) = expr {
             let stmt = match type_ {
-                CType::Void => Statement::Expr(expr),
+                CType::Void(0) => Statement::Expr(expr),
                 _ => Statement::VarDeclaration(VarDeclaration {
                     name,
                     type_: type_.clone(),
@@ -697,8 +697,11 @@ impl<'src> Transpiler<'src> {
                                 expr: list_index_call_expr,
                                 type_: index
                                     .result_type
+                                    .clone()
                                     .add_ref()
-                                    .expect("This cannot fail")
+                                    .unwrap_or_else(|| {
+                                        panic!("Unsupported type to reference: {}", index.result_type)
+                                    })
                                     .into(),
                             })),
                             op: PrefixOp::Deref,
@@ -1202,8 +1205,12 @@ impl<'src> Transpiler<'src> {
 
                             "__hpi_internal_list_contains".to_string()
                         }
-                        (Type::AnyObject(0), "Nehmen") => "__hpi_internal_anyobj_take".to_string(),
+                        (Type::AnyObject(0), "Nehmen") => {
+                            args.push(member_expr.expect("An anyobj always produces a value"));
+                            "__hpi_internal_anyobj_take".to_string() }
+                        ,
                         (Type::AnyObject(0), "Schlüssel") => {
+                            args.push(member_expr.expect("An anyobj always produces a value"));
                             "__hpi_internal_anyobj_keys".to_string()
                         }
                         (Type::String(0), "Zertrenne") => "__hpi_internal_string_split".to_string(),
