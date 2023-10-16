@@ -1,4 +1,4 @@
-.PHONY: run
+.PHONY: run valgrind
 
 HPI_FILE:=test.hpi
 DEBUG:=true
@@ -18,3 +18,11 @@ main: output.c libSAP/*.c
 		~/Coding/hpi/hpi-c-tests/dynstring/dynstring.c \
 		~/Coding/hpi/hpi-c-tests/hashmap/map.c \
 		$(CFLAGS) -o main
+
+valgrind: main
+	valgrind --leak-check=full \
+         --show-leak-kinds=all \
+         --track-origins=yes \
+         --verbose ./main
+run: main
+	./main

@@ -20,6 +20,8 @@ pub struct Transpiler<'src> {
     in_main_fn: bool,
     /// The first element is the global scope while last element is the current scope.
     scopes: Vec<HashMap<&'src str, String>>,
+    /// Keeps track of which variables need to be deallocated
+    frees: Vec<Statement>,
     /// Type map created by the analyzer.
     types: HashMap<&'src str, Type>,
     /// Maps a function's name to a mangeled name.
@@ -65,6 +67,7 @@ impl<'src> Transpiler<'src> {
             in_main_fn: false,
             types: HashMap::new(),
             scopes: vec![HashMap::new()],
+            frees: vec![],
             funcs: HashMap::new(),
             let_cnt: 0,
             required_includes,
@@ -700,7 +703,10 @@ impl<'src> Transpiler<'src> {
                                     .clone()
                                     .add_ref()
                                     .unwrap_or_else(|| {
-                                        panic!("Unsupported type to reference: {}", index.result_type)
+                                        panic!(
+                                            "Unsupported type to reference: {}",
+                                            index.result_type
+                                        )
                                     })
                                     .into(),
                             })),
@@ -1160,7 +1166,6 @@ impl<'src> Transpiler<'src> {
                 "__hpi_internal_sleep".to_string()
             }
             AnalyzedCallBase::Ident("__hpi_internal_generate_matrikelnummer") => {
-                self.required_includes.insert("./libSAP/libSAP.h");
                 "__hpi_internal_generate_matrikelnummer".to_string()
             }
             AnalyzedCallBase::Ident(other) => self
@@ -1207,8 +1212,8 @@ impl<'src> Transpiler<'src> {
                         }
                         (Type::AnyObject(0), "Nehmen") => {
                             args.push(member_expr.expect("An anyobj always produces a value"));
-                            "__hpi_internal_anyobj_take".to_string() }
-                        ,
+                            "__hpi_internal_anyobj_take".to_string()
+                        }
                         (Type::AnyObject(0), "Schlüssel") => {
                             args.push(member_expr.expect("An anyobj always produces a value"));
                             "__hpi_internal_anyobj_keys".to_string()

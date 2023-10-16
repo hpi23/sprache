@@ -1,12 +1,15 @@
-beantrage Drucke von Drucker;
-beantrage Formatiere von Textverarbeitung;
+beantrage Aufgeben von libSAP;
 beantrage Umgebungsvariablen von libSAP;
+beantrage Zeit von Uhr;
+beantrage Drucke von Drucker;
 
-funk Studium() ergibt Nichts {}
-funk Bewerbung() ergibt Zeichenkette { "Hello World!" }
+funk Bewerbung() ergibt Zeichenkette { "Hallo Welt!" }
 
 funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
-    Drucke(Matrikelnummer);
-     setze Zeichenkette Foo auf Umgebungsvariablen().Nehmen("PWD") als Zeichenkette;
-     Drucke(Foo);
+  setze Zahl _ auf Matrikelnummer;
+}
+
+funk Studium() ergibt Nichts {
+    setze Zeichenkette foo auf Umgebungsvariablen().Nehmen("PWD") als Zeichenkette;
+    Drucke(foo);
 }
