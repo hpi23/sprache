@@ -3,6 +3,7 @@
 #include "/home/mik/Coding/hpi/hpi-c-tests/list/list.h"
 #include "libAnyObj.h"
 #include "libTime.h"
+#include "reflection.h"
 #include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -38,6 +39,9 @@ void __hpi_internal_print(ssize_t num_args, ...) {
     TypeDescriptor type = va_arg(args, TypeDescriptor);
 
     switch (type.kind) {
+    case TYPE_NONE:
+      printf("Nichts");
+      break;
     case TYPE_INT: {
       int64_t *number = va_arg(args, int64_t *);
       printf("%ld", *number);

@@ -11,6 +11,3 @@ DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, ...);
 void __hpi_internal_sleep(double duration);
 AnyObject *__hpi_internal_env();
 
-// AnyObj utility functions
-void *__hpi_internal_anyobj_take(HashMap *obj, DynString *key);
-ListNode *__hpi_internal_anyobj_keys(HashMap obj);

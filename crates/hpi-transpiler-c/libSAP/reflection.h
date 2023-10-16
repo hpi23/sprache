@@ -2,6 +2,7 @@
 #include "/home/mik/Coding/hpi/hpi-c-tests/hashmap/map.h"
 
 typedef enum {
+  TYPE_NONE,
   TYPE_INT,
   TYPE_FLOAT,
   TYPE_CHAR,
