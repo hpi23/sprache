@@ -39,7 +39,9 @@ ListNode *__hpi_internal_anyobj_keys(AnyObject *obj) {
     ListGetResult temp = list_at(raw_keys, i);
     assert(temp.found);
 
-    list_append(new_list, dynstring_from(temp.value));
+    DynString **str = malloc(sizeof(DynString *));
+    *str = dynstring_from(temp.value);
+    list_append(new_list, str);
     free(temp.value);
   }
 

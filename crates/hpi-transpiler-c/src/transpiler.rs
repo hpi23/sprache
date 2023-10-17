@@ -722,6 +722,9 @@ impl<'src> Transpiler<'src> {
                 let (base_stmts, base_expr) = self.expression(node.expr);
 
                 // TODO: compile member access
+                // TODO: plan:
+                // 1. Get a void * to the member
+                // 2. Cast and dereference the pointer
 
                 return (base_stmts, base_expr);
             }

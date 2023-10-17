@@ -30,7 +30,7 @@ HashMap *__hpi_internal_time() {
 
   HashMap *map = hashmap_new();
 
-  hashmap_insert(map, "Jahr", &current.year);
+  hashmap_insert(map, "Jahr", &current.year); // TODO: fix year
   hashmap_insert(map, "Monat", &current.month);
   hashmap_insert(map, "Kalendar_Tag", &current.calendar_day);
   hashmap_insert(map, "Wochentag", &current.week_day);

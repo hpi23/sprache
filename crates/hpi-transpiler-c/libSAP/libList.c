@@ -112,3 +112,7 @@ bool __hpi_internal_list_contains(ListNode *list, TypeDescriptor type,
 
   return false;
 }
+
+void __hpi_internal_list_push(ListNode *list, void *to_add) {
+  list_append(list, to_add);
+}
