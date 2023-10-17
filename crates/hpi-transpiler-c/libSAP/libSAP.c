@@ -15,13 +15,9 @@
 
 extern char **environ;
 
-bool newline;
 int indent;
 
-void __hpi_internal_libSAP_reset() {
-  indent = 4;
-  newline = true;
-}
+void __hpi_internal_libSAP_reset() { indent = 4; }
 
 int64_t __hpi_internal_generate_matrikelnummer() {
   // TODO: use lfsr instead of just time
@@ -49,10 +45,6 @@ void __hpi_internal_print(ssize_t num_args, ...) {
     if (i < num_args && num_args > 1) {
       dynstring_push_char(output, ' ');
     }
-  }
-
-  if (newline) {
-    dynstring_push_char(output, '\n');
   }
 
   dynstring_print(output);
@@ -123,6 +115,6 @@ AnyObject *__hpi_internal_env() {
   return obj;
 }
 
-ListNode * __hpi_internal_string_split(DynString * base, DynString * delim) {
-    return dynstring_split(base, delim, 0);
+ListNode *__hpi_internal_string_split(DynString *base, DynString *delim) {
+  return dynstring_split(base, delim, 0);
 }

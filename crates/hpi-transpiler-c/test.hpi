@@ -3,6 +3,7 @@ beantrage Umgebungsvariablen von libSAP;
 beantrage Zeit von Uhr;
 beantrage Drucke von Drucker;
 beantrage Formatiere von Textverarbeitung;
+beantrage Http von Netzwerk;
 
 funk Bewerbung() ergibt Zeichenkette { "Hallo Welt!" }
 
@@ -11,7 +12,16 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
-    //Drucke(Umgebungsvariablen());
-    setze Zeichenkette foo auf Umgebungsvariablen().Nehmen("PWD") als Zeichenkette;
-    Drucke(foo);
+    setze Zeichenkette Körper auf "";
+
+    setze Zahl Antwort auf Http(
+        "GET" /
+        "https://mik-mueller.de" /
+        "" /
+        [] /
+        &Körper /
+    );
+
+    Drucke(Antwort);
+    Drucke(Körper);
 }

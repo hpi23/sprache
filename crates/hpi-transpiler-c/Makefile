@@ -16,6 +16,7 @@ output.c: $(HPI_FILE) src/*.rs
 
 main: output.c libSAP/*.c libSAP/*.h
 	gcc output.c \
+		-lcurl \
 		libSAP/*.c \
 		~/Coding/hpi/hpi-c-tests/list/list.c \
 		~/Coding/hpi/hpi-c-tests/dynstring/dynstring.c \

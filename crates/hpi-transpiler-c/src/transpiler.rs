@@ -1182,6 +1182,7 @@ impl<'src> Transpiler<'src> {
                 "__hpi_internal_sleep".to_string()
             }
             AnalyzedCallBase::Ident("__hpi_internal_generate_matrikelnummer") => {
+                self.required_includes.insert("./libSAP/libSAP.h");
                 "__hpi_internal_generate_matrikelnummer".to_string()
             }
             AnalyzedCallBase::Ident(other) => self
@@ -1196,10 +1197,15 @@ impl<'src> Transpiler<'src> {
 
                     match (member.expr.result_type(), member.member) {
                         (Type::List(_, 0), "Länge") => {
+                            self.required_includes.insert("./libSAP/libList.h");
                             args.push_back(member_expr.expect("A list always produces a value"));
                             "__hpi_internal_list_len".to_string()
                         }
-                        (Type::List(_, 0), "Hinzufügen") => "__hpi_internal_list_push".to_string(),
+                        (Type::List(_, 0), "Hinzufügen") => {
+                            self.required_includes.insert("./libSAP/libList.h");
+                            args.push_back(member_expr.expect("A list always produces a value"));
+                            "__hpi_internal_list_push".to_string()
+                        }
                         (Type::List(_, 0), "Enthält") => {
                             self.required_includes.insert("./libSAP/libList.h");
                             let temp_ident = format!("contains_ptr_{}", self.let_cnt);
@@ -1237,13 +1243,20 @@ impl<'src> Transpiler<'src> {
                             "__hpi_internal_anyobj_keys".to_string()
                         }
                         (Type::String(0), "Zertrenne") => {
+                            self.required_includes.insert("./libSAP/libString.h");
                             args.push_front(member_expr.expect("A string always produces a value"));
                             "__hpi_internal_string_split".to_string()
                         }
                         (Type::String(0), "Startet_Mit") => {
+                            self.required_includes.insert("./libSAP/libString.h");
+                            args.push_front(member_expr.expect("A string always produces a value"));
                             "__hpi_internal_string_starts_with".to_string()
                         }
-                        (Type::String(0), "Ersetze") => "__hpi_internal_string_replace".to_string(),
+                        (Type::String(0), "Ersetze") => {
+                            self.required_includes.insert("./libSAP/libString.h");
+                            args.push_front(member_expr.expect("A string always produces a value"));
+                            "__hpi_internal_string_replace".to_string()
+                        }
                         (base_type, member) => {
                             unreachable!("Not supported: member `{member}` of base `{base_type}`")
                         }
