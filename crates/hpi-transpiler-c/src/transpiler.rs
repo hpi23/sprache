@@ -579,7 +579,7 @@ impl<'src> Transpiler<'src> {
                     vec![],
                     Some(Expression::Call(Box::new(CallExpr {
                         func: "dynstring_from".to_string(),
-                        args: vec![Expression::StringLiteral(inner.replace('\n', "\\n"))],
+                        args: vec![Expression::StringLiteral(inner.replace('\n', "\\n").replace('"', "\\\""))],
                     }))),
                 );
             }
@@ -719,14 +719,52 @@ impl<'src> Transpiler<'src> {
                 }
             }
             AnalyzedExpression::Member(node) => {
-                let (base_stmts, base_expr) = self.expression(node.expr);
+                let (mut base_stmts, base_expr) = self.expression(node.expr.clone());
+                self.required_includes.insert("assert.h");
+
+                let member_res_ident = format!("m_{}_{}", node.member, self.let_cnt);
+                self.let_cnt += 1;
+
+                base_stmts.push(Statement::VarDeclaration(VarDeclaration {
+                    name: member_res_ident.clone(),
+                    type_: CType::Ident(0, "MapGetResult".to_string()),
+                    expr: Expression::Call(Box::new(CallExpr {
+                        func: "hashmap_get".to_string(),
+                        args: vec![
+                            base_expr.clone().unwrap(),
+                            Expression::StringLiteral(node.member.to_string()),
+                        ],
+                    })),
+                }));
 
                 // TODO: compile member access
                 // TODO: plan:
-                // 1. Get a void * to the member
+                // 1. Get a void * to the member by doing a HashMap lookup
                 // 2. Cast and dereference the pointer
 
-                return (base_stmts, base_expr);
+                base_stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                    func: "assert".to_string(),
+                    args: vec![Expression::Member(Box::new(MemberExpr {
+                        expr: Expression::Ident(member_res_ident.clone()),
+                        member: "found".to_string(),
+                        base_is_ptr: false,
+                    }))],
+                }))));
+
+                return (
+                    base_stmts,
+                    Some(Expression::Prefix(Box::new(PrefixExpr {
+                        expr: Expression::Cast(Box::new(CastExpr {
+                            expr: Expression::Member(Box::new(MemberExpr {
+                                expr: Expression::Ident(member_res_ident),
+                                member: "value".to_string(),
+                                base_is_ptr: false,
+                            })),
+                            type_: node.result_type.add_ref().unwrap().into(),
+                        })),
+                        op: PrefixOp::Deref,
+                    }))),
+                );
             }
             AnalyzedExpression::Nichts => return (vec![], None),
         };

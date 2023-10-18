@@ -2,10 +2,12 @@
 #include "/home/mik/Coding/hpi/hpi-c-tests/dynstring/dynstring.h"
 #include "/home/mik/Coding/hpi/hpi-c-tests/vec/vec.h"
 #include "reflection.h"
+#include <sys/types.h>
 
 int indent_str = 4;
 
 DynString *to_string(TypeDescriptor type, void *value) {
+  assert(value != NULL);
   DynString *output = dynstring_new();
 
   switch (type.kind) {
@@ -37,15 +39,15 @@ DynString *to_string(TypeDescriptor type, void *value) {
 
     ListNode *list = *(ListNode **)value;
 
-    while (list != NULL) {
-      TypeDescriptor new_type = {.kind = type.list_inner->kind,
-                                 .list_inner = type.list_inner->list_inner,
-                                 .ptr_count = 0};
+    ssize_t len = list_len(list);
+    for (int i = 0; i < len; i++) {
+      ListGetResult res = list_at(list, i); // TODO: list has the same value for each member
+      assert(res.found);
+      printf("FOO: %s\n",
+             dynstring_as_cstr(to_string(*type.list_inner, res.value)));
+      dynstring_push(output, to_string(*type.list_inner, res.value));
 
-      dynstring_push(output, to_string(new_type, list->value));
-
-      list = list->next;
-      if (list != NULL) {
+      if (i + 1 < len) {
         dynstring_push_string(output, ", ");
       }
     }
@@ -97,7 +99,9 @@ DynString *to_string(TypeDescriptor type, void *value) {
   case TYPE_ANY_OBJECT: {
     dynstring_push_string(output, "Speicherbox {\n");
 
+    printf("Object addr: %p\n", value);
     AnyObject *obj = *(AnyObject **)value;
+    assert(obj != NULL);
     ListNode *keys = hashmap_keys(obj->fields);
     ssize_t keys_len = list_len(keys);
 

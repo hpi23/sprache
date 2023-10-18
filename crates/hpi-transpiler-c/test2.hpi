@@ -1,5 +1,6 @@
 beantrage Drucke von Drucker;
 beantrage Zeit von Uhr;
+beantrage Zergliedere_JSON von Textverarbeitung;
 
 funk Bewerbung() ergibt Zeichenkette {
   "Das ist meine wunderbare Bewerbung."
@@ -10,6 +11,9 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
-  Drucke(Zeit().Stunde);
+    setze Zeichenkette Input auf "[ 1 , 2, 3 ]";
+    //setze Zeichenkette Input auf "{ \"foo\": [ 1, 2, 3 ] }";
+    setze Liste von Zahl Test auf Zergliedere_JSON(Input) als Liste von Zahl;
+    Drucke(Test);
 }
 

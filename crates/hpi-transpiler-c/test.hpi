@@ -31,7 +31,18 @@ funk Studium() ergibt Nichts {
     }
     setze Zeichenkette Discord_Url auf Umgebungsvariablen().Nehmen("MENSA_DISCORD_URL") als Zeichenkette;
 
-    Drucke(Lade_Speiseangebot());
+    Drucke(Formatiere("Benachrichtigung wird um %2d:%2d ausgeführt werden." / AUSLÖSER_STUNDE / AUSLÖSER_MINUTE));
+
+    Aktualisiere(Discord_Url);
+}
+
+funk Aktualisiere(Zeichenkette Discord_Url) ergibt Nichts {
+    Drucke("\t=> Lade Speiseangebot aus dem Internet herunter...");
+    setze Liste von Speise Speisen auf Lade_Speiseangebot();
+    Drucke(Formatiere("\t=> Speiseangebot bereit. %d Speisen geladen." / Speisen.Länge()));
+    Drucke("\t=> Sende Discord Nachricht...");
+    Sende_Discord_Nachricht(Speisen / Discord_Url);
+    Drucke("\t=> Discord Nachricht erfolgreich gesendet.");
 }
 
 funk Lade_Speiseangebot() ergibt Liste von Speise {
@@ -50,8 +61,11 @@ funk Lade_Speiseangebot() ergibt Liste von Speise {
     );
 
     falls Antwort_Zahl != 200 {
+        Drucke("Illegale Server Antwort" / Antwort_Zahl);
         Aufgeben(1);
     }
+
+    Drucke(Körper);
 
     setze Speicherbox Res auf Zergliedere_JSON(Körper) als Speicherbox;
     setze Liste von Speicherbox ContentRes auf Res.Nehmen("content") als Liste von Speicherbox;
@@ -95,4 +109,86 @@ funk Lade_Speiseangebot() ergibt Liste von Speise {
     }
 
     Resultat
+}
+
+
+funk Sende_Discord_Nachricht(Liste von Speise Speiseangebot / Zeichenkette Discord_Url) ergibt Nichts {
+    datentyp Feld auf Objekt {
+        Zeichenkette name /
+        Zeichenkette value /
+    };
+
+    datentyp Fuß auf Objekt {
+        Zeichenkette text /
+    };
+
+    datentyp Embed auf Objekt {
+        Zeichenkette title /
+        Zeichenkette description /
+        Zeichenkette url /
+        Zahl color /
+        Liste von Feld fields /
+        Fuß footer /
+    };
+
+    datentyp DiscordKörper auf Objekt {
+        Nichts contents /
+        Liste von Embed embeds /
+        Liste von Nichts attachments /
+    };
+
+    setze Liste von Feld Felder auf [];
+    setze Zahl Zähler auf 0;
+    solange (Zähler < Speiseangebot.Länge()) {
+        Felder.Hinzufügen(
+            erstelle {
+                Zeichenkette name auf Speiseangebot[Zähler].Titel /
+                Zeichenkette value auf Speiseangebot[Zähler].Beschreibung
+            }
+        );
+
+        Zähler += 1;
+    }
+
+    setze Zeichenkette Nachricht_Körper auf falls Felder.Länge() > 0 {
+        "Hallo an Alle!\nEin neuer Tag, neues Essen!"
+    } sonst {
+        "Heute ist die Mensa geschlossen!"
+    };
+
+    setze Zeitstempel Jetzt auf Zeit();
+    setze Zeichenkette Titel auf Formatiere("Angebot Mensa Griebnitzsee vom %2d.%2d.%d" / Jetzt.Kalendar_Tag / Jetzt.Monat / Jetzt.Jahr);
+
+    setze Embed HauptEinbettung auf erstelle {
+        Zeichenkette title auf Titel /
+        Zeichenkette description auf Nachricht_Körper /
+        Zeichenkette url auf "https://www.studentenwerk-potsdam.de/essen/unsere-mensen/detailinfos/mensa-griebnitzsee" /
+        Zahl color auf 14574087 /
+        Liste von Feld fields auf Felder /
+        Objekt { Zeichenkette text } footer auf erstelle {
+            Zeichenkette text auf "Powered by Mensa Scraper written in HPI script.\nhttps://sprache.hpi.church"
+        }
+    };
+
+    setze DiscordKörper Körper auf erstelle {
+        Nichts contents auf Nichts /
+        Liste von Embed embeds auf [ HauptEinbettung ] /
+        Liste von Nichts attachments auf [] /
+    };
+
+    setze Zeichenkette Körper_Zeichenkette auf Gliedere_JSON(Körper);
+
+    setze Zeichenkette Antwort_Körper auf "";
+
+    setze Zahl Antwort_Zahl auf Http(
+        "POST" /
+        Discord_Url /
+        Körper_Zeichenkette /
+        [ erstelle { Zeichenkette Schlüssel auf "Content-Type" / Zeichenkette Wert auf "application/json" } ] /
+        &Antwort_Körper /
+    );
+
+    falls Antwort_Zahl != 204 {
+        Aufgeben(Antwort_Zahl);
+    }
 }

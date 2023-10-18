@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 extern char **environ;
 
@@ -81,7 +82,7 @@ DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, ...) {
 }
 
 void __hpi_internal_sleep(double duration) {
-  // TODO: implement this
+    sleep(duration);
 }
 
 AnyObject *__hpi_internal_env() {

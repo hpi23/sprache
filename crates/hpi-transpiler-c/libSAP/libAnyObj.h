@@ -14,9 +14,10 @@ typedef struct {
 
 // AnyObj utility functions
 AnyObject *anyobj_new();
-ListNode *__hpi_internal_anyobj_keys(AnyObject * obj);
+ListNode *__hpi_internal_anyobj_keys(AnyObject *obj);
 AnyValue __hpi_internal_anyobj_take(AnyObject *obj, DynString *key);
 void anyobj_insert(AnyObject *obj, char *key, AnyValue value);
+char *display_type(TypeDescriptor type);
 
 // Runtime type validation
 void __hpi_internal_validate_runtime_cast(TypeDescriptor as_type,

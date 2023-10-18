@@ -12,9 +12,11 @@ pub struct Formatter<'src> {
 
 impl<'src> Formatter<'src> {
     pub fn new(input: &'src str, args: Vec<Value>) -> Self {
+        println!("Created new formatter: {:?}", args);
+
         let mut fmt = Self {
             input_reader: input.chars(),
-            input_args: args[1..].to_vec(),
+            input_args: args.to_vec(),
             inut_args_curr_pos: 0,
             curr_char: None,
             output: String::new(),

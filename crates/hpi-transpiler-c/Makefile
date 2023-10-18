@@ -21,6 +21,10 @@ main: output.c libSAP/*.c libSAP/*.h
 		~/Coding/hpi/hpi-c-tests/list/list.c \
 		~/Coding/hpi/hpi-c-tests/dynstring/dynstring.c \
 		~/Coding/hpi/hpi-c-tests/hashmap/map.c \
+		~/Coding/hpi/hpi-c-tests/json-parser/json.c \
+		~/Coding/hpi/hpi-c-tests/json-parser/parser.c \
+		~/Coding/hpi/hpi-c-tests/json-parser/lexer.c \
+		~/Coding/hpi/hpi-c-tests/json-parser/token.c \
 		$(CFLAGS) -o main
 
 valgrind: main

@@ -10,8 +10,8 @@
 DynString *body_buf;
 
 size_t curl_write(void *ptr, size_t size, size_t nmemb, void *stream) {
-  dynstring_set(body_buf, ptr);
-  return nmemb;
+  dynstring_push_string(body_buf, ptr);
+  return size * nmemb;
 }
 
 // Returns the HTTP status code
@@ -24,6 +24,7 @@ int64_t __hpi_internal_http(
     DynString **body_dest // Pointer to read the response body into
 ) {
   body_buf = *body_dest;
+  dynstring_clear(body_buf);
 
   int retcode = false;
   CURL *curl = NULL;
@@ -32,9 +33,7 @@ int64_t __hpi_internal_http(
       0,
   };
   struct curl_slist *headers = NULL;
-  char agent[1024] = {
-      0,
-  };
+  char *agent = "libSAP/hpi-script1";
 
   curl = curl_easy_init();
   if (!curl) {
@@ -53,14 +52,7 @@ int64_t __hpi_internal_http(
      https://curl.haxx.se/docs/ssl-compared.html
      */
   // curl_easy_setopt(curl, CURLOPT_CAINFO, "curl-ca-bundle.crt");
-
-  snprintf(agent, sizeof(agent), "libSAP/%s",
-           curl_version_info(CURLVERSION_NOW)->version);
-  agent[sizeof(agent) - 1] = 0;
   curl_easy_setopt(curl, CURLOPT_USERAGENT, agent);
-
-  headers = curl_slist_append(headers, "Expect:");
-  headers = curl_slist_append(headers, "Content-Type: application/json");
 
   ssize_t header_len = list_len(headers_input);
   for (ssize_t i = 0; i < header_len; i++) {
@@ -71,16 +63,20 @@ int64_t __hpi_internal_http(
 
     MapGetResult key_res = hashmap_get(header, "Schlüssel");
     assert(key_res.found);
-    char *key = dynstring_as_cstr(*(DynString **)key_res.value);
 
     MapGetResult value_res = hashmap_get(header, "Wert");
     assert(value_res.found);
-    char *value = dynstring_as_cstr(*(DynString **)value_res.value);
 
-    headers = curl_slist_append(headers, key);
-    headers = curl_slist_append(headers, value);
+    DynString *header_entry = *(DynString **)key_res.value;
+    dynstring_push_string(header_entry, ": ");
+    dynstring_push(header_entry, *(DynString **)value_res.value);
+
+    headers = curl_slist_append(headers, dynstring_as_cstr(header_entry));
   }
 
+  // printf("headers: `%s`\n", headers->data);
+
+  curl_easy_setopt(curl, CURLOPT_HEADER, false);
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   char *method_cstr = dynstring_as_cstr(method);
@@ -95,7 +91,13 @@ int64_t __hpi_internal_http(
 
   curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
   curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+
+  char *response;
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+  // dynstring_set(body_buf, response);
+
 
   res = curl_easy_perform(curl);
 
