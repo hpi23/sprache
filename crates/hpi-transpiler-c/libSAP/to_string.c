@@ -41,10 +41,10 @@ DynString *to_string(TypeDescriptor type, void *value) {
 
     ssize_t len = list_len(list);
     for (int i = 0; i < len; i++) {
-      ListGetResult res = list_at(list, i); // TODO: list has the same value for each member
+      ListGetResult res =
+          list_at(list, i); // TODO: list has the same value for each member
       assert(res.found);
-      printf("FOO: %s\n",
-             dynstring_as_cstr(to_string(*type.list_inner, res.value)));
+      assert(type.list_inner != NULL);
       dynstring_push(output, to_string(*type.list_inner, res.value));
 
       if (i + 1 < len) {
@@ -137,12 +137,16 @@ DynString *to_string(TypeDescriptor type, void *value) {
     break;
   }
   case TYPE_STRING: {
-    char *string_raw = dynstring_as_cstr(*(DynString **)value);
+    {
+      DynString *str = *(DynString **)value;
+      assert(str != NULL);
+      char *string_raw = dynstring_as_cstr(str);
 
-    dynstring_push_string(output, string_raw);
+      dynstring_push_string(output, string_raw);
 
-    free(string_raw);
-    break;
+      free(string_raw);
+      break;
+    }
   }
   }
 

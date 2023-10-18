@@ -11,9 +11,9 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
-    setze Zeichenkette Input auf "[ 1 , 2, 3 ]";
-    //setze Zeichenkette Input auf "{ \"foo\": [ 1, 2, 3 ] }";
-    setze Liste von Zahl Test auf Zergliedere_JSON(Input) als Liste von Zahl;
+    setze Zeichenkette Input auf "[ 1 , 2 ]";
+    //setze Zeichenkette Input auf "{ \"foo\": [ \"foo\", \"bar\" ] }";
+    setze Liste von Zeichenkette Test auf Zergliedere_JSON(Input) als Liste von Zeichenkette;
     Drucke(Test);
 }
 

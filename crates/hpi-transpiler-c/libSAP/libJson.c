@@ -8,16 +8,13 @@
 #include <stdio.h>
 
 AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
-  char *str = json_value_to_string(value);
-  printf("CONVERTING: %s | type-kind: %d\n", str, value.type);
-
   TypeDescriptor res_type = {
       .ptr_count = 0, .list_inner = NULL, .obj_fields = NULL};
 
   AnyValue res = {.value = NULL, .type = res_type};
 
   switch (value.type) {
-  case JSON_TYPE_OBJECT:
+  case JSON_TYPE_OBJECT: {
     res.type.kind = TYPE_ANY_OBJECT;
 
     AnyObject *any_obj = anyobj_new();
@@ -43,10 +40,9 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
     *obj_temp = any_obj;
     res.value = obj_temp;
 
-    printf("Object addr bef: %p\n", res.value);
-
     break;
-  case JSON_TYPE_ARRAY:
+  }
+  case JSON_TYPE_ARRAY: {
     res.type.kind = TYPE_LIST;
     TypeDescriptor inner = {
         .obj_fields = NULL, .list_inner = NULL, .ptr_count = 0};
@@ -62,9 +58,15 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
 
       JsonValue inner_json = *(JsonValue *)curr.value;
 
-      *converted_ptr =
-          __hpi_internal_anyvalue_from_json(inner_json);
+      *converted_ptr = __hpi_internal_anyvalue_from_json(inner_json);
 
+      // TODO: this expects a known inner type,
+      // must convert the any type to a known one
+      // BUG: this will fail because other functions, such as print will expect the inner type of the list  
+      // to be e.g. String. However, the real type is AnyValue.
+      // We will need to cast the inner type to the expected one
+      // In the ideal case, this is not even handled by this function
+      // Instead, use a different cast function
       list_append(list_temp, converted_ptr);
 
       inner = converted_ptr->type;
@@ -74,34 +76,43 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
     TypeDescriptor *inner_ptr = malloc(sizeof(TypeDescriptor));
     *inner_ptr = inner;
     res.type.list_inner = inner_ptr;
+    printf("LIST INNER TYPE: %s\n", display_type(res.type));
 
     ListNode **temp_list_ptr = malloc(sizeof(ListNode **));
     *temp_list_ptr = list_temp;
     res.value = temp_list_ptr;
 
-    printf("inner: %d\n", inner.kind);
-
     break;
-  case JSON_TYPE_INT:
+  }
+  case JSON_TYPE_INT: {
     res.type.kind = TYPE_INT;
     res.value = malloc(sizeof(int64_t));
     *(int64_t *)res.value = value.num_int;
     break;
-  case JSON_TYPE_FLOAT:
+  }
+  case JSON_TYPE_FLOAT: {
     res.type.kind = TYPE_FLOAT;
     res.value = malloc(sizeof(double));
     *(double *)res.value = value.num_int;
     break;
-  case JSON_TYPE_BOOL:
+  }
+  case JSON_TYPE_BOOL: {
     res.type.kind = TYPE_BOOL;
     res.value = malloc(sizeof(bool));
     *(bool *)res.value = value.boolean;
     break;
-  case JSON_TYPE_STRING:
+  }
+  case JSON_TYPE_STRING: {
     res.type.kind = TYPE_STRING;
-    res.value = malloc(sizeof(DynString **));
-    *(DynString **)res.value = dynstring_from(value.string);
+    DynString **ptr_temp = malloc(sizeof(DynString *));
+    DynString *str = dynstring_from(value.string);
+    *ptr_temp = str;
+    res.value = ptr_temp;
     break;
+  default:
+    printf("Unhandled type\n");
+    exit(-1);
+  }
   }
 
   return res;
@@ -125,6 +136,7 @@ AnyValue __hpi_internal_parse_json(DynString *input) {
   }
 
   parser_free(&parser);
+  // printf("JSON: RES: %s\n", json_value_to_string(parse_res.value));
 
   // convert JSON value to anyvalue
   return __hpi_internal_anyvalue_from_json(parse_res.value);

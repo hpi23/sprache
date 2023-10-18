@@ -1422,7 +1422,8 @@ impl<'src> Transpiler<'src> {
             }
             (Type::Any, as_type) => {
                 // TODO: insert runtime cast validation
-
+                // TODO: this function cannot just validate the inner type,
+                // it must also return a void* which is then casted to the correct end result.
                 // void __hpi_internal_validate_runtime_cast(TypeDescriptor as_type, TypeDescriptor from_type);
 
                 let from_expr_ident = format!("runtime_cast_from{}", self.let_cnt);
