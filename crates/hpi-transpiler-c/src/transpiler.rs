@@ -579,7 +579,9 @@ impl<'src> Transpiler<'src> {
                     vec![],
                     Some(Expression::Call(Box::new(CallExpr {
                         func: "dynstring_from".to_string(),
-                        args: vec![Expression::StringLiteral(inner.replace('\n', "\\n").replace('"', "\\\""))],
+                        args: vec![Expression::StringLiteral(
+                            inner.replace('\n', "\\n").replace('"', "\\\""),
+                        )],
                     }))),
                 );
             }
@@ -1435,26 +1437,15 @@ impl<'src> Transpiler<'src> {
                     expr,
                 }));
 
-                // validate that this cast is legal
-                stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
-                    func: "__hpi_internal_validate_runtime_cast".to_string(),
-                    args: vec![
-                        Expression::Ident(self.get_type_reflector(as_type.clone())),
-                        Expression::Member(Box::new(MemberExpr {
-                            expr: Expression::Ident(from_expr_ident.clone()),
-                            member: "type".to_string(),
-                            base_is_ptr: false,
-                        })),
-                    ],
-                }))));
-
                 // source is a AnyValue*
                 Expression::Prefix(Box::new(PrefixExpr {
                     expr: Expression::Cast(Box::new(CastExpr {
-                        expr: Expression::Member(Box::new(MemberExpr {
-                            expr: Expression::Ident(from_expr_ident),
-                            member: "value".to_string(),
-                            base_is_ptr: false,
+                        expr: Expression::Call(Box::new(CallExpr {
+                            func: "__hpi_internal_runtime_cast".to_string(),
+                            args: vec![
+                                Expression::Ident(from_expr_ident.clone()),
+                                Expression::Ident(self.get_type_reflector(as_type.clone())),
+                            ],
                         })),
                         type_: as_type.clone().add_ref().unwrap().into(),
                     })),

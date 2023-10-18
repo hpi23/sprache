@@ -112,32 +112,33 @@ char *display_type(TypeDescriptor type) {
   return out;
 }
 
-void __hpi_internal_validate_runtime_cast(TypeDescriptor as_type,
-                                          TypeDescriptor from_type) {
-  if (as_type.kind == from_type.kind) {
-    return;
-  }
-
-  if (as_type.ptr_count != from_type.ptr_count) {
+void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type) {
+  // Detect basic type mismatch
+  if (from.type.kind != as_type.kind ||
+      from.type.ptr_count != as_type.ptr_count) {
     goto fail;
   }
 
-  switch (from_type.kind) {
+  switch (from.type.kind) {
+  case TYPE_NONE:
+    assert(0);
+  case TYPE_INT:
+  case TYPE_FLOAT:
+  case TYPE_CHAR:
+  case TYPE_BOOL:
+  case TYPE_STRING:
+    return from.value;
   case TYPE_LIST: {
-
-    // TODO: validate inner types
-    break;
+    ListNode *list = *(ListNode **)from.value;
+  }
   case TYPE_OBJECT:
-    // TODO: validate inner types
+  case TYPE_ANY_OBJECT:
     break;
   }
-  }
-
-  return;
 
 fail:
   printf("Runtime error: Unsupported cast: Cannot cast value of type `%s` to "
          "`%s`\n",
-         display_type(from_type), display_type(as_type));
+         display_type(from.type), display_type(as_type));
   exit(-1);
 }
