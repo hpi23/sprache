@@ -76,7 +76,6 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
     TypeDescriptor *inner_ptr = malloc(sizeof(TypeDescriptor));
     *inner_ptr = inner;
     res.type.list_inner = inner_ptr;
-    printf("LIST INNER TYPE: %s\n", display_type(res.type));
 
     ListNode **temp_list_ptr = malloc(sizeof(ListNode **));
     *temp_list_ptr = list_temp;
@@ -119,8 +118,6 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
 }
 
 AnyValue __hpi_internal_parse_json(DynString *input) {
-  dynstring_print(input);
-
   char *input_cstr = dynstring_as_cstr(input);
   NewJsonParserResult create_res = parser_new(input_cstr);
   JsonParser parser = create_res.parser;

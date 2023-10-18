@@ -1,6 +1,7 @@
 beantrage Drucke von Drucker;
 beantrage Zeit von Uhr;
 beantrage Zergliedere_JSON von Textverarbeitung;
+beantrage Http von Netzwerk;
 
 funk Bewerbung() ergibt Zeichenkette {
   "Das ist meine wunderbare Bewerbung."
@@ -11,9 +12,25 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
-    setze Zeichenkette Input auf "[ 1 , 2 ]";
+    setze Zeichenkette Körper auf "";
+
+    setze Zahl Antwort auf Http(
+        "GET" /
+        "https://memes.hpi.church/api/images/list" /
+        "" /
+        [] /
+        &Körper /
+    );
+
+    Drucke("Antwort:" / Antwort);
+
+    setze Liste von Speicherbox KörperParsed auf Zergliedere_JSON(Körper) als Liste von Speicherbox;
+
+    Drucke("Körper: " / KörperParsed);
+
+    // setze Zeichenkette Input auf "[ \"foo\" , \"bar\" ]";
     //setze Zeichenkette Input auf "{ \"foo\": [ \"foo\", \"bar\" ] }";
-    setze Liste von Zeichenkette Test auf Zergliedere_JSON(Input) als Liste von Zeichenkette;
-    Drucke(Test);
+    // setze Liste von Zeichenkette Test auf Zergliedere_JSON(Input) als Liste von Zeichenkette;
+    // Drucke(Test);
 }
 

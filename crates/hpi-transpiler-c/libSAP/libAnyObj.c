@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 
 void anyobj_insert(AnyObject *obj, char *key, AnyValue value) {
@@ -129,10 +130,37 @@ void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type) {
   case TYPE_STRING:
     return from.value;
   case TYPE_LIST: {
-    ListNode *list = *(ListNode **)from.value;
+    ListNode *new_list = list_new();
+
+    ListNode *old_list = *(ListNode **)from.value;
+    ssize_t len = list_len(old_list);
+
+    for (int i = 0; i < len; i++) {
+      ListGetResult res = list_at(old_list, i);
+      assert(res.found);
+
+      AnyValue *val = (AnyValue *)res.value;
+      list_append(new_list,
+                  __hpi_internal_runtime_cast(*val, *as_type.list_inner));
+
+      // cleanup
+      free(res.value);
+    }
+
+    // cleanup
+    list_free(old_list);
+
+    ListNode **list_ptr = malloc(sizeof(ListNode *));
+    *list_ptr = new_list;
+    return list_ptr;
   }
-  case TYPE_OBJECT:
+  case TYPE_OBJECT: {
+    // TODO: check this, (is obj -> any obj allowed?)
+  }
   case TYPE_ANY_OBJECT:
+    if (from.type.kind == TYPE_ANY_OBJECT) {
+      return from.value;
+    }
     break;
   }
 

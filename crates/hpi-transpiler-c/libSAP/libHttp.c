@@ -2,6 +2,7 @@
 #include "/home/mik/Coding/hpi/hpi-c-tests/hashmap/map.h"
 #include <assert.h>
 #include <curl/curl.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -109,8 +110,10 @@ int64_t __hpi_internal_http(
     fprintf(stderr, "Runtime error: (%d) %s\n", res, errbuf);
     exit(-1);
   }
+
 cleanup:
   curl_slist_free_all(headers);
   curl_easy_cleanup(curl);
+  errno = 0;
   return http_code;
 }
