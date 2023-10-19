@@ -10,8 +10,8 @@ TimeStruct __hpi_internal_time_provider() {
   struct tm *local = localtime(&raw_time);
 
   TimeStruct res = {
-      .year = local->tm_year,
-      .month = local->tm_mon,
+      .year = local->tm_year + 1900,
+      .month = local->tm_mon + 1,
       .calendar_day = local->tm_mday,
       .week_day = local->tm_wday,
       .hour = local->tm_hour,

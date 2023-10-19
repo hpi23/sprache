@@ -65,7 +65,7 @@ funk Lade_Speiseangebot() ergibt Liste von Speise {
         Aufgeben(1);
     }
 
-    Drucke(Körper);
+    // Drucke(Körper);
 
     setze Speicherbox Res auf Zergliedere_JSON(Körper) als Speicherbox;
     setze Liste von Speicherbox ContentRes auf Res.Nehmen("content") als Liste von Speicherbox;
@@ -86,10 +86,16 @@ funk Lade_Speiseangebot() ergibt Liste von Speise {
             setze Zeichenkette GerichtDatumRoh auf GerichtInfos.Nehmen("datum") als Zeichenkette;
 
             setze Zeichenkette GerichtDatum auf GerichtDatumRoh.Zertrenne("T")[0];
+            Drucke("GerichtDatum erkannt:" / GerichtDatum);
             setze Zeichenkette HeuteDatum auf Formatiere("%d-%2d-%2d" / Zeit().Jahr / Zeit().Monat / Zeit().Kalendar_Tag);
+            Drucke("HeuteDatum generiert:" / HeuteDatum);
             setze Zeichenkette Gerichtname auf GerichtInfos.Nehmen("gerichtname") als Zeichenkette;
 
-            falls (GerichtDatum != HeuteDatum) || (Gerichtname.Startet_Mit("Salatbuffet")) {
+            setze Wahrheitswert DatumMismatch auf GerichtDatum != HeuteDatum;
+            setze Wahrheitswert NameMismatch auf Gerichtname.Startet_Mit("Salatbuffet");
+
+            falls DatumMismatch || NameMismatch {
+                Drucke("Datum mismatch:" / DatumMismatch / "NameMismatch:" / NameMismatch);
                 Drucke("Überspringe Gericht:" / Gerichtname.Ersetze("\n" / " "));
                 weitermachen;
             }
@@ -189,6 +195,9 @@ funk Sende_Discord_Nachricht(Liste von Speise Speiseangebot / Zeichenkette Disco
     );
 
     falls Antwort_Zahl != 204 {
-        Aufgeben(Antwort_Zahl);
+        Drucke("Illegale AntwortZahl:" / Antwort_Zahl);
+        Drucke("Körper:" / Antwort_Körper);
+        Drucke("Anfragekörper:" / Körper_Zeichenkette);
+        Aufgeben(-1);
     }
 }

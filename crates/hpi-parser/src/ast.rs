@@ -47,7 +47,7 @@ impl Type {
                 format!("{}Zeichenkette", "Zeiger_auf_".repeat(*indirections))
             }
             Self::List(inner, indirections) => {
-                format!("{}Liste_von_{}", "Zeiger_auf_".repeat(*indirections), inner)
+                format!("{}Liste_von_{}", "Zeiger_auf_".repeat(*indirections), inner.sanitized_name())
             }
             Self::AnyObject(indirections) => {
                 format!("{}Speicherbox", "Zeiger_auf_".repeat(*indirections))
@@ -60,7 +60,7 @@ impl Type {
                     "funk({}) ergibt {result_type}",
                     params
                         .iter()
-                        .map(|typ| typ.to_string())
+                        .map(|typ| typ.sanitized_name())
                         .collect::<Vec<String>>()
                         .join(" / ")
                 )

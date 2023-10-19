@@ -22,9 +22,7 @@ void __hpi_internal_libSAP_reset() { indent = 4; }
 
 int64_t __hpi_internal_generate_matrikelnummer() {
   // TODO: use lfsr instead of just time
-
   TimeStruct t = __hpi_internal_time_provider();
-
   return t.second * t.minute * t.hour * t.year;
 }
 
@@ -81,9 +79,7 @@ DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, ...) {
   return output;
 }
 
-void __hpi_internal_sleep(double duration) {
-    sleep(duration);
-}
+void __hpi_internal_sleep(double duration) { sleep(duration); }
 
 AnyObject *__hpi_internal_env() {
   AnyObject *obj = anyobj_new();
@@ -114,8 +110,4 @@ AnyObject *__hpi_internal_env() {
   }
 
   return obj;
-}
-
-ListNode *__hpi_internal_string_split(DynString *base, DynString *delim) {
-  return dynstring_split(base, delim, 0);
 }

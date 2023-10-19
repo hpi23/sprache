@@ -2,6 +2,7 @@ beantrage Drucke von Drucker;
 beantrage Zeit von Uhr;
 beantrage Zergliedere_JSON von Textverarbeitung;
 beantrage Http von Netzwerk;
+beantrage Formatiere von Textverarbeitung;
 
 funk Bewerbung() ergibt Zeichenkette {
   "Das ist meine wunderbare Bewerbung."
@@ -12,21 +13,42 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
-    setze Zeichenkette Körper auf "";
+     // setze Zeichenkette Körper auf "";
+ // 
+     // setze Zahl Antwort auf Http(
+         // "GET" /
+         // "https://memes.hpi.church/api/images/list" /
+         // "" /
+         // [] /
+         // &Körper /
+     // );
+ // 
+     // Drucke("Antwort:" / Antwort);
+ // 
+     // setze Liste von Speicherbox KörperParsed auf Zergliedere_JSON(Körper) als Liste von Speicherbox;
+ // 
+     // Drucke("Körper: " / KörperParsed);
 
-    setze Zahl Antwort auf Http(
-        "GET" /
-        "https://memes.hpi.church/api/images/list" /
-        "" /
-        [] /
-        &Körper /
-    );
+    datentyp Speise auf Objekt {
+        Zeichenkette Titel /
+        Zeichenkette Beschreibung
+    };
 
-    Drucke("Antwort:" / Antwort);
+    setze Liste von Speise Resultat auf [];
 
-    setze Liste von Speicherbox KörperParsed auf Zergliedere_JSON(Körper) als Liste von Speicherbox;
+    Resultat.Hinzufügen(erstelle {
+        Zeichenkette Titel auf Formatiere("Angebot %d" / 42) /
+        Zeichenkette Beschreibung auf "Mein Gericht"
+    });
 
-    Drucke("Körper: " / KörperParsed);
+    Drucke(Resultat);
+
+    setze Liste von Zahl Foo auf [];
+    Foo.Hinzufügen(42);
+    Foo.Hinzufügen(69);
+    Foo.Hinzufügen(11);
+
+    Drucke(Foo);
 
     // setze Zeichenkette Input auf "[ \"foo\" , \"bar\" ]";
     //setze Zeichenkette Input auf "{ \"foo\": [ \"foo\", \"bar\" ] }";

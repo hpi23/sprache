@@ -371,8 +371,8 @@ impl<'src> Transpiler<'src> {
             .flat_map(|s| self.statement(s))
             .collect();
 
-        if let Some(expr) = node.block.expr {
-            let (mut stmts, expr) = self.expression(expr);
+        if let Some(raw_expr) = node.block.expr.clone() {
+            let (mut stmts, expr) = self.expression(raw_expr.clone());
             body.append(&mut stmts);
             let mut stmts = match (self.in_main_fn, expr) {
                 (true, Some(expr)) => {
@@ -382,7 +382,13 @@ impl<'src> Transpiler<'src> {
                     ]
                 }
                 (true, None) => vec![Statement::Return(Some(Expression::Int(0)))],
-                (false, expr) => vec![Statement::Return(expr)],
+                (false, expr) => {
+                    if raw_expr.result_type() == Type::Nichts {
+                        vec![Statement::Return(None)]
+                    } else {
+                        vec![Statement::Return(expr)]
+                    }
+                }
             };
             body.append(&mut stmts);
         };
@@ -493,9 +499,13 @@ impl<'src> Transpiler<'src> {
     fn return_stmt(&mut self, node: Option<AnalyzedExpression<'src>>) -> Vec<Statement> {
         match (node, self.in_main_fn) {
             (Some(expr), _) => {
-                let (mut stmts, expr) = self.expression(expr);
-                stmts.push(Statement::Return(expr));
-                stmts
+                if expr.result_type() == Type::Nichts {
+                    vec![Statement::Return(None)]
+                } else {
+                    let (mut stmts, expr) = self.expression(expr);
+                    stmts.push(Statement::Return(expr));
+                    stmts
+                }
             }
             (None, false) => vec![Statement::Return(None)],
             (None, true) => vec![Statement::Return(Some(Expression::Int(0)))],
@@ -965,6 +975,13 @@ impl<'src> Transpiler<'src> {
                 };
                 (lhs_stmts, None)
             }
+            (Type::String(0), Type::String(0), InfixOp::Eq | InfixOp::Neq) => (
+                vec![],
+                Some(Expression::Call(Box::new(CallExpr {
+                    func: "dynstring_strcmp".to_string(),
+                    args: vec![lhs.expect("This is a str"), rhs.expect("This as well")],
+                }))),
+            ),
             (_, _, _) => {
                 lhs_stmts.append(&mut rhs_stmts);
                 (
@@ -1196,7 +1213,10 @@ impl<'src> Transpiler<'src> {
                     self.get_type_reflector(type_list[0].clone()),
                 ));
 
-                args.push_back(Expression::Ident(marshal_ident));
+                args.push_back(Expression::Prefix(Box::new(PrefixExpr {
+                    expr: Expression::Ident(marshal_ident),
+                    op: PrefixOp::Ref,
+                })));
 
                 "__hpi_internal_marshal_json".to_string()
             }
@@ -1246,7 +1266,25 @@ impl<'src> Transpiler<'src> {
                         }
                         (Type::List(_, 0), "Hinzufügen") => {
                             self.required_includes.insert("./libSAP/libList.h");
-                            args.push_back(member_expr.expect("A list always produces a value"));
+
+                            let temp_ident = format!("push_ptr_{}", self.let_cnt);
+
+                            stmts.push(Statement::VarDeclaration(VarDeclaration {
+                                name: temp_ident.clone(),
+                                type_: type_list[0].clone().into(),
+                                expr: args
+                                    .pop_back()
+                                    .expect("This function always takes exactly 2 args"),
+                            }));
+                            self.let_cnt += 1;
+
+                            args.push_front(member_expr.expect("A list always produces a value"));
+
+                            args.push_back(Expression::Prefix(Box::new(PrefixExpr {
+                                expr: Expression::Ident(temp_ident),
+                                op: PrefixOp::Ref,
+                            })));
+
                             "__hpi_internal_list_push".to_string()
                         }
                         (Type::List(_, 0), "Enthält") => {
