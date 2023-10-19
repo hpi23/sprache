@@ -125,10 +125,11 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
 
 AnyValue __hpi_internal_parse_json(DynString *input) {
   char *input_cstr = dynstring_as_cstr(input);
+
   NewJsonParserResult create_res = parser_new(input_cstr);
   JsonParser parser = create_res.parser;
   if (create_res.error != NULL) {
-    printf("Runtime JSON parse error: `%s`\n", create_res.error);
+    printf("Runtime JSON parser creation error: `%s`\n", create_res.error);
     exit(-1);
   }
 

@@ -49,10 +49,5 @@ funk Studium() ergibt Nichts {
     Foo.Hinzufügen(11);
 
     Drucke(Foo);
-
-    // setze Zeichenkette Input auf "[ \"foo\" , \"bar\" ]";
-    //setze Zeichenkette Input auf "{ \"foo\": [ \"foo\", \"bar\" ] }";
-    // setze Liste von Zeichenkette Test auf Zergliedere_JSON(Input) als Liste von Zeichenkette;
-    // Drucke(Test);
 }
 
