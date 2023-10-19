@@ -10,8 +10,10 @@
 
 DynString *body_buf;
 
-size_t curl_write(void *ptr, size_t size, size_t nmemb, void *stream) {
-  dynstring_push_string(body_buf, ptr);
+size_t curl_write(char *ptr, size_t size, size_t nmemb, void *stream) {
+  for (int i = 0; i < size * nmemb; i++) {
+    dynstring_push_char(body_buf, ptr[i]); // TODO: this is bad
+  }
   return size * nmemb;
 }
 
@@ -98,7 +100,6 @@ int64_t __hpi_internal_http(
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
   // dynstring_set(body_buf, response);
-
 
   res = curl_easy_perform(curl);
 

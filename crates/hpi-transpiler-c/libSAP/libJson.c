@@ -62,11 +62,11 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
 
       // TODO: this expects a known inner type,
       // must convert the any type to a known one
-      // BUG: this will fail because other functions, such as print will expect the inner type of the list  
-      // to be e.g. String. However, the real type is AnyValue.
-      // We will need to cast the inner type to the expected one
-      // In the ideal case, this is not even handled by this function
-      // Instead, use a different cast function
+      // BUG: this will fail because other functions, such as print will expect
+      // the inner type of the list to be e.g. String. However, the real type is
+      // AnyValue. We will need to cast the inner type to the expected one In
+      // the ideal case, this is not even handled by this function Instead, use
+      // a different cast function
       list_append(list_temp, converted_ptr);
 
       inner = converted_ptr->type;
@@ -108,9 +108,11 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
     *ptr_temp = str;
     res.value = ptr_temp;
     break;
+  case JSON_TYPE_NULL:
+    // TODO: implement NULL
   default:
-    printf("Unhandled type\n");
-    exit(-1);
+    printf("Type kind: %d\n", value.type);
+    assert("Unhandled type" && 0);
   }
   }
 
@@ -119,10 +121,11 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
 
 AnyValue __hpi_internal_parse_json(DynString *input) {
   char *input_cstr = dynstring_as_cstr(input);
+
   NewJsonParserResult create_res = parser_new(input_cstr);
   JsonParser parser = create_res.parser;
   if (create_res.error != NULL) {
-    printf("Runtime JSON parse error: `%s`\n", create_res.error);
+    printf("Runtime JSON parser creation error: `%s`\n", create_res.error);
     exit(-1);
   }
 

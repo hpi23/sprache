@@ -12,25 +12,35 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
+    Drucke(Nichts);
+    überweise;
+
     setze Zeichenkette Körper auf "";
 
+    Drucke("Fetching...");
     setze Zahl Antwort auf Http(
         "GET" /
-        "https://memes.hpi.church/api/images/list" /
+        "https://swp.webspeiseplan.de/index.php?token=55ed21609e26bbf68ba2b19390bf7961&model=menu&location=9601&languagetype=2&_=1697743364185" /
         "" /
-        [] /
+        [
+            erstelle {
+                Zeichenkette Schlüssel auf "Referer" /
+                Zeichenkette Wert auf "https://swp.webspeiseplan.de/menu" /
+            }
+        ] /
         &Körper /
     );
+    Drucke("Fetched.");
 
-    Drucke("Antwort:" / Antwort);
+    // Drucke("Antwort:" / Antwort);
+
+    Drucke("Körper: " / Körper);
 
     setze Liste von Speicherbox KörperParsed auf Zergliedere_JSON(Körper) als Liste von Speicherbox;
-
-    Drucke("Körper: " / KörperParsed);
+   Drucke(KörperParsed.Länge());
 
     // setze Zeichenkette Input auf "[ \"foo\" , \"bar\" ]";
     //setze Zeichenkette Input auf "{ \"foo\": [ \"foo\", \"bar\" ] }";
-    // setze Liste von Zeichenkette Test auf Zergliedere_JSON(Input) als Liste von Zeichenkette;
-    // Drucke(Test);
+    //setze Liste von Zeichenkette Test auf Zergliedere_JSON(Input) als Liste von Zeichenkette;
 }
 

@@ -117,11 +117,16 @@ impl<'src> Transpiler<'src> {
     pub fn transpile(&mut self, tree: AnalyzedProgram<'src>) -> CProgram {
         self.types = tree.types;
 
-        let globals = tree
+        let mut globals = tree
             .globals
             .into_iter()
             .flat_map(|g| self.let_stmt(g, true))
             .collect();
+
+        globals.push(Statement:VarDeclaration(
+
+
+                ));
 
         for func in &tree.functions {
             self.fn_signature(func)
@@ -768,7 +773,9 @@ impl<'src> Transpiler<'src> {
                     }))),
                 );
             }
-            AnalyzedExpression::Nichts => return (vec![], None),
+            AnalyzedExpression::Nichts => {
+                return (vec![], Some(Expression::Ident("Nichts".to_string())))
+            }
         };
         (vec![], expr)
     }
