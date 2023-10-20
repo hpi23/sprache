@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, process, time::Instant, str::FromStr, io};
+use std::{collections::HashMap, fs, io, process, str::FromStr, time::Instant};
 
 use anyhow::{bail, Context};
 use clap::Parser;
@@ -12,6 +12,7 @@ use reqwest::{
 };
 
 mod cli;
+mod c;
 
 struct InterpreterHttpClient {}
 
@@ -56,6 +57,65 @@ async fn main() -> anyhow::Result<()> {
     let root_args = Cli::parse();
 
     match root_args.command {
+        Command::Transpile(args) => {
+            let path = args.path.clone();
+            let path = path.to_string_lossy();
+
+            let (out, diagnostics) = rush_transpiler_c::transpile(&code, &path, emit_comments)
+                .unwrap_or_else(|diagnostics| {
+                    println!(
+                        "{}",
+                        diagnostics
+                            .iter()
+                            .map(|d| format!("{d:#}"))
+                            .collect::<Vec<String>>()
+                            .join("\n\n")
+                    );
+                    process::exit(1)
+                });
+
+            println!(
+                "{}",
+                diagnostics
+                    .iter()
+                    .map(|d| format!("{d:#}"))
+                    .collect::<Vec<String>>()
+                    .join("\n\n")
+            );
+
+                let total_start = Instant::now();
+                let mut start = Instant::now();
+
+                let text = fs::read_to_string(&args.path)?;
+
+                let file_read_time = start.elapsed();
+                start = Instant::now();
+
+                let tree = analyze(&text, &path)?;
+
+                let analyze_time = start.elapsed();
+                start = Instant::now();
+
+                let exit_code = match transpiler {
+                    Ok(code) => code,
+                    Err(err) => bail!(format!("Laufzeitumgebung abgestürtzt: {err}")),
+                };
+
+                if root_args.time {
+                    eprintln!("Datei Einlesen:            {file_read_time:?}");
+                    eprintln!("Syntaktische / Semantische Analyse:              {analyze_time:?}");
+                    eprintln!("Ausführung:        {:?}", start.elapsed());
+                    eprintln!(
+                        "\x1b[90mGes:                {:?}\x1b[0m",
+                        total_start.elapsed()
+                    );
+                }
+
+                Ok(exit_code)
+
+            println!("tanspile: {:?}", start.elapsed());
+            fs::write("output.c", out).unwrap();
+        }
         Command::Run(args) => {
             let path = args.path.clone();
             let path = path.to_string_lossy();
@@ -74,7 +134,7 @@ async fn main() -> anyhow::Result<()> {
                 let analyze_time = start.elapsed();
                 start = Instant::now();
 
-                let http_client = InterpreterHttpClient{};
+                let http_client = InterpreterHttpClient {};
 
                 let exit_code = match Interpreter::new(io::stdout(), http_client).run(tree) {
                     Ok(code) => code,

@@ -431,6 +431,7 @@ impl Display for IfStmt {
 
 #[derive(Debug, Clone)]
 pub enum Expression {
+    TypeExpr(CType),
     Call(Box<CallExpr>),
     Prefix(Box<PrefixExpr>),
     Infix(Box<InfixExpr>),
@@ -449,6 +450,7 @@ pub enum Expression {
 impl Display for Expression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Expression::TypeExpr(node) => write!(f, "{node}"),
             Expression::Call(node) => write!(f, "{node}"),
             Expression::Member(node) => write!(f, "{node}"),
             Expression::Prefix(node) => write!(f, "{node}"),

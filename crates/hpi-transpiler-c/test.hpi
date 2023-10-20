@@ -40,10 +40,10 @@ funk Aktualisiere(Zeichenkette Discord_Url) ergibt Nichts {
     Drucke("\t=> Lade Speiseangebot aus dem Internet herunter...");
     setze Liste von Speise Speisen auf Lade_Speiseangebot();
     Drucke(Speisen);
-     // Drucke(Formatiere("\t=> Speiseangebot bereit. %d Speisen geladen." / Speisen.Länge()));
-     // Drucke("\t=> Sende Discord Nachricht...");
-     // Sende_Discord_Nachricht(Speisen / Discord_Url);
-     // Drucke("\t=> Discord Nachricht erfolgreich gesendet.");
+    Drucke(Formatiere("\t=> Speiseangebot bereit. %d Speisen geladen." / Speisen.Länge()));
+    Drucke("\t=> Sende Discord Nachricht...");
+    Sende_Discord_Nachricht(Speisen / Discord_Url);
+    Drucke("\t=> Discord Nachricht erfolgreich gesendet.");
 }
 
 funk Lade_Speiseangebot() ergibt Liste von Speise {
@@ -87,16 +87,15 @@ funk Lade_Speiseangebot() ergibt Liste von Speise {
             setze Zeichenkette GerichtDatumRoh auf GerichtInfos.Nehmen("datum") als Zeichenkette;
 
             setze Zeichenkette GerichtDatum auf GerichtDatumRoh.Zertrenne("T")[0];
-            Drucke("GerichtDatum erkannt:" / GerichtDatum);
             setze Zeichenkette HeuteDatum auf Formatiere("%d-%2d-%2d" / Zeit().Jahr / Zeit().Monat / Zeit().Kalendar_Tag);
-            Drucke("HeuteDatum generiert:" / HeuteDatum);
             setze Zeichenkette Gerichtname auf GerichtInfos.Nehmen("gerichtname") als Zeichenkette;
 
             setze Wahrheitswert DatumMismatch auf GerichtDatum != HeuteDatum;
             setze Wahrheitswert NameMismatch auf Gerichtname.Startet_Mit("Salatbuffet");
 
+            Drucke(GerichtDatum / HeuteDatum / DatumMismatch);
+
             falls DatumMismatch || NameMismatch {
-                Drucke("Datum mismatch:" / DatumMismatch / "NameMismatch:" / NameMismatch);
                 Drucke("Überspringe Gericht:" / Gerichtname.Ersetze("\n" / " "));
                 weitermachen;
             }

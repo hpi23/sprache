@@ -659,10 +659,26 @@ impl<'src> Transpiler<'src> {
                     if let Some(expr) = expr {
                         stmts.push(Statement::VarDeclaration(VarDeclaration {
                             name: temp_ident.clone(),
-                            type_: value.value.result_type().into(),
-                            expr,
+                            type_: value.value.result_type().add_ref().unwrap().into(),
+                            expr: Expression::Call(Box::new(CallExpr {
+                                func: "malloc".to_string(),
+                                args: vec![Expression::Call(Box::new(CallExpr {
+                                    func: "sizeof".to_string(),
+                                    args: vec![Expression::TypeExpr(
+                                        value.value.result_type().into(),
+                                    )],
+                                }))],
+                            })),
                         }));
                         self.let_cnt += 1;
+
+                        // TODO: use expr
+                        stmts.push(Statement::Assign(AssignStmt {
+                            assignee: temp_ident.clone(),
+                            assignee_ptr_count: 1,
+                            op: AssignOp::Basic,
+                            expr,
+                        }));
 
                         // BUG: this is not enough, heap allocation is required!
                         // THe same goes for list literal creation
@@ -672,10 +688,7 @@ impl<'src> Transpiler<'src> {
                             args: vec![
                                 Expression::Ident(obj_temp_ident.clone()),
                                 Expression::StringLiteral(value.key.clone()),
-                                Expression::Prefix(Box::new(PrefixExpr {
-                                    expr: Expression::Ident(temp_ident),
-                                    op: PrefixOp::Ref,
-                                })),
+                                Expression::Ident(temp_ident),
                             ],
                         }))));
                     }
@@ -978,13 +991,21 @@ impl<'src> Transpiler<'src> {
                 };
                 (lhs_stmts, None)
             }
-            (Type::String(0), Type::String(0), InfixOp::Eq | InfixOp::Neq) => (
-                vec![],
-                Some(Expression::Call(Box::new(CallExpr {
+            (Type::String(0), Type::String(0), op @ InfixOp::Eq | op @ InfixOp::Neq) => {
+                let mut expr = Expression::Call(Box::new(CallExpr {
                     func: "dynstring_strcmp".to_string(),
                     args: vec![lhs.expect("This is a str"), rhs.expect("This as well")],
-                }))),
-            ),
+                }));
+
+                if op == InfixOp::Neq {
+                    expr = Expression::Prefix(Box::new(PrefixExpr {
+                        expr,
+                        op: PrefixOp::BoolNot,
+                    }));
+                }
+
+                (vec![], Some(expr))
+            }
             (_, _, _) => {
                 lhs_stmts.append(&mut rhs_stmts);
                 (
@@ -1277,19 +1298,32 @@ impl<'src> Transpiler<'src> {
 
                             stmts.push(Statement::VarDeclaration(VarDeclaration {
                                 name: temp_ident.clone(),
-                                type_: type_list[0].clone().into(),
+                                type_: type_list[0].clone().add_ref().unwrap().into(),
+                                expr: Expression::Call(Box::new(CallExpr {
+                                    func: "malloc".to_string(),
+                                    args: vec![Expression::Call(Box::new(CallExpr {
+                                        func: "sizeof".to_string(),
+                                        args: vec![Expression::TypeExpr(
+                                            type_list[0].clone().into(),
+                                        )],
+                                    }))],
+                                })),
+                            }));
+
+                            stmts.push(Statement::Assign(AssignStmt {
+                                assignee: temp_ident.clone(),
+                                assignee_ptr_count: 1,
+                                op: AssignOp::Basic,
                                 expr: args
                                     .pop_back()
                                     .expect("This function always takes exactly 2 args"),
                             }));
+
                             self.let_cnt += 1;
 
                             args.push_front(member_expr.expect("A list always produces a value"));
 
-                            args.push_back(Expression::Prefix(Box::new(PrefixExpr {
-                                expr: Expression::Ident(temp_ident),
-                                op: PrefixOp::Ref,
-                            })));
+                            args.push_back(Expression::Ident(temp_ident));
 
                             "__hpi_internal_list_push".to_string()
                         }
@@ -1394,9 +1428,7 @@ impl<'src> Transpiler<'src> {
                 new_args.push(Expression::Int(type_list.len() as i64));
 
                 for (idx, _type) in type_list.clone().iter().enumerate() {
-                    new_args.push(Expression::Ident(
-                        self.get_type_reflector(_type.clone()),
-                    ));
+                    new_args.push(Expression::Ident(self.get_type_reflector(_type.clone())));
 
                     stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
                         func: "__hpi_internal_libSAP_reset".to_string(),

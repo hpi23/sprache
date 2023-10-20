@@ -13,27 +13,6 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
-     // setze Zeichenkette Körper auf "";
- // 
-     // setze Zahl Antwort auf Http(
-         // "GET" /
-         // "https://memes.hpi.church/api/images/list" /
-         // "" /
-         // [] /
-         // &Körper /
-     // );
- // 
-     // Drucke("Antwort:" / Antwort);
- // 
-     // setze Liste von Speicherbox KörperParsed auf Zergliedere_JSON(Körper) als Liste von Speicherbox;
- // 
-     // Drucke("Körper: " / KörperParsed);
-
-    datentyp Foo auf Objekt { Zeichenkette Bar };
-    setze Liste von Foo Test auf [];
-    Test.Hinzufügen(erstelle {
-        Zeichenkette Bar auf "Hallo Mom"
-    });
-    Drucke(Test[0]);
+    Drucke("2023-10-16" != "2023-10-20");
 }
 

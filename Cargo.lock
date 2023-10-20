@@ -497,6 +497,7 @@ dependencies = [
  "hpi-analyzer",
  "hpi-interpreter-tree",
  "hpi-ls",
+ "hpi-transpiler-c",
  "reqwest",
  "tempfile",
  "tokio",
@@ -529,6 +530,13 @@ name = "hpi-parser"
 version = "0.1.0"
 dependencies = [
  "either",
+]
+
+[[package]]
+name = "hpi-transpiler-c"
+version = "0.1.0"
+dependencies = [
+ "hpi-analyzer",
 ]
 
 [[package]]
@@ -1063,13 +1071,6 @@ dependencies = [
  "untrusted",
  "web-sys",
  "winapi",
-]
-
-[[package]]
-name = "rush-transpiler-c"
-version = "0.1.0"
-dependencies = [
- "hpi-analyzer",
 ]
 
 [[package]]

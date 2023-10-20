@@ -1,7 +1,6 @@
-use std::{fmt::Display, path::PathBuf};
+use std::path::PathBuf;
 
-use anyhow::anyhow;
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
@@ -16,9 +15,14 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Transpile the source file
+    #[clap(alias = "t")]
+    Transpile(TranspileArgs),
+
     /// Run the source file
     #[clap(alias = "r")]
     Run(RunArgs),
+
     /// Check the source code without compilation
     #[clap(alias = "c")]
     Check {
@@ -33,4 +37,11 @@ pub enum Command {
 pub struct RunArgs {
     /// Path to rush source file
     pub path: PathBuf,
+}
+
+#[derive(Args, Debug)]
+pub struct TranspileArgs {
+    /// Path to rush source file
+    pub path: PathBuf,
+    pub cflags: Vec<String>,
 }

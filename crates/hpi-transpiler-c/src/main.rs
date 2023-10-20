@@ -5,7 +5,7 @@ fn main() {
     let emit_comments = env::args().nth(2) == Some("true".to_string());
     let code = fs::read_to_string(&path).unwrap();
     let start = Instant::now();
-    let (out, diagnostics) = rush_transpiler_c::transpile(&code, &path, emit_comments)
+    let (out, diagnostics) = hpi_transpiler_c::transpile(&code, &path, emit_comments)
         .unwrap_or_else(|diagnostics| {
             println!(
                 "{}",
