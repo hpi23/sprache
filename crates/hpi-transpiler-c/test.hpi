@@ -39,10 +39,11 @@ funk Studium() ergibt Nichts {
 funk Aktualisiere(Zeichenkette Discord_Url) ergibt Nichts {
     Drucke("\t=> Lade Speiseangebot aus dem Internet herunter...");
     setze Liste von Speise Speisen auf Lade_Speiseangebot();
-    Drucke(Formatiere("\t=> Speiseangebot bereit. %d Speisen geladen." / Speisen.Länge()));
-    Drucke("\t=> Sende Discord Nachricht...");
-    Sende_Discord_Nachricht(Speisen / Discord_Url);
-    Drucke("\t=> Discord Nachricht erfolgreich gesendet.");
+    Drucke(Speisen);
+     // Drucke(Formatiere("\t=> Speiseangebot bereit. %d Speisen geladen." / Speisen.Länge()));
+     // Drucke("\t=> Sende Discord Nachricht...");
+     // Sende_Discord_Nachricht(Speisen / Discord_Url);
+     // Drucke("\t=> Discord Nachricht erfolgreich gesendet.");
 }
 
 funk Lade_Speiseangebot() ergibt Liste von Speise {

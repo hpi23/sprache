@@ -29,25 +29,11 @@ funk Studium() ergibt Nichts {
  // 
      // Drucke("Körper: " / KörperParsed);
 
-    datentyp Speise auf Objekt {
-        Zeichenkette Titel /
-        Zeichenkette Beschreibung
-    };
-
-    setze Liste von Speise Resultat auf [];
-
-    Resultat.Hinzufügen(erstelle {
-        Zeichenkette Titel auf Formatiere("Angebot %d" / 42) /
-        Zeichenkette Beschreibung auf "Mein Gericht"
+    datentyp Foo auf Objekt { Zeichenkette Bar };
+    setze Liste von Foo Test auf [];
+    Test.Hinzufügen(erstelle {
+        Zeichenkette Bar auf "Hallo Mom"
     });
-
-    Drucke(Resultat);
-
-    setze Liste von Zahl Foo auf [];
-    Foo.Hinzufügen(42);
-    Foo.Hinzufügen(69);
-    Foo.Hinzufügen(11);
-
-    Drucke(Foo);
+    Drucke(Test[0]);
 }
 

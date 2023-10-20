@@ -117,16 +117,11 @@ impl<'src> Transpiler<'src> {
     pub fn transpile(&mut self, tree: AnalyzedProgram<'src>) -> CProgram {
         self.types = tree.types;
 
-        let mut globals = tree
+        let globals = tree
             .globals
             .into_iter()
             .flat_map(|g| self.let_stmt(g, true))
             .collect();
-
-        globals.push(Statement:VarDeclaration(
-
-
-                ));
 
         for func in &tree.functions {
             self.fn_signature(func)
@@ -669,6 +664,9 @@ impl<'src> Transpiler<'src> {
                         }));
                         self.let_cnt += 1;
 
+                        // BUG: this is not enough, heap allocation is required!
+                        // THe same goes for list literal creation
+
                         stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
                             func: "hashmap_insert".to_string(),
                             args: vec![
@@ -783,9 +781,7 @@ impl<'src> Transpiler<'src> {
                     }))),
                 );
             }
-            AnalyzedExpression::Nichts => {
-                return (vec![], Some(Expression::Ident("Nichts".to_string())))
-            }
+            AnalyzedExpression::Nichts => return (vec![], None),
         };
         (vec![], expr)
     }
@@ -1169,10 +1165,19 @@ impl<'src> Transpiler<'src> {
 
         // TODO: this is ugly
 
+        // let type_list: Vec<Type> = node
+        //     .args
+        //     .iter()
+        //     .map(|arg| self.lookup_type(arg.result_type()))
+        //     .collect();
+
+        let mut type_list = vec![];
+
         for expr in node.args.iter() {
             let type_ = expr.result_type();
             let (mut expr_stmts, new_expr) = self.expression(expr.clone());
 
+            type_list.push(type_.clone());
             stmts.append(&mut expr_stmts);
 
             if new_expr.is_none() && type_ != Type::Nichts {
@@ -1183,12 +1188,6 @@ impl<'src> Transpiler<'src> {
                 args.push_back(expr);
             }
         }
-
-        let type_list: Vec<Type> = node
-            .args
-            .iter()
-            .map(|arg| self.lookup_type(arg.result_type()))
-            .collect();
 
         let func = match node.func {
             AnalyzedCallBase::Ident("Aufgeben") => {
@@ -1392,31 +1391,34 @@ impl<'src> Transpiler<'src> {
             "__hpi_internal_print" => {
                 let mut new_args = vec![];
 
-                new_args.push(Expression::Int(args.len() as i64));
+                new_args.push(Expression::Int(type_list.len() as i64));
 
-                for (idx, _arg) in args.clone().iter().enumerate() {
+                for (idx, _type) in type_list.clone().iter().enumerate() {
                     new_args.push(Expression::Ident(
-                        self.get_type_reflector(type_list[idx].clone()),
+                        self.get_type_reflector(_type.clone()),
                     ));
-
-                    let temp_ident = format!("fmt_ptr_{}", self.let_cnt);
-
-                    stmts.push(Statement::VarDeclaration(VarDeclaration {
-                        name: temp_ident.clone(),
-                        type_: type_list[idx].clone().into(),
-                        expr: args[idx].clone(),
-                    }));
-                    self.let_cnt += 1;
 
                     stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
                         func: "__hpi_internal_libSAP_reset".to_string(),
                         args: vec![],
                     }))));
 
-                    new_args.push(Expression::Prefix(Box::new(PrefixExpr {
-                        expr: Expression::Ident(temp_ident),
-                        op: PrefixOp::Ref,
-                    })));
+                    if let Some(arg) = args.get(idx) {
+                        let temp_ident = format!("fmt_ptr_{}", self.let_cnt);
+
+                        stmts.push(Statement::VarDeclaration(VarDeclaration {
+                            name: temp_ident.clone(),
+                            type_: _type.clone().into(), // TODO: fix `Nichts`
+                            expr: arg.clone(),
+                        }));
+
+                        self.let_cnt += 1;
+
+                        new_args.push(Expression::Prefix(Box::new(PrefixExpr {
+                            expr: Expression::Ident(temp_ident),
+                            op: PrefixOp::Ref,
+                        })));
+                    }
                 }
 
                 args = new_args.into();
