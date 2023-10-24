@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 
-bool __hpi_internal_string_starts_with(DynString *base, DynString * test) {
+bool __hpi_internal_string_starts_with(DynString *base, DynString *test) {
   if (test->length > base->length) {
     return false;
   }
@@ -16,6 +16,10 @@ bool __hpi_internal_string_starts_with(DynString *base, DynString * test) {
   }
 
   return true;
+}
+
+bool __hpi_internal_string_contains(DynString *base, DynString *test) {
+  return dynstring_contains(base, test);
 }
 
 DynString *__hpi_internal_string_replace(DynString *base_str,

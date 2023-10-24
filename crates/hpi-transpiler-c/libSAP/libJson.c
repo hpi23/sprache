@@ -95,7 +95,7 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
   case JSON_TYPE_FLOAT: {
     res.type.kind = TYPE_FLOAT;
     res.value = malloc(sizeof(double));
-    *(double *)res.value = value.num_int;
+    *(double *)res.value = value.num_float;
     break;
   }
   case JSON_TYPE_BOOL: {

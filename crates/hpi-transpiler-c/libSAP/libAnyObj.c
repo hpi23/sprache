@@ -2,6 +2,7 @@
 #include "reflection.h"
 #include <assert.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -117,6 +118,13 @@ void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type) {
   // Detect basic type mismatch
   if (from.type.kind != as_type.kind ||
       from.type.ptr_count != as_type.ptr_count) {
+
+    if (from.type.kind == TYPE_INT && as_type.kind == TYPE_FLOAT) {
+      double *as_float = malloc(sizeof(double));
+      *as_float = (double)*(int64_t *)from.value;
+      return as_float;
+    }
+
     goto fail;
   }
 
@@ -168,5 +176,6 @@ fail:
   printf("Runtime error: Unsupported cast: Cannot cast value of type `%s` to "
          "`%s`\n",
          display_type(from.type), display_type(as_type));
+  assert(0);
   exit(-1);
 }

@@ -24,7 +24,7 @@ Formatter *formatter_new(char *fmt, ListNode *input_args) {
 }
 
 DynString *formatter_fmt(Formatter *fmt) {
-  while (fmt->curr_char > 0) {
+  while (fmt->curr_char != 0 && fmt->curr_char != -1) {
     if (fmt->curr_char == '%') {
       formatter_start_escape(fmt);
       continue;
@@ -69,7 +69,27 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
     assert(arg.type.kind == TYPE_FLOAT);
     assert(arg.type.ptr_count == 0);
 
-    dynstring_push_fmt(fmt->output_buf, "%f", *(double *)arg.value);
+    DynString *fmt_specifier = dynstring_from("%.xf");
+
+    DynString *what;
+    DynString *with;
+    if (padding >= 0) {
+      what = dynstring_from("x");
+      with = dynstring_new();
+      dynstring_push_fmt(with, "%ld", padding);
+    } else {
+      what = dynstring_from(".x");
+      with = dynstring_new();
+    }
+
+    dynstring_replace(fmt_specifier, what, with);
+    dynstring_free(what);
+    dynstring_free(with);
+
+    char * format_c_str = dynstring_as_cstr(fmt_specifier);
+
+    dynstring_push_fmt(fmt->output_buf, format_c_str, *(double *)arg.value);
+    free(format_c_str);
 
     break;
   }
@@ -112,13 +132,31 @@ bool is_ascii_digit(char c) { return c >= 0x30 && c <= 0x39; }
 void formatter_start_escape(Formatter *fmt) {
   formatter_next(fmt);
 
-  ssize_t num_padding = 0;
+  ssize_t num_padding = -1;
 
   // check if in range '0' ..= '9'
   if (fmt->curr_char == '\0' || fmt->curr_char == -1) {
     // TODO: throw error
     assert(0);
   } else if (is_ascii_digit(fmt->curr_char)) {
+    DynString *padding = dynstring_new();
+
+    while (is_ascii_digit(fmt->curr_char)) {
+      dynstring_push_char(padding, fmt->curr_char);
+      formatter_next(fmt);
+    }
+
+    DynStringParseInt padding_res = dynstring_parse_int64(padding);
+    if (padding_res.error != NULL) {
+      printf("Formatierungsfehler: Konnte Pufferung nicht verarbeiten: %s\n",
+             padding_res.error);
+      exit(1);
+    }
+
+    num_padding = padding_res.num;
+  } else if (fmt->curr_char == '.') {
+    formatter_next(fmt);
+
     DynString *padding = dynstring_new();
 
     while (is_ascii_digit(fmt->curr_char)) {

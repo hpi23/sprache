@@ -116,5 +116,6 @@ cleanup:
   curl_slist_free_all(headers);
   curl_easy_cleanup(curl);
   errno = 0;
+
   return http_code;
 }
