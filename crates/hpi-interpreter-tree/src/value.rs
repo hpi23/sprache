@@ -59,7 +59,10 @@ impl Value {
                 let inner = inner
                     .borrow()
                     .iter()
-                    .map(|(key, value)| ObjectTypeField { key: key.clone(), type_: Box::new(value.as_type()) })
+                    .map(|(key, value)| ObjectTypeField {
+                        key: key.clone(),
+                        type_: Box::new(value.as_type()),
+                    })
                     .collect();
 
                 Type::Object(inner, 0)
@@ -125,6 +128,13 @@ fn string_startswith(val: &Value, args: Vec<Value>) -> Value {
         (Value::String(string), Value::String(startswith)) => {
             Value::Bool(string.starts_with(startswith))
         }
+        _ => unreachable!("the analyzer prevents this: {val:?}"),
+    }
+}
+
+fn string_contains(val: &Value, args: Vec<Value>) -> Value {
+    match (val, &args[0]) {
+        (Value::String(string), Value::String(contains)) => Value::Bool(string.contains(contains)),
         _ => unreachable!("the analyzer prevents this: {val:?}"),
     }
 }
@@ -203,6 +213,9 @@ impl Value {
             }
             (Value::String(_), "Startet_Mit") => {
                 Value::BuiltinFunction(Box::new(self.clone()), string_startswith)
+            }
+            (Value::String(_), "Enthält") => {
+                Value::BuiltinFunction(Box::new(self.clone()), string_contains)
             }
             (Value::String(_), "Ersetze") => {
                 Value::BuiltinFunction(Box::new(self.clone()), string_replace)

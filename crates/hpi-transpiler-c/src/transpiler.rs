@@ -1373,6 +1373,11 @@ impl<'src> Transpiler<'src> {
                             args.push_front(member_expr.expect("A string always produces a value"));
                             "__hpi_internal_string_starts_with".to_string()
                         }
+                        (Type::String(0), "Enthält") => {
+                            self.required_includes.insert("./libSAP/libString.h");
+                            args.push_front(member_expr.expect("A string always produces a value"));
+                            "__hpi_internal_string_contains".to_string()
+                        }
                         (Type::String(0), "Ersetze") => {
                             self.required_includes.insert("./libSAP/libString.h");
                             args.push_front(member_expr.expect("A string always produces a value"));

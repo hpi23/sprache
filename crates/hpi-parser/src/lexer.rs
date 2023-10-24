@@ -308,7 +308,7 @@ impl<'src> Lexer<'src> {
         while let Some(curr) = self.curr_char {
             match curr {
                 '"' => break,
-                '\\' => buffer.push(self.escape_seq()?),
+                '\\' => buffer.push_str(self.escape_seq()?),
                 _ => {
                     self.next();
                     buffer.push(curr);
@@ -324,18 +324,19 @@ impl<'src> Lexer<'src> {
         Ok(token)
     }
 
-    fn escape_seq(&mut self) -> Result<'src, char> {
+    fn escape_seq(&mut self) -> Result<'src, &'static str> {
         let start_loc = self.location;
         self.next();
 
         let char = match self.curr_char {
-            Some('"') => '"',
-            Some('t') => '\t',
-            Some('r') => '\r',
-            Some('n') => '\n',
+            Some('"') => "\"",
+            Some('t') => "\t",
+            Some('r') => "\r",
+            Some('n') => "\n",
+            Some('u') => "\\u",
             Some(_) | None => {
                 return Err(Error::new_boxed(
-                    "Invalide Ausbruchssequenz.".to_string(),
+                    "Invalide Fluchtsequenz.".to_string(),
                     start_loc.until(self.location),
                     self.input,
                 ))

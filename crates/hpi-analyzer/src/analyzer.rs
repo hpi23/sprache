@@ -2672,6 +2672,13 @@ impl<'src> Analyzer<'src> {
                     },
                 ),
                 (
+                    "Enthält".to_string(),
+                    Type::Function {
+                        params: vec![Type::String(0)],
+                        result_type: Box::new(Type::Bool(0)),
+                    },
+                ),
+                (
                     "Ersetze".to_string(),
                     Type::Function {
                         params: vec![Type::String(0), Type::String(0)],
