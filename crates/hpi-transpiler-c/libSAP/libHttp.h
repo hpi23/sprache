@@ -1,7 +1,7 @@
 #pragma once
 
-#include "/home/mik/Coding/hpi/hpi-c-tests/dynstring/dynstring.h"
-#include "/home/mik/Coding/hpi/hpi-c-tests/hashmap/map.h"
+#include "../hpi-c-tests/dynstring/dynstring.h"
+#include "../hpi-c-tests/hashmap/map.h"
 
 // Returns the HTTP status code
 int64_t __hpi_internal_http(

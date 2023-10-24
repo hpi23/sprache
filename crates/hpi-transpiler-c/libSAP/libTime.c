@@ -1,5 +1,5 @@
 #include "./libTime.h"
-#include "/home/mik/Coding/hpi/hpi-c-tests/hashmap/map.h"
+#include "../hpi-c-tests/hashmap/map.h"
 #include <stdint.h>
 #include <time.h>
 

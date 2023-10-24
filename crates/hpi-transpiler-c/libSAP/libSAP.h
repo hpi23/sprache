@@ -1,6 +1,6 @@
 #pragma once
-#include "/home/mik/Coding/hpi/hpi-c-tests/dynstring/dynstring.h"
-#include "/home/mik/Coding/hpi/hpi-c-tests/hashmap/map.h"
+#include "../hpi-c-tests/dynstring/dynstring.h"
+#include "../hpi-c-tests/hashmap/map.h"
 #include "./libAnyObj.h"
 #include <stdio.h>
 

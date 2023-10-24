@@ -18,13 +18,13 @@ main: output.c libSAP/*.c libSAP/*.h
 	gcc output.c \
 		-lcurl \
 		libSAP/*.c \
-		~/Coding/hpi/hpi-c-tests/list/list.c \
-		~/Coding/hpi/hpi-c-tests/dynstring/dynstring.c \
-		~/Coding/hpi/hpi-c-tests/hashmap/map.c \
-		~/Coding/hpi/hpi-c-tests/json-parser/json.c \
-		~/Coding/hpi/hpi-c-tests/json-parser/parser.c \
-		~/Coding/hpi/hpi-c-tests/json-parser/lexer.c \
-		~/Coding/hpi/hpi-c-tests/json-parser/token.c \
+		hpi-c-tests/list/list.c \
+		hpi-c-tests/dynstring/dynstring.c \
+		hpi-c-tests/hashmap/map.c \
+		hpi-c-tests/json-parser/json.c \
+		hpi-c-tests/json-parser/parser.c \
+		hpi-c-tests/json-parser/lexer.c \
+		hpi-c-tests/json-parser/token.c \
 		$(CFLAGS) -o main
 
 valgrind: main

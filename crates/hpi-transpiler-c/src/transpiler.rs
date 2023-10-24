@@ -59,9 +59,9 @@ impl<'src> Transpiler<'src> {
         let mut required_includes = HashSet::new();
         // usages of booleans are hard to track, therefore `stdbool.h` is always included
         required_includes.insert("stdbool.h");
-        required_includes.insert("/home/mik/Coding/hpi/hpi-c-tests/dynstring/dynstring.h");
-        required_includes.insert("/home/mik/Coding/hpi/hpi-c-tests/list/list.h");
-        required_includes.insert("/home/mik/Coding/hpi/hpi-c-tests/hashmap/map.h");
+        required_includes.insert("./hpi-c-tests/dynstring/dynstring.h");
+        required_includes.insert("./hpi-c-tests/list/list.h");
+        required_includes.insert("./hpi-c-tests/hashmap/map.h");
 
         Self {
             in_main_fn: false,

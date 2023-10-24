@@ -1,6 +1,6 @@
 #pragma once
-#include "/home/mik/Coding/hpi/hpi-c-tests/dynstring/dynstring.h"
-#include "/home/mik/Coding/hpi/hpi-c-tests/list/list.h"
+#include "../hpi-c-tests/dynstring/dynstring.h"
+#include "../hpi-c-tests/list/list.h"
 #include "./libSAP.h"
 #include <stdbool.h>
 

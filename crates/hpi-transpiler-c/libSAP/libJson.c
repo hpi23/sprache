@@ -1,6 +1,6 @@
 #include "./libAnyObj.h"
-#include "/home/mik/Coding/hpi/hpi-c-tests/dynstring/dynstring.h"
-#include "/home/mik/Coding/hpi/hpi-c-tests/json-parser/parser.h"
+#include "../hpi-c-tests/dynstring/dynstring.h"
+#include "../hpi-c-tests/json-parser/parser.h"
 #include "libSAP.h"
 #include "reflection.h"
 #include <assert.h>
