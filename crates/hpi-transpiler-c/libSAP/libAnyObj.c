@@ -119,10 +119,14 @@ void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type) {
   if (from.type.kind != as_type.kind ||
       from.type.ptr_count != as_type.ptr_count) {
 
-    if (from.type.kind == TYPE_INT && as_type.kind == TYPE_FLOAT) {
-      double *as_float = malloc(sizeof(double));
-      *as_float = (double)*(int64_t *)from.value;
-      return as_float;
+    if (from.type.kind == TYPE_FLOAT && as_type.kind == TYPE_INT) {
+      int64_t *as_int = malloc(sizeof(int64_t));
+      *as_int = (int64_t) * (double *)from.value;
+      return as_int;
+    } else if (from.type.kind == TYPE_INT && as_type.kind == TYPE_FLOAT) {
+      double *as_double = malloc(sizeof(double));
+      *as_double = (double)*(int64_t *)from.value;
+      return as_double;
     }
 
     goto fail;
