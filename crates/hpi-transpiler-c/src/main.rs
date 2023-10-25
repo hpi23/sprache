@@ -1,11 +1,18 @@
 use std::{env, fs, process, time::Instant};
 
+use hpi_transpiler_c::StyleConfig;
+
 fn main() {
     let path = env::args().nth(1).unwrap();
-    let emit_comments = env::args().nth(2) == Some("true".to_string());
     let code = fs::read_to_string(&path).unwrap();
     let start = Instant::now();
-    let (out, diagnostics) = hpi_transpiler_c::transpile(&code, &path, emit_comments)
+
+    let style_config = StyleConfig {
+        emit_comments: true,
+        emit_readable_names: true,
+    };
+
+    let (out, diagnostics) = hpi_transpiler_c::transpile(&code, &path, style_config)
         .unwrap_or_else(|diagnostics| {
             println!(
                 "{}",

@@ -1,5 +1,6 @@
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque},
+    hash::{Hash, Hasher},
     mem,
 };
 
@@ -9,10 +10,18 @@ use crate::c_ast::*;
 
 macro_rules! comment {
     ($self:ident, $vec:expr, $msg:expr) => {
-        if $self.emit_comments {
+        if $self.style_config.emit_comments {
             $vec.push(Statement::Comment($msg))
         }
     };
+}
+
+#[derive(Clone, Copy)]
+pub struct StyleConfig {
+    /// If set to `true`, the transpiler will emit some comments in the `C` code.
+    pub emit_comments: bool,
+    /// If set to `true`, the compiler will generate readable type descriptors
+    pub emit_readable_names: bool,
 }
 
 pub struct Transpiler<'src> {
@@ -38,8 +47,8 @@ pub struct Transpiler<'src> {
     global_variable_setup: Vec<Statement>,
     /// Type descriptor setup function
     type_descriptor_setup: Vec<Statement>,
-    /// If set to `true`, the transpiler will emit some comments in the `C` code.
-    emit_comments: bool,
+    /// Configures code generation style
+    style_config: StyleConfig,
     /// The first element is the most outer loop while the last element is the current loop.
     loops: Vec<Loop>,
     /// Counter for `break` labels which is increased during loop generation.
@@ -55,7 +64,7 @@ struct Loop {
 
 impl<'src> Transpiler<'src> {
     /// Creates a new [`Transpiler`].
-    pub fn new(emit_comments: bool) -> Self {
+    pub fn new(style_config: StyleConfig) -> Self {
         let mut required_includes = HashSet::new();
         // usages of booleans are hard to track, therefore `stdbool.h` is always included
         required_includes.insert("stdbool.h");
@@ -71,13 +80,17 @@ impl<'src> Transpiler<'src> {
             funcs: HashMap::new(),
             let_cnt: 0,
             required_includes,
-            emit_comments,
+            style_config,
             loops: vec![],
             break_label_cnt: 0,
             required_corelib_functions: HashSet::new(),
-            type_descriptor_declarations: vec![Statement::Comment(
-                "Type definitions for runtime 'reflection'".into(),
-            )],
+            type_descriptor_declarations: if style_config.emit_comments {
+                vec![Statement::Comment(
+                    "Type definitions for runtime 'reflection'".into(),
+                )]
+            } else {
+                vec![]
+            },
             type_descriptor_map: HashMap::new(),
             type_descriptor_setup: vec![],
             global_variable_setup: vec![],
@@ -454,9 +467,7 @@ impl<'src> Transpiler<'src> {
         if is_global {
             match node.expr.result_type() {
                 Type::String(0) => {
-                    self.global_variable_setup.push(Statement::Comment(
-                        format!("Setup for global variable `{name}`").into(),
-                    ));
+                    comment!(self, self.global_variable_setup, format!("Setup for global variable `{name}`").into());
                     self.global_variable_setup.append(&mut stmts);
 
                     if let Some(expr) = expr {
@@ -638,7 +649,10 @@ impl<'src> Transpiler<'src> {
                 return (stmts, Some(Expression::Ident(list_temp_ident)));
             }
             AnalyzedExpression::Object(inner) => {
-                let obj_temp_ident = format!("object_temp{}", self.let_cnt);
+                let obj_temp_ident = match self.style_config.emit_readable_names {
+                    true => format!("object_temp{}", self.let_cnt),
+                    false => format!("obj{}", self.let_cnt),
+                };
                 self.let_cnt += 1;
 
                 let mut stmts = vec![Statement::VarDeclaration(VarDeclaration {
@@ -651,7 +665,11 @@ impl<'src> Transpiler<'src> {
                 })];
 
                 for value in inner.members.iter() {
-                    let temp_ident = format!("object_member_{}_n{}", value.key, self.let_cnt);
+                    let temp_ident = match self.style_config.emit_readable_names {
+                        true => format!("object_member_{}_n{}", value.key, self.let_cnt),
+                        false => format!("om{}", self.let_cnt),
+                    };
+                    self.let_cnt += 1;
 
                     let (mut expr_stmts, expr) = self.expression(value.value.clone());
                     stmts.append(&mut expr_stmts);
@@ -1092,10 +1110,17 @@ impl<'src> Transpiler<'src> {
             Some(old) => old.clone(),
             None => {
                 // Generate type descriptor id
-                let type_descriptor = format!(
-                    "type_descriptor_{}",
-                    type_.sanitized_name().replace(' ', "_")
-                );
+                let type_descriptor = match self.style_config.emit_readable_names {
+                    true => format!(
+                        "type_descriptor_{}",
+                        type_.sanitized_name().replace(' ', "_")
+                    ),
+                    false => format!("td_{}", {
+                        let mut hasher = DefaultHasher::new();
+                        type_.hash(&mut hasher);
+                        hasher.finish()
+                    }),
+                };
 
                 self.type_descriptor_declarations
                     .push(Statement::VarDefinition(
@@ -1113,9 +1138,11 @@ impl<'src> Transpiler<'src> {
                     }));
                 };
 
-                self.type_descriptor_setup.push(Statement::Comment(
-                    format!("Type descriptor `{}`", type_.sanitized_name()).into(),
-                ));
+                comment!(
+                    self,
+                    self.type_descriptor_setup,
+                    format!("Type descriptor `{}`", type_.sanitized_name()).into()
+                );
 
                 self.type_descriptor_setup
                     .push(Statement::Assign(AssignStmt {

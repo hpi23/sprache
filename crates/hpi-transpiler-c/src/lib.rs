@@ -1,5 +1,5 @@
 use hpi_analyzer::Diagnostic;
-pub use transpiler::Transpiler;
+pub use transpiler::{Transpiler, StyleConfig};
 
 mod c_ast;
 mod transpiler;
@@ -10,9 +10,9 @@ mod transpiler;
 pub fn transpile<'tree>(
     text: &'tree str,
     path: &'tree str,
-    emit_comments: bool,
+    style_config: StyleConfig,
 ) -> Result<(String, Vec<Diagnostic<'tree>>), Vec<Diagnostic<'tree>>> {
     let (tree, diagnostics) = hpi_analyzer::analyze(text, path)?;
-    let c_ast = Transpiler::new(emit_comments).transpile(tree);
+    let c_ast = Transpiler::new(style_config).transpile(tree);
     Ok((c_ast.to_string(), diagnostics))
 }
