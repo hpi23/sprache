@@ -86,7 +86,7 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
     dynstring_free(what);
     dynstring_free(with);
 
-    char * format_c_str = dynstring_as_cstr(fmt_specifier);
+    char *format_c_str = dynstring_as_cstr(fmt_specifier);
 
     dynstring_push_fmt(fmt->output_buf, format_c_str, *(double *)arg.value);
     free(format_c_str);
@@ -150,7 +150,7 @@ void formatter_start_escape(Formatter *fmt) {
     if (padding_res.error != NULL) {
       printf("Formatierungsfehler: Konnte Pufferung nicht verarbeiten: %s\n",
              padding_res.error);
-      exit(1);
+      assert(0);
     }
 
     num_padding = padding_res.num;
@@ -168,7 +168,7 @@ void formatter_start_escape(Formatter *fmt) {
     if (padding_res.error != NULL) {
       printf("Formatierungsfehler: Konnte Pufferung nicht verarbeiten: %s\n",
              padding_res.error);
-      exit(1);
+      assert(0);
     }
 
     num_padding = padding_res.num;
