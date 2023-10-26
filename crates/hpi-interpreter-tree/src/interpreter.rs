@@ -1,5 +1,5 @@
 use std::{
-    borrow::Cow, cell::RefCell, collections::HashMap, env, io::Write, rc::Rc, thread,
+    borrow::Cow, cell::RefCell, collections::HashMap, io::Write, rc::Rc, thread,
     time::Duration,
 };
 
@@ -34,6 +34,7 @@ where
     HttpClient: HPIHttpClient,
 {
     output: Output,
+    environment_variables: HashMap<String, String>,
     http_client: HttpClient,
     scopes: Vec<Scope<'src>>,
     functions: HashMap<&'src str, Rc<AnalyzedFunctionDefinition<'src>>>,
@@ -44,12 +45,13 @@ where
     Output: Write,
     HttpClient: HPIHttpClient,
 {
-    pub fn new(output: Output, http_client: HttpClient) -> Self {
+    pub fn new(output: Output, http_client: HttpClient, environment_variables: HashMap<String, String>) -> Self {
         Self {
             http_client,
             output,
             scopes: vec![],
             functions: HashMap::new(),
+            environment_variables,
         }
     }
 
@@ -327,9 +329,7 @@ where
                 "Nun sind Sie reich, sie wurden gesponst!",
             ))),
             AnalyzedCallBase::Ident("Umgebungsvariablen") => {
-                let inner = env::vars()
-                    .map(|(key, value)| (key, Value::String(value)))
-                    .collect();
+                let inner = self.environment_variables.iter().map(|(key, value)| (key.clone(), Value::String(value.clone()))).collect();
                 Ok(Value::Speicherbox(inner))
             }
             AnalyzedCallBase::Ident(func_name) => {

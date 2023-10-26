@@ -49,7 +49,7 @@ fn main() {
     let path = env::args().nth(1).unwrap();
     let code = fs::read_to_string(&path).unwrap();
     let client = Client {};
-    match hpi_interpreter_tree::run(&code, &path, io::stdout(), client) {
+    match hpi_interpreter_tree::run(&code, &path, io::stdout(), client, env::vars().collect()) {
         Ok((code, _)) => {
             println!("Program exited with code {code}");
             println!("{:?}", start.elapsed());

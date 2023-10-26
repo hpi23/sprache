@@ -4,6 +4,7 @@ mod json;
 mod ops;
 mod value;
 
+use std::collections::HashMap;
 use std::{fmt::Debug, io::Write};
 
 use hpi_analyzer::Diagnostic;
@@ -18,12 +19,13 @@ pub fn run<'src, HttpClient>(
     path: &'src str,
     output: impl Write,
     http_client: HttpClient,
+    environment_vars: HashMap<String, String>,
 ) -> Result<(i64, Vec<Diagnostic<'src>>), RunError<'src>>
 where
     HttpClient: HPIHttpClient,
 {
     let (tree, diagnostics) = hpi_analyzer::analyze(text, path)?;
-    let code = Interpreter::new(output, http_client).run(tree)?;
+    let code = Interpreter::new(output, http_client, environment_vars).run(tree)?;
     Ok((code, diagnostics))
 }
 
