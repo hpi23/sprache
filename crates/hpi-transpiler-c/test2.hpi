@@ -1,18 +1,17 @@
 beantrage Drucke von Drucker;
-beantrage Zeit von Uhr;
-beantrage Zergliedere_JSON von Textverarbeitung;
-beantrage Http von Netzwerk;
 beantrage Formatiere von Textverarbeitung;
+beantrage Zeit von Uhr;
+
 
 funk Bewerbung() ergibt Zeichenkette {
-  "Das ist meine wunderbare Bewerbung."
+    "a"
 }
 
 funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
-  setze Zahl _ auf Matrikelnummer;
+    //Drucke(Matrikelnummer);
 }
 
 funk Studium() ergibt Nichts {
-    Drucke("2023-10-16" != "2023-10-20");
+    setze Zeichenkette HeuteDatum auf Formatiere("%d-%2d-%2d" / Zeit().Jahr / Zeit().Monat / Zeit().Kalendar_Tag);
+    Drucke(HeuteDatum);
 }
-

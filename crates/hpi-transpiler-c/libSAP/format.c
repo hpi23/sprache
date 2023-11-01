@@ -60,8 +60,27 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
     assert(arg.type.kind == TYPE_INT);
     assert(arg.type.ptr_count == 0);
 
-    // TODO: format each argument depending on its type
-    dynstring_push_fmt(fmt->output_buf, "%ld", *(int64_t *)arg.value);
+    DynString *fmt_specifier = dynstring_from("%0xld");
+
+    DynString *what;
+    DynString *with;
+    if (padding >= 0) {
+      what = dynstring_from("x");
+      with = dynstring_new();
+      dynstring_push_fmt(with, "%ld", padding);
+    } else {
+      what = dynstring_from("x");
+      with = dynstring_new();
+    }
+
+    dynstring_replace(fmt_specifier, what, with);
+    dynstring_free(what);
+    dynstring_free(with);
+
+    char *format_c_str = dynstring_as_cstr(fmt_specifier);
+
+    dynstring_push_fmt(fmt->output_buf, format_c_str, *(int64_t *)arg.value);
+    free(format_c_str);
 
     break;
   }
