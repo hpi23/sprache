@@ -12,7 +12,6 @@ dbg: main
 
 output.c: $(HPI_FILE) src/*.rs
 	cargo r $(HPI_FILE)
-	bat output.c
 
 main: output.c libSAP/*.c libSAP/*.h
 	gcc output.c \
@@ -32,3 +31,6 @@ valgrind: main
          --show-leak-kinds=all \
          --track-origins=yes \
          --verbose ./main
+
+init:
+	bash fetch_deps.sh
