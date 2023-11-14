@@ -161,6 +161,20 @@ impl<'src> Transpiler<'src> {
                     args: vec![],
                 }))),
                 AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
+                    result_type: Type::Nichts,
+                    func: AnalyzedCallBase::Ident("__hpi_internal_init_libSAP"),
+                    args: vec![
+                        AnalyzedExpression::Ident(AnalyzedIdentExpr {
+                            result_type: Type::Int(0),
+                            ident: "argc",
+                        }),
+                        AnalyzedExpression::Ident(AnalyzedIdentExpr {
+                            result_type: Type::Char(2),
+                            ident: "argv",
+                        }),
+                    ],
+                }))),
+                AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
                     result_type: Type::String(0),
                     func: AnalyzedCallBase::Ident("bewerbung"),
                     args: vec![],
@@ -228,7 +242,16 @@ impl<'src> Transpiler<'src> {
         functions.push_back(self.fn_declaration(AnalyzedFunctionDefinition {
             used: true,
             name: "main",
-            params: vec![],
+            params: vec![
+                AnalyzedParameter {
+                    name: "argc",
+                    type_: Type::Int(0),
+                },
+                AnalyzedParameter {
+                    name: "argv",
+                    type_: Type::Char(2),
+                },
+            ],
             return_type: Type::Int(0),
             block: main_fn,
         }));
@@ -467,7 +490,11 @@ impl<'src> Transpiler<'src> {
         if is_global {
             match node.expr.result_type() {
                 Type::String(0) => {
-                    comment!(self, self.global_variable_setup, format!("Setup for global variable `{name}`").into());
+                    comment!(
+                        self,
+                        self.global_variable_setup,
+                        format!("Setup for global variable `{name}`").into()
+                    );
                     self.global_variable_setup.append(&mut stmts);
 
                     if let Some(expr) = expr {
@@ -1282,6 +1309,10 @@ impl<'src> Transpiler<'src> {
                 self.required_includes.insert("./libSAP/libSAP.h");
                 "__hpi_internal_env".to_string()
             }
+            AnalyzedCallBase::Ident("Argumente") => {
+                self.required_includes.insert("./libSAP/libSAP.h");
+                "__hpi_internal_args".to_string()
+            }
             AnalyzedCallBase::Ident("Http") => {
                 self.required_includes.insert("./libSAP/libHttp.h");
                 "__hpi_internal_http".to_string()
@@ -1301,6 +1332,10 @@ impl<'src> Transpiler<'src> {
             AnalyzedCallBase::Ident("__hpi_internal_generate_matrikelnummer") => {
                 self.required_includes.insert("./libSAP/libSAP.h");
                 "__hpi_internal_generate_matrikelnummer".to_string()
+            }
+            AnalyzedCallBase::Ident("__hpi_internal_init_libSAP") => {
+                self.required_includes.insert("./libSAP/libSAP.h");
+                "__hpi_internal_init_libSAP".to_string()
             }
             AnalyzedCallBase::Ident(other) => self
                 .funcs

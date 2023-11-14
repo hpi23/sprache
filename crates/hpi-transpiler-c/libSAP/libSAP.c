@@ -1,7 +1,7 @@
-#include "./format.h"
-#include "./to_string.h"
 #include "../hpi-c-tests/dynstring/dynstring.h"
 #include "../hpi-c-tests/list/list.h"
+#include "./format.h"
+#include "./to_string.h"
 #include "libAnyObj.h"
 #include "libTime.h"
 #include "reflection.h"
@@ -13,6 +13,9 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+size_t argc;
+char **argv;
 
 extern char **environ;
 
@@ -110,4 +113,22 @@ AnyObject *__hpi_internal_env() {
   }
 
   return obj;
+}
+
+ListNode *__hpi_internal_args() {
+    ListNode * list = list_new();
+
+    for (int i = 0; i < argc; i ++) {
+        DynString ** temp_ptr = malloc(sizeof(DynString *));
+        *temp_ptr = dynstring_from(argv[i]);
+
+        list_append(list, temp_ptr);
+    }
+
+    return list;
+}
+
+void __hpi_internal_init_libSAP(size_t p_argc, char ** p_argv) {
+    argc = p_argc;
+    argv = p_argv;
 }

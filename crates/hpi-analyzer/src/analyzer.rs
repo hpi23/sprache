@@ -433,6 +433,9 @@ impl<'src> Analyzer<'src> {
             ("Umgebungsvariablen", "libSAP") => {
                 self.builtin_functions.insert("Umgebungsvariablen", BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::AnyObject(0)));
             },
+            ("Argumente", "libSAP") => {
+                self.builtin_functions.insert("Argumente", BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::List(Box::new(Type::String(0)), 0)));
+            },
             (value, module) => self.error(
                 ErrorKind::Reference,
                 format!("Dieser Antrag `{value}` von `{module}` wurde aufgrund falscher Angaben abgelehnt."),
