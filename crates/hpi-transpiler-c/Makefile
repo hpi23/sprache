@@ -11,19 +11,17 @@ dbg: main
 	gdb ./main
 
 output.c: $(HPI_FILE) src/*.rs
+	echo $(HPI_FILE)
 	cargo r $(HPI_FILE)
 
-main: output.c libSAP/*.c libSAP/*.h
+libSAP/libSAP.a:
+	cd libSAP && make
+
+main: output.c libSAP/*.c libSAP/*.h libSAP/libSAP.a
 	gcc output.c \
 		-lcurl \
-		libSAP/*.c \
-		hpi-c-tests/list/list.c \
-		hpi-c-tests/dynstring/dynstring.c \
-		hpi-c-tests/hashmap/map.c \
-		hpi-c-tests/json-parser/json.c \
-		hpi-c-tests/json-parser/parser.c \
-		hpi-c-tests/json-parser/lexer.c \
-		hpi-c-tests/json-parser/token.c \
+		-L ./libSAP \
+		-lSAP \
 		$(CFLAGS) -o main
 
 valgrind: main
@@ -34,3 +32,7 @@ valgrind: main
 
 init:
 	bash fetch_deps.sh
+	cd ./hpi-c-tests/list/ && make
+	cd ./hpi-c-tests/hashmap/ && make
+	cd ./hpi-c-tests/json-parser/ && make
+	cd ./hpi-c-tests/dynstring/ && make

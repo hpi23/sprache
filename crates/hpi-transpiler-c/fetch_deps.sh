@@ -2,12 +2,10 @@
 
 set -e
 
-mkdir -p deps
-
 fetch_repo() {
     if ! [ -d "$3" ]; then
         git clone "https://github.com/$1/$2.git" "$3"
-        cd "deps/$2"
+        cd "$3"
     else
         cd "$3"
         git pull
