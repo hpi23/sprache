@@ -1,4 +1,4 @@
-.PHONY: run valgrind
+.PHONY: run valgrind libSAP
 
 HPI_FILE:=test.hpi
 DEBUG:=true
@@ -14,14 +14,14 @@ output.c: $(HPI_FILE) src/*.rs
 	echo $(HPI_FILE)
 	cargo r $(HPI_FILE)
 
-libSAP/libSAP.a:
+libSAP:
+	mkdir -p libSAP/obj
 	cd libSAP && make
 
-main: output.c libSAP/*.c libSAP/*.h libSAP/libSAP.a
+main: output.c libSAP
 	gcc output.c \
+		./libSAP/libSAP.a \
 		-lcurl \
-		-L ./libSAP \
-		-lSAP \
 		$(CFLAGS) -o main
 
 valgrind: main
@@ -30,9 +30,15 @@ valgrind: main
          --track-origins=yes \
          --verbose ./main
 
-init:
+init_wrapper:
 	bash fetch_deps.sh
 	cd ./hpi-c-tests/list/ && make
 	cd ./hpi-c-tests/hashmap/ && make
 	cd ./hpi-c-tests/json-parser/ && make
 	cd ./hpi-c-tests/dynstring/ && make
+
+cleanSAP:
+	rm -f ./libSAP/libSAP.a ./libSAP/libSAP_raw.a
+
+.NOTPARALLEL:
+init: init_wrapper cleanSAP libSAP

@@ -10,8 +10,6 @@ libSAP.a: $(OBJ_FILES)
 	@echo $(OBJ_FILES)
 	$(archiver) -cq libSAP_raw.a $(OBJ_FILES)
 
-	mkdir -p obj
-
 	cd obj \
 	&& $(archiver) -x ../../hpi-c-tests/dynstring/libDynstring.a \
 	&& $(archiver) -x ../../hpi-c-tests/list/libList.a \
