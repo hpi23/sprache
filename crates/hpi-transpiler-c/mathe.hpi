@@ -1,0 +1,70 @@
+beantrage Drucke von Drucker;
+beantrage Formatiere von Textverarbeitung;
+
+funk Bewerbung() ergibt Zeichenkette {
+  "Moin Tyron"
+}
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+  Drucke("Matrikuliert als H. Beimel: " / Matrikelnummer);
+}
+
+funk Studium() ergibt Nichts {
+  setze Zahl i auf 1;
+
+  setze Liste von Fließkommazahl Resultate auf [ 1F ];
+
+  solange i <= 6 {
+    setze Fließkommazahl Xi auf Resultate[i - 1];
+    Drucke(Formatiere("X%d ≈ %f" / i / Xi));
+
+    setze Fließkommazahl Xi_p1 auf Iteriere(Xi);
+    Resultate.Hinzufügen(Xi_p1);
+    i += 1;
+  }
+}
+
+setze Zahl N auf 1000;
+setze Fließkommazahl ALPHA auf 1F : 3F;
+
+funk Iteriere(Fließkommazahl Xi) ergibt Fließkommazahl {
+  überweise Xi - ALPHA * F(Xi);
+}
+
+funk F(Fließkommazahl X) ergibt Fließkommazahl {
+  überweise 1F + Ln(X);
+}
+
+funk Pot(Fließkommazahl Basis / Zahl Exponent) ergibt Fließkommazahl {
+    falls Exponent == 0 {
+        überweise 1F;
+    }
+    falls Exponent < 0 {
+        überweise 0F;
+    }
+
+    setze Fließkommazahl Akkumulator auf 1F;
+
+    solange Exponent > 1 {
+        falls (Exponent & 1) == 1 {
+            ändere Akkumulator auf Akkumulator * Basis;
+        }
+        Exponent := 2;
+        Basis *= Basis;
+    }
+
+    Akkumulator * Basis
+}
+
+funk Ln(Fließkommazahl x) ergibt Fließkommazahl {
+	setze Fließkommazahl Ans auf 0F;
+    setze Fließkommazahl Alpha auf (x-1F) : (x+1F);
+
+    setze Zahl i auf 1;
+    solange i <= N {
+      ändere Ans auf Ans + (1F : (2F * i als Fließkommazahl - 1F)) * (Pot(Alpha / (2 * i - 1)));
+      ändere i auf i + 1;
+    }
+
+	überweise 2,0 * Ans;
+}
