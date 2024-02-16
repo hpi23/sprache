@@ -1,0 +1,18 @@
+beantrage Drucke von Drucker;
+beantrage Formatiere von Textverarbeitung;
+beantrage Zeit von Uhr;
+
+funk Bewerbung() ergibt Zeichenkette {
+    "_"
+}
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+    //Drucke(Matrikelnummer);
+}
+
+funk Studium() ergibt Nichts {
+    //setze Zeichenkette HeuteDatum auf Formatiere("%d-%2d-%2d" / Zeit().Jahr / Zeit().Monat / Zeit().Kalendar_Tag);
+    //Drucke(HeuteDatum);
+    setze Liste von Zahl Buffer auf [ 1 / 2 / 3 / 4 ];
+    Drucke(Buffer[4]);
+}

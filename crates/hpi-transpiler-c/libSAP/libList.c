@@ -89,7 +89,7 @@ int64_t __hpi_internal_list_len(ListNode *list) { return list_len(list); }
 void *__hpi_internal_list_index(ListNode *list, int64_t index) {
   ListGetResult result = list_at(list, index);
   if (!result.found) {
-    printf("Runtime error: Index out of bounds: cannot index list of length "
+    printf("Runtime error: Buffer overdrive: Index out of bounds: cannot index list of length "
            "%ld using index "
            "%ld\n",
            list_len(list), index);
