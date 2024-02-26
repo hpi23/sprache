@@ -1,0 +1,49 @@
+beantrage Geld von Hasso;
+beantrage Drucke von Drucker;
+beantrage Http von Netzwerk;
+beantrage Gliedere_JSON von Textverarbeitung;
+beantrage Zergliedere_JSON von Textverarbeitung;
+beantrage Formatiere von Textverarbeitung;
+beantrage Aufgeben von libSAP;
+beantrage Umgebungsvariablen von libSAP;
+beantrage Zeit von Uhr;
+
+funk git_commit_fix(Zahl Basis / Zahl Exponent) ergibt Fließkommazahl {
+    falls Exponent < 0 {
+        überweise 1F : (Basis ** (-Exponent) als Fließkommazahl);
+    }
+
+    falls Exponent == 0 {
+        überweise 1F;
+    }
+
+    setze Zahl Akkumulator auf 1;
+    solange Exponent > 1 {
+        falls (Exponent & 1) == 1 {
+            Akkumulator *= Basis;
+        }
+        Exponent := 2;
+        Basis *= Basis;
+    }
+
+    überweise (Akkumulator * Basis) als Fließkommazahl;
+}
+
+funk Bewerbung() ergibt Zeichenkette { "Hallo Welt!" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+  setze Zahl _ auf Matrikelnummer;
+}
+
+funk Studium() ergibt Nichts {
+    setze Zahl HASSO_BASED auf 1;
+    setze Zahl ÄHM_SCHLANGE auf 23;
+
+    setze Fließkommazahl MatheX auf (git_commit_fix(HASSO_BASED / 1 - ÄHM_SCHLANGE));
+
+    setze Zahl Foo auf 2;
+    Drucke(git_commit_fix(2 / -3));
+
+    Drucke(Formatiere("%.100f" / MatheX));
+    Drucke(Formatiere("%.100f" / MatheX : 2F));
+}

@@ -13,6 +13,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include "./libGC.h"
 
 size_t argc;
 char **argv;
@@ -131,4 +132,7 @@ ListNode *__hpi_internal_args() {
 void __hpi_internal_init_libSAP(size_t p_argc, char ** p_argv) {
     argc = p_argc;
     argv = p_argv;
+
+    // Initialize garbage collector.
+    gc_init();
 }

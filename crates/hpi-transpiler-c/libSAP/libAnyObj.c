@@ -19,6 +19,10 @@ AnyObject *anyobj_new() {
   return obj;
 }
 
+void anyobj_free(AnyObject * obj) {
+    assert(0 && "Not implemented");
+}
+
 AnyValue __hpi_internal_anyobj_take(AnyObject *obj, DynString *key) {
   char *key_c = dynstring_as_cstr(key);
   MapGetResult res = hashmap_get(obj->fields, key_c);

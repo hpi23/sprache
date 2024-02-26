@@ -60,6 +60,7 @@ impl From<&Type> for CTypeKind {
             Type::Object(_, _) => Self::Object,
             Type::AnyObject(_) => Self::AnyObject,
             Type::Nichts => Self::None,
+            Type::Unknown => Self::None,
             _ => unreachable!("These types cannot be converted: {value}"),
         }
     }
@@ -82,6 +83,21 @@ pub enum CType {
 #[derive(Debug, Clone)]
 pub struct StructDefinition {
     pub fields: HashMap<String, CType>,
+}
+
+impl CType {
+    pub fn pointer_count(&self) -> usize{
+        match self {
+            CType::Int(ptr) => *ptr,
+            CType::LongLongInt(ptr) => *ptr,
+            CType::Bool(ptr) => *ptr,
+            CType::Char(ptr) => *ptr,
+            CType::Ident(ptr, _) => *ptr,
+            CType::Struct(_) => 0,
+            CType::Double(ptr) => *ptr,
+            CType::Void(ptr) => *ptr,
+        }
+    }
 }
 
 impl Display for CType {

@@ -19,7 +19,7 @@ libSAP:
 	cd libSAP && make
 
 main: output.c libSAP
-	gcc output.c \
+	gcc output.c -ggdb \
 		./libSAP/libSAP.a \
 		-lcurl \
 		$(CFLAGS) -o main

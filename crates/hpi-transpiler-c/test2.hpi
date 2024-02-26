@@ -4,7 +4,7 @@ beantrage Zeit von Uhr;
 
 
 funk Bewerbung() ergibt Zeichenkette {
-    "a"
+    ""
 }
 
 funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
@@ -12,6 +12,13 @@ funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
 }
 
 funk Studium() ergibt Nichts {
-    setze Zeichenkette HeuteDatum auf Formatiere("%d-%2d-%2d" / Zeit().Jahr / Zeit().Monat / Zeit().Kalendar_Tag);
-    Drucke(HeuteDatum);
+    //setze Zahl A auf 42;
+    //setze Zahl B auf 69;
+    //setze Zeichenkette LoL auf Formatiere("%d:%d" / A / B);
+    //Drucke(LoL);
+
+    {
+        setze Zeichenkette Lol auf "foo";
+        Drucke("foo");
+    }
 }

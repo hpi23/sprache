@@ -1,7 +1,10 @@
+// TODO: fix this
 funk __hpi_internal_pow_int(Zahl Basis / Zahl Exponent) ergibt Zahl {
+    // a ** (-b) <==> 1 / (a ** b)
     falls Exponent < 0 {
         überweise 0;
     }
+
     falls Exponent == 0 {
         überweise 1;
     }

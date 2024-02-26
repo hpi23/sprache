@@ -2,4 +2,5 @@ out
 output.c
 hpi-c-tests
 libSAP/obj
+libSAP/*.a
 main

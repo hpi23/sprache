@@ -71,6 +71,7 @@ impl<'src> Transpiler<'src> {
         required_includes.insert("./hpi-c-tests/dynstring/dynstring.h");
         required_includes.insert("./hpi-c-tests/list/list.h");
         required_includes.insert("./hpi-c-tests/hashmap/map.h");
+        required_includes.insert("./libSAP/libGC.h");
 
         Self {
             in_main_fn: false,
@@ -407,6 +408,7 @@ impl<'src> Transpiler<'src> {
             .flat_map(|s| self.statement(s))
             .collect();
 
+        // TODO: use block here
         if let Some(raw_expr) = node.block.expr.clone() {
             let (mut stmts, expr) = self.expression(raw_expr.clone());
             body.append(&mut stmts);
@@ -540,7 +542,41 @@ impl<'src> Transpiler<'src> {
                 if expr.result_type() == Type::Nichts {
                     vec![Statement::Return(None)]
                 } else {
+                    let res_type = expr.result_type();
                     let (mut stmts, expr) = self.expression(expr);
+
+                    let pointer_count = CType::from(res_type.clone()).pointer_count();
+                    println!("{pointer_count}");
+
+                    // If the return value is being tracked by the GC (is heap), add a ref to it.
+                    if pointer_count > 0 {
+                        let ident = format!("return_value{}", self.let_cnt);
+                        self.let_cnt += 1;
+
+                        if let Some(expr) = expr {
+                            let expr_stmt = Statement::VarDeclaration(VarDeclaration{
+                                name: ident.clone(),
+                                type_: res_type.into(),
+                                expr,
+                            });
+
+                            stmts.push(expr_stmt);
+
+                            stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                                func: "gc_ref".into(),
+                                args: vec![
+                                    Expression::Ident(ident.clone()),
+                                ],
+                            }))));
+
+                            stmts.push(Statement::Return(Some(Expression::Ident(ident))));
+                            return stmts;
+                        }
+
+
+                        // TODO: should drop?
+                    }
+
                     stmts.push(Statement::Return(expr));
                     stmts
                 }
@@ -623,14 +659,33 @@ impl<'src> Transpiler<'src> {
             AnalyzedExpression::Cast(node) => return self.cast_expr(*node),
             AnalyzedExpression::Grouped(node) => return self.grouped_expr(*node),
             AnalyzedExpression::String(inner) => {
+                let raw_string = Expression::Call(Box::new(CallExpr {
+                    func: "dynstring_from".to_string(),
+                    args: vec![Expression::StringLiteral(
+                        inner.replace('\n', "\\n").replace('"', "\\\""),
+                    )],
+                }));
+
+                let dynstr_ident = format!("list_temp{}", self.let_cnt);
+                self.let_cnt += 1;
+
                 return (
-                    vec![],
-                    Some(Expression::Call(Box::new(CallExpr {
-                        func: "dynstring_from".to_string(),
-                        args: vec![Expression::StringLiteral(
-                            inner.replace('\n', "\\n").replace('"', "\\\""),
-                        )],
-                    }))),
+                    vec![
+                        Statement::VarDeclaration(VarDeclaration {
+                            name: dynstr_ident.clone(),
+                            type_: Type::String(0).into(),
+                            expr: raw_string,
+                        }),
+                        Statement::Expr(Expression::Call(Box::new(CallExpr {
+                            func: "gc_trace".into(),
+                            args: vec![
+                                // raw_string.clone()
+                                Expression::Ident(dynstr_ident.clone()),
+                                Expression::Ident(self.get_type_reflector(Type::String(0))),
+                            ],
+                        }))),
+                    ],
+                    Some(Expression::Ident(dynstr_ident)),
                 );
             }
             AnalyzedExpression::List(list) => {
@@ -640,10 +695,11 @@ impl<'src> Transpiler<'src> {
                 let mut stmts = vec![Statement::VarDeclaration(VarDeclaration {
                     name: list_temp_ident.clone(),
                     type_: CType::Ident(1, "ListNode".to_string()),
-                    expr: Expression::Call(Box::new(CallExpr {
-                        func: "list_new".to_string(), // TODO: use vec in the long run?
-                        args: vec![],
-                    })),
+                    // expr: Expression::Call(Box::new(CallExpr {
+                    //     func: "list_new".to_string(), // TODO: use vec in the long run?
+                    //     args: vec![],
+                    // })),
+                    expr: self.malloc(Type::List(Type::Unknown.into(), 0)),
                 })];
 
                 for (idx, value) in list.values.iter().enumerate() {
@@ -685,10 +741,11 @@ impl<'src> Transpiler<'src> {
                 let mut stmts = vec![Statement::VarDeclaration(VarDeclaration {
                     name: obj_temp_ident.clone(),
                     type_: CType::Ident(1, "HashMap".to_string()),
-                    expr: Expression::Call(Box::new(CallExpr {
-                        func: "hashmap_new".to_string(), // TODO: use vec in the long run?
-                        args: vec![],
-                    })),
+                    // expr: Expression::Call(Box::new(CallExpr {
+                    //     func: "hashmap_new".to_string(), // TODO: use vec in the long run?
+                    //     args: vec![],
+                    // })),
+                    expr: self.malloc(Type::Object(vec![], 0)),
                 })];
 
                 for value in inner.members.iter() {
@@ -705,15 +762,7 @@ impl<'src> Transpiler<'src> {
                         stmts.push(Statement::VarDeclaration(VarDeclaration {
                             name: temp_ident.clone(),
                             type_: value.value.result_type().add_ref().unwrap().into(),
-                            expr: Expression::Call(Box::new(CallExpr {
-                                func: "malloc".to_string(),
-                                args: vec![Expression::Call(Box::new(CallExpr {
-                                    func: "sizeof".to_string(),
-                                    args: vec![Expression::TypeExpr(
-                                        value.value.result_type().into(),
-                                    )],
-                                }))],
-                            })),
+                            expr: self.malloc(value.value.result_type()),
                         }));
                         self.let_cnt += 1;
 
@@ -1128,6 +1177,26 @@ impl<'src> Transpiler<'src> {
         stmts
     }
 
+    fn malloc(&mut self, type_: Type) -> Expression {
+        Expression::Call(Box::new(CallExpr {
+            // func: "malloc".to_string(),
+            // args: vec![Expression::Call(Box::new(CallExpr {
+            //     func: "sizeof".to_string(),
+            //     args: vec![Expression::TypeExpr(
+            //         value.value.result_type().into(),
+            //     )],
+            // }))],
+            func: "gc_alloc".to_string(),
+            args: vec![
+                // Expression::Call(Box::new(CallExpr {
+                //     func: todo!(),
+                //     args: todo!(),
+                // }))
+                Expression::Ident(self.get_type_reflector(type_)),
+            ],
+        }))
+    }
+
     fn get_type_reflector(&mut self, type_: Type) -> String {
         let type_ = self.lookup_type(type_);
 
@@ -1196,15 +1265,18 @@ impl<'src> Transpiler<'src> {
                     }));
 
                 if let Type::Object(inner, _) = type_.clone() {
+                    let malloc_call = self.malloc(Type::Object(vec![], 0));
+
                     self.type_descriptor_setup
                         .push(Statement::Assign(AssignStmt {
                             assignee: format!("{type_descriptor}.obj_fields"),
                             assignee_ptr_count: 0,
                             op: AssignOp::Basic,
-                            expr: Expression::Call(Box::new(CallExpr {
-                                func: "hashmap_new".to_string(),
-                                args: vec![],
-                            })),
+                            // expr: Expression::Call(Box::new(CallExpr {
+                            //     func: "hashmap_new".to_string(),
+                            //     args: vec![],
+                            // })),
+                            expr: malloc_call,
                         }));
 
                     for field in inner {
@@ -1361,15 +1433,16 @@ impl<'src> Transpiler<'src> {
                             stmts.push(Statement::VarDeclaration(VarDeclaration {
                                 name: temp_ident.clone(),
                                 type_: type_list[0].clone().add_ref().unwrap().into(),
-                                expr: Expression::Call(Box::new(CallExpr {
-                                    func: "malloc".to_string(),
-                                    args: vec![Expression::Call(Box::new(CallExpr {
-                                        func: "sizeof".to_string(),
-                                        args: vec![Expression::TypeExpr(
-                                            type_list[0].clone().into(),
-                                        )],
-                                    }))],
-                                })),
+                                // expr: Expression::Call(Box::new(CallExpr {
+                                //     func: "malloc".to_string(),
+                                //     args: vec![Expression::Call(Box::new(CallExpr {
+                                //         func: "sizeof".to_string(),
+                                //         args: vec![Expression::TypeExpr(
+                                //             type_list[0].clone().into(),
+                                //         )],
+                                //     }))],
+                                // })),
+                                expr: self.malloc(type_list[0].clone()),
                             }));
 
                             stmts.push(Statement::Assign(AssignStmt {
