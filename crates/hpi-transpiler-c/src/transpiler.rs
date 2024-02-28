@@ -239,6 +239,16 @@ impl<'src> Transpiler<'src> {
             body: self.global_variable_setup.clone(),
         });
 
+        // functions.push_back(FnDefinition {
+        //     name: "main".to_string(),
+        //     type_: CType::Int(0),
+        //     params: vec![
+        //         ("argc".to_string(), CType::Int(0)),
+        //         ("argv".to_string(), CType::Char(2)),
+        //     ],
+        //     body: self.body(main_fn.clone())
+        // });
+
         self.in_main_fn = true;
         functions.push_back(self.fn_declaration(AnalyzedFunctionDefinition {
             used: true,
@@ -246,7 +256,7 @@ impl<'src> Transpiler<'src> {
             params: vec![
                 AnalyzedParameter {
                     name: "argc",
-                    type_: Type::Int(0),
+                    type_: Type::SystemInt(0),
                 },
                 AnalyzedParameter {
                     name: "argv",
@@ -254,7 +264,7 @@ impl<'src> Transpiler<'src> {
                 },
             ],
             return_type: Type::Int(0),
-            block: main_fn,
+            block: main_fn.clone(),
         }));
         self.in_main_fn = false;
 
@@ -401,6 +411,8 @@ impl<'src> Transpiler<'src> {
             })
             .collect();
 
+        // let body = self.body(node.block);
+
         let mut body: Vec<Statement> = node
             .block
             .stmts
@@ -408,10 +420,10 @@ impl<'src> Transpiler<'src> {
             .flat_map(|s| self.statement(s))
             .collect();
 
-        // TODO: use block here
         if let Some(raw_expr) = node.block.expr.clone() {
             let (mut stmts, expr) = self.expression(raw_expr.clone());
             body.append(&mut stmts);
+
             let mut stmts = match (self.in_main_fn, expr) {
                 (true, Some(expr)) => {
                     vec![
@@ -428,6 +440,7 @@ impl<'src> Transpiler<'src> {
                     }
                 }
             };
+
             body.append(&mut stmts);
         };
 
@@ -529,6 +542,11 @@ impl<'src> Transpiler<'src> {
                     expr,
                 }),
             };
+
+            // Use this variable as a root if it is heap-allocated.
+            if type_.pointer_count() > 0 {
+                
+            }
 
             stmts.push(stmt)
         }
@@ -677,9 +695,8 @@ impl<'src> Transpiler<'src> {
                             expr: raw_string,
                         }),
                         Statement::Expr(Expression::Call(Box::new(CallExpr {
-                            func: "gc_trace".into(),
+                            func: "gc_add_to_trace".into(),
                             args: vec![
-                                // raw_string.clone()
                                 Expression::Ident(dynstr_ident.clone()),
                                 Expression::Ident(self.get_type_reflector(Type::String(0))),
                             ],
@@ -891,6 +908,39 @@ impl<'src> Transpiler<'src> {
             AnalyzedExpression::Nichts => return (vec![], None),
         };
         (vec![], expr)
+    }
+
+    fn body(&mut self, body: AnalyzedBlock<'src>) -> Vec<Statement> {
+        let mut body_stmts: Vec<Statement> = body
+            .stmts
+            .into_iter()
+            .flat_map(|s| self.statement(s))
+            .collect();
+
+
+        if let Some(raw_expr) = body.expr.clone() {
+            let (mut stmts, expr) = self.expression(raw_expr.clone());
+            body_stmts.append(&mut stmts);
+            let mut stmts = match (self.in_main_fn, expr) {
+                (true, Some(expr)) => {
+                    vec![
+                        Statement::Expr(expr),
+                        Statement::Return(Some(Expression::Int(0))),
+                    ]
+                }
+                (true, None) => vec![Statement::Return(Some(Expression::Int(0)))],
+                (false, expr) => {
+                    if raw_expr.result_type() == Type::Nichts {
+                        vec![Statement::Return(None)]
+                    } else {
+                        vec![Statement::Return(expr)]
+                    }
+                }
+            };
+            body_stmts.append(&mut stmts);
+        };
+
+        body_stmts
     }
 
     fn block_expr(&mut self, node: AnalyzedBlock<'src>) -> (Vec<Statement>, Option<Expression>) {
@@ -1341,6 +1391,7 @@ impl<'src> Transpiler<'src> {
                 self.required_includes.insert("stdlib.h");
                 "exit".to_string()
             }
+            AnalyzedCallBase::Ident("Reinigung") => "gc_run_cycle".to_string(),
             AnalyzedCallBase::Ident("type_descriptor_setup") => "type_descriptor_setup".to_string(),
             AnalyzedCallBase::Ident("global_variable_setup") => "global_variable_setup".to_string(),
             AnalyzedCallBase::Ident("bewerbung") => "bewerbung".to_string(),

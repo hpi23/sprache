@@ -392,7 +392,6 @@ impl<'src> Analyzer<'src> {
                     BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::String(0)),
                 );
             }
-
             ("Zeit", "Uhr") => {
                 let timestamp_type = Type::Object(vec![
                         ObjectTypeField { key: "Jahr".to_string(), type_: Box::new(Type::Int(0)) },
@@ -427,6 +426,9 @@ impl<'src> Analyzer<'src> {
                     ]), Type::Int(0)),
                 );
             }
+            ("Reinigung", "FM") => {
+                self.builtin_functions.insert("Reinigung", BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::Nichts));
+            },
             ("Aufgeben", "libSAP") => {
                 self.builtin_functions.insert("Aufgeben", BuiltinFunction::new(ParamTypes::Normal(vec![Type::Int(0)]), Type::Never));
             },

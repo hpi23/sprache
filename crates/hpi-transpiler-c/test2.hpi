@@ -1,7 +1,7 @@
 beantrage Drucke von Drucker;
 beantrage Formatiere von Textverarbeitung;
 beantrage Zeit von Uhr;
-
+beantrage Reinigung von FM;
 
 funk Bewerbung() ergibt Zeichenkette {
     ""
@@ -17,8 +17,20 @@ funk Studium() ergibt Nichts {
     //setze Zeichenkette LoL auf Formatiere("%d:%d" / A / B);
     //Drucke(LoL);
 
-    {
-        setze Zeichenkette Lol auf "foo";
-        Drucke("foo");
+    //{
+        //setze Zeichenkette Lol auf "foo";
+        //Drucke("foo");
+    //}
+
+    //zähle i von 0 bis 10 {
+    //}
+
+    solange ja {
+        setze Liste von Zahl Foo auf [ 1 / 2 / 3 / 4 / 5 ];
+        Drucke(Foo);
+        Schlummere(1F);
+
+        Reinigung();
+        abbrechen;
     }
 }

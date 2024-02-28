@@ -17,7 +17,8 @@ fn display_stmts(stmts: &[Statement]) -> String {
 
 /// BEGIN REFLECTION
 pub enum CTypeKind {
-    Int,
+    SystemInt,
+    Int64,
     Bool,
     Char,
     String,
@@ -34,7 +35,8 @@ impl Display for CTypeKind {
             f,
             "{}",
             match self {
-                CTypeKind::Int => "TYPE_INT",
+                CTypeKind::SystemInt => "TYPE_SYS_INT",
+                CTypeKind::Int64 => "TYPE_INT",
                 CTypeKind::Bool => "TYPE_BOOL",
                 CTypeKind::Char => "TYPE_CHAR",
                 CTypeKind::String => "TYPE_STRING",
@@ -51,7 +53,8 @@ impl Display for CTypeKind {
 impl From<&Type> for CTypeKind {
     fn from(value: &Type) -> Self {
         match value {
-            Type::Int(_) => Self::Int,
+            Type::SystemInt(_) => Self::SystemInt,
+            Type::Int(_) => Self::Int64,
             Type::Float(_) => Self::Float,
             Type::Bool(_) => Self::Bool,
             Type::Char(_) => Self::Char,
@@ -86,7 +89,7 @@ pub struct StructDefinition {
 }
 
 impl CType {
-    pub fn pointer_count(&self) -> usize{
+    pub fn pointer_count(&self) -> usize {
         match self {
             CType::Int(ptr) => *ptr,
             CType::LongLongInt(ptr) => *ptr,
@@ -128,6 +131,7 @@ impl Display for CType {
 impl From<Type> for CType {
     fn from(src: Type) -> Self {
         match src {
+            Type::SystemInt(ptr) => Self::Int(ptr),
             Type::Int(ptr) => Self::LongLongInt(ptr),
             Type::Float(ptr) => Self::Double(ptr),
             Type::Bool(ptr) => Self::Bool(ptr),
@@ -454,6 +458,7 @@ pub enum Expression {
     Deref((usize, String)),
     Cast(Box<CastExpr>),
     Int(i64),
+    SystemInt(i32),
     Bool(bool),
     Char(u8),
     StringLiteral(String),
@@ -476,6 +481,7 @@ impl Display for Expression {
             }
             Expression::Cast(node) => write!(f, "{node}"),
             Expression::Int(val) => write!(f, "{val}"),
+            Expression::SystemInt(val) => write!(f, "{val}"),
             Expression::Bool(val) => write!(f, "{val}"),
             Expression::Char(val) => write!(f, "{val}"),
             Expression::StringLiteral(inner) => write!(f, "\"{inner}\""),

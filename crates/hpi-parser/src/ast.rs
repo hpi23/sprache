@@ -10,6 +10,7 @@ pub struct ObjectTypeField {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
+    SystemInt(usize),
     Int(usize),
     Float(usize),
     Bool(usize),
@@ -36,6 +37,7 @@ impl Type {
     pub fn sanitized_name(&self) -> String {
         match self {
             Self::Int(indirections) => format!("{}Zahl", "Zeiger_auf_".repeat(*indirections)),
+            Self::SystemInt(indirections) => format!("{}SystemZahl", "Zeiger_auf_".repeat(*indirections)),
             Self::Float(indirections) => {
                 format!("{}Fliesskommazahl", "Zeiger_auf_".repeat(*indirections))
             }
@@ -77,7 +79,7 @@ impl Type {
             Self::Any => "Unbekannt".to_string(),
             Self::Nichts => "Nichts".to_string(),
             Self::Never => "Niemals".to_string(),
-            Self::Unknown => "{{unknown}}".to_string(),
+            Self::Unknown => "Unbekannt".to_string(),
             Self::Ident(inner, ptr) => format!("{}{inner}", "Zeiger_auf_".repeat(*ptr)),
         }
     }
@@ -87,6 +89,7 @@ impl Display for Type {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Int(indirections) => write!(f, "{}Zahl", "Zeiger auf ".repeat(*indirections)),
+            Self::SystemInt(indirections) => write!(f, "{}SystemZahl", "Zeiger auf ".repeat(*indirections)),
             Self::Float(indirections) => {
                 write!(f, "{}Fliesskommazahl", "Zeiger auf ".repeat(*indirections))
             }
@@ -187,6 +190,7 @@ impl Type {
     pub fn ptr_count(&self) -> Option<usize> {
         match self {
             Type::Int(ptr) => Some(*ptr),
+            Type::SystemInt(ptr) => Some(*ptr),
             Type::Float(ptr) => Some(*ptr),
             Type::Bool(ptr) => Some(*ptr),
             Type::Char(ptr) => Some(*ptr),
@@ -208,6 +212,7 @@ impl Type {
 
     pub fn without_indirection(self) -> Self {
         match self {
+            Self::SystemInt(_) => Self::SystemInt(0),
             Self::Int(_) => Self::Int(0),
             Self::Float(_) => Self::Float(0),
             Self::Bool(_) => Self::Bool(0),
