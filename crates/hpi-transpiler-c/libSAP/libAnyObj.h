@@ -18,7 +18,6 @@ void anyobj_free(AnyObject * obj);
 ListNode *__hpi_internal_anyobj_keys(AnyObject *obj);
 AnyValue __hpi_internal_anyobj_take(AnyObject *obj, DynString *key);
 void anyobj_insert(AnyObject *obj, char *key, AnyValue value);
-char *display_type(TypeDescriptor type);
 
 // Runtime type casting
 void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type);

@@ -21,3 +21,5 @@ struct TypeDescriptor {
 };
 
 typedef struct TypeDescriptor TypeDescriptor;
+
+char *display_type(TypeDescriptor type);

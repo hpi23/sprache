@@ -45,3 +45,12 @@ pub struct TranspileArgs {
     pub path: PathBuf,
     pub cflags: Vec<String>,
 }
+
+impl From<RunArgs> for TranspileArgs {
+    fn from(value: RunArgs) -> Self {
+        Self {
+            path: value.path,
+            cflags: vec![],
+        }
+    }
+}

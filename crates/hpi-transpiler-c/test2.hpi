@@ -2,35 +2,60 @@ beantrage Drucke von Drucker;
 beantrage Formatiere von Textverarbeitung;
 beantrage Zeit von Uhr;
 beantrage Reinigung von FM;
+beantrage ReinigungsPlan von FM;
 
-funk Bewerbung() ergibt Zeichenkette {
-    ""
+funk Bewerbung() ergibt Zeichenkette { "Bitte bitte" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {}
+
+funk A() ergibt Zeichenkette {
+    setze Zeichenkette foo auf "hallo";
+    foo
 }
 
-funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
-    //Drucke(Matrikelnummer);
+funk B() ergibt Liste von Zahl {
+    setze Liste von Zahl foo auf [ 1 ];
+    foo
 }
 
 funk Studium() ergibt Nichts {
-    //setze Zahl A auf 42;
-    //setze Zahl B auf 69;
-    //setze Zeichenkette LoL auf Formatiere("%d:%d" / A / B);
-    //Drucke(LoL);
+    // setze Zeichenkette b auf A();
+    // Reinigung();
+    // solange ja {
+        // Schlummere(1F);
+    // }
 
+
+    //setze Zahl z auf 0;
+    //solange z < 1000 {
+    //setze Liste von Zahl foo auf [ 1 ];
+        //Drucke("Hallo" / foo);
+        //z += 1;
+    //}
+
+    //setze Liste von Zahl _ auf B();
+    //B();
     //{
-        //setze Zeichenkette Lol auf "foo";
-        //Drucke("foo");
+        //setze Liste von Zahl _ auf [ 1 ];
     //}
 
-    //zähle i von 0 bis 10 {
-    //}
+    //Reinigung();
 
-    solange ja {
-        setze Liste von Zahl Foo auf [ 1 / 2 / 3 / 4 / 5 ];
-        Drucke(Foo);
-        Schlummere(1F);
-
-        Reinigung();
-        abbrechen;
+    //setze Liste von Zeichenkette a auf [ "aa" ];
+    {
+        //setze Liste von Zeichenkette a auf [ "aa" ];
+        setze Liste von Zahl a auf [ 42 / 69 ];
+        //setze Zeichenkette a auf "hello world";
     }
+    Reinigung();
+    //Drucke(a);
+
+
+    //Drucke("*******************************************");
+
+    //ReinigungsPlan();
+
+    //solange ja {
+        //Schlummere(1F);
+    //}
 }

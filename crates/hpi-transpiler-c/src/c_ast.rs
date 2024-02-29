@@ -466,6 +466,8 @@ pub enum Expression {
     Ident(String),
     Member(Box<MemberExpr>),
     Grouped(Box<Expression>),
+    Array(ArrayExpr),
+    Struct(StructExpr),
 }
 
 impl Display for Expression {
@@ -495,6 +497,8 @@ impl Display for Expression {
             }
             Expression::Ident(ident) => write!(f, "{ident}"),
             Expression::Grouped(node) => write!(f, "({node})"),
+            Expression::Array(node) => write!(f, "{node}"),
+            Expression::Struct(node) => write!(f, "{node}"),
         }
     }
 }
@@ -626,4 +630,40 @@ impl Display for MemberExpr {
             self.member
         )
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct ArrayExpr {
+    pub(super) inner_type: CType,
+    pub(super) values: Vec<Expression>
+}
+
+impl Display for ArrayExpr {
+ fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    write!(
+        f,
+        "({}[{}]){{{}}}",
+        self.inner_type,
+        self.values.len(),
+        self.values.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(", ")
+    )
+ }
+}
+
+#[derive(Debug, Clone)]
+pub struct StructExpr {
+    pub(super) name: String,
+    pub(super) values: HashMap<String, Expression>,
+}
+
+impl Display for StructExpr {
+ fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    write!(
+        f,
+        "({}){{{}}}",
+        self.name,
+        self.values.iter().map(|(key, value)| format!(".{key} = {value}")).collect::<Vec<String>>().join(", ")
+        // self.values.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(", ")
+    )
+ }
 }

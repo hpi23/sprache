@@ -4,7 +4,8 @@ SRC_FILES := $(wildcard $(SRC_DIR)/*.c)
 OBJ_FILES := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC_FILES))
 
 archiver := ar
-gcc := gcc
+GCC := gcc
+GCC_FLAGS :=-ggdb
 
 libSAP.a: $(OBJ_FILES)
 	@echo $(OBJ_FILES)
@@ -20,4 +21,4 @@ libSAP.a: $(OBJ_FILES)
 
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	gcc -c -o $@ $<
+	$(GCC) $(GCC_FLAGS) -c -o $@ $<

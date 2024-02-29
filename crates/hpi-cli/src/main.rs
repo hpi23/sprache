@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, io, process, str::FromStr, time::Instant};
+use std::{collections::HashMap, env, fs, io, process, str::FromStr, time::Instant};
 
 use anyhow::{bail, Context};
 use clap::Parser;
@@ -6,13 +6,14 @@ use cli::{Cli, Command};
 
 use hpi_analyzer::{ast::AnalyzedProgram, Diagnostic};
 use hpi_interpreter_tree::{HPIHttpClient, Interpreter};
+use hpi_transpiler_c::StyleConfig;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Method,
 };
 
-mod cli;
 mod c;
+mod cli;
 
 struct InterpreterHttpClient {}
 
@@ -58,21 +59,37 @@ async fn main() -> anyhow::Result<()> {
 
     match root_args.command {
         Command::Transpile(args) => {
-            let path = args.path.clone();
-            let path = path.to_string_lossy();
+            let total_start = Instant::now();
+            let mut start = Instant::now();
 
-            let (out, diagnostics) = rush_transpiler_c::transpile(&code, &path, emit_comments)
-                .unwrap_or_else(|diagnostics| {
-                    println!(
-                        "{}",
-                        diagnostics
-                            .iter()
-                            .map(|d| format!("{d:#}"))
-                            .collect::<Vec<String>>()
-                            .join("\n\n")
-                    );
-                    process::exit(1)
-                });
+            let path = args.path.clone();
+            let path_str = path.to_string_lossy().to_string();
+
+            let code =
+                fs::read_to_string(path).with_context(|| "Could not read source file")?;
+
+            let file_read_time = start.elapsed();
+            start = Instant::now();
+
+            let (out, diagnostics) = hpi_transpiler_c::transpile(
+                &code,
+                &path_str,
+                StyleConfig {
+                    emit_comments: true,
+                    emit_readable_names: true,
+                },
+            )
+            .unwrap_or_else(|diagnostics| {
+                println!(
+                    "{}",
+                    diagnostics
+                        .iter()
+                        .map(|d| format!("{d:#}"))
+                        .collect::<Vec<String>>()
+                        .join("\n\n")
+                );
+                process::exit(1)
+            });
 
             println!(
                 "{}",
@@ -83,37 +100,36 @@ async fn main() -> anyhow::Result<()> {
                     .join("\n\n")
             );
 
-                let total_start = Instant::now();
-                let mut start = Instant::now();
+            // let total_start = Instant::now();
+            // let mut start = Instant::now();
+            //
+            // let text = fs::read_to_string(&args.path)?;
+            //
+            // let file_read_time = start.elapsed();
+            // start = Instant::now();
+            //
+            // let tree = analyze(&text, &path)?;
+            //
+            // let analyze_time = start.elapsed();
+            // start = Instant::now();
+            //
+            // let exit_code = match transpiler {
+            //     Ok(code) => code,
+            //     Err(err) => bail!(format!("Laufzeitumgebung abgestürtzt: {err}")),
+            // };
 
-                let text = fs::read_to_string(&args.path)?;
+            if root_args.time {
+                eprintln!("Datei Einlesen: {file_read_time:?}");
+                eprintln!("Transpilierung: {:?}", start.elapsed());
+                eprintln!(
+                    "\x1b[90mGes:          {:?}\x1b[0m",
+                    total_start.elapsed()
+                );
+            }
 
-                let file_read_time = start.elapsed();
-                start = Instant::now();
+            // Ok(exit_code)
 
-                let tree = analyze(&text, &path)?;
-
-                let analyze_time = start.elapsed();
-                start = Instant::now();
-
-                let exit_code = match transpiler {
-                    Ok(code) => code,
-                    Err(err) => bail!(format!("Laufzeitumgebung abgestürtzt: {err}")),
-                };
-
-                if root_args.time {
-                    eprintln!("Datei Einlesen:            {file_read_time:?}");
-                    eprintln!("Syntaktische / Semantische Analyse:              {analyze_time:?}");
-                    eprintln!("Ausführung:        {:?}", start.elapsed());
-                    eprintln!(
-                        "\x1b[90mGes:                {:?}\x1b[0m",
-                        total_start.elapsed()
-                    );
-                }
-
-                Ok(exit_code)
-
-            println!("tanspile: {:?}", start.elapsed());
+            // println!("tanspile: {:?}", start.elapsed());
             fs::write("output.c", out).unwrap();
         }
         Command::Run(args) => {
@@ -136,10 +152,13 @@ async fn main() -> anyhow::Result<()> {
 
                 let http_client = InterpreterHttpClient {};
 
-                let exit_code = match Interpreter::new(io::stdout(), http_client).run(tree) {
-                    Ok(code) => code,
-                    Err(err) => bail!(format!("Laufzeitumgebung abgestürtzt: {err}")),
-                };
+                let env_vars = env::vars().map(|v| v).collect::<HashMap<String, String>>();
+
+                let exit_code =
+                    match Interpreter::new(io::stdout(), http_client, env_vars).run(tree) {
+                        Ok(code) => code,
+                        Err(err) => bail!(format!("Laufzeitumgebung abgestürtzt: {err}")),
+                    };
 
                 if root_args.time {
                     eprintln!("Datei Einlesen:            {file_read_time:?}");

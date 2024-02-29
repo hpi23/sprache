@@ -429,6 +429,9 @@ impl<'src> Analyzer<'src> {
             ("Reinigung", "FM") => {
                 self.builtin_functions.insert("Reinigung", BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::Nichts));
             },
+            ("ReinigungsPlan", "FM") => {
+                self.builtin_functions.insert("ReinigungsPlan", BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::Nichts));
+            },
             ("Aufgeben", "libSAP") => {
                 self.builtin_functions.insert("Aufgeben", BuiltinFunction::new(ParamTypes::Normal(vec![Type::Int(0)]), Type::Never));
             },

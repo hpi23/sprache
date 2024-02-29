@@ -8,6 +8,7 @@
 typedef struct {
   TypeDescriptor type;
   void *address;
+  char *origin;
 } GCRoot;
 
 typedef struct {
@@ -27,6 +28,8 @@ typedef struct {
 void gc_init();
 void gc_add_to_trace(void *address, TypeDescriptor type);
 void * gc_alloc(TypeDescriptor type);
-void gc_drop(void *address);
+void gc_add_root(void *address, TypeDescriptor type, char * origin);
+void gc_remove_roots(int64_t argc, void ** roots);
 void gc_run_cycle();
 void gc_print();
+void gc_die();

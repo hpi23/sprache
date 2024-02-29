@@ -2,9 +2,12 @@
 #include "libAnyObj.h"
 #include "reflection.h"
 #include <assert.h>
+#include <math.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 #define GC_VERBOSE true
 #define GC_PRINT                                                               \
@@ -16,6 +19,7 @@ GC *gc;
 GC *gc_new() {
   GC *new = (GC *)malloc(sizeof(GC));
   new->entries = list_new();
+  new->roots = list_new();
   return new;
 }
 
@@ -24,16 +28,51 @@ void gc_init() {
   assert(gc != NULL);
 }
 
-void gc_add_root(void *address, TypeDescriptor type) {
+void gc_add_root(void *address, TypeDescriptor type, char *origin) {
   GCRoot *entry = malloc(sizeof(GCRoot));
 
   entry->type = type;
   entry->address = address;
+  entry->origin = origin;
 
   list_append(gc->roots, entry);
+  gc_add_to_trace(address, type);
+}
+
+// Returns `NULL` if the object does not exist.
+// Otherwise, the object is returned.
+GCEntry *gc_find_object_internal(GC *self, void *address) {
+  for (int i = 0; i < list_len(self->entries); i++) {
+    ListGetResult currRes = list_at(self->entries, i);
+    assert(currRes.found);
+
+    GCEntry *curr = (GCEntry *)currRes.value;
+    if (curr->address == address) {
+      return curr;
+    }
+  }
+
+  return NULL;
+}
+
+// Unlike `gc_find_object_internal`, this call panics if the object is not
+// found.
+GCEntry *gc_find_object(GC *self, void *address) {
+  GCEntry *object = gc_find_object_internal(self, address);
+  printf("find %p: %p\n", address, object);
+  assert(object != NULL && "gc_find_object() could not find object");
+  return object;
 }
 
 void gc_add_to_trace(void *address, TypeDescriptor type) {
+  // Check if this address is already tracked.
+  GCEntry *object = gc_find_object_internal(gc, address);
+
+  if (object != NULL) {
+    printf("gc_add_to_trace(): address %p already traced.\n", address);
+    return;
+  }
+
   GCEntry *entry = malloc(sizeof(GCEntry));
 
   entry->type = type;
@@ -44,18 +83,126 @@ void gc_add_to_trace(void *address, TypeDescriptor type) {
   // GC_PRINT;
 }
 
+// void gc_remove_entry(void *address) {
+//   uint len = list_len(gc->entries);
+//   for (int i = len - 1; i >= 0; i--) {
+//     ListGetResult currRes = list_at(gc->entries, i);
+//     assert(currRes.found);
+//
+//     GCEntry *curr = (GCEntry *)currRes.value;
+//     if (curr->address == address) {
+//       list_delete_index(gc->entries, i);
+//       return;
+//     }
+//   }
+//
+//   // printf("Could not remove address: %p\n", address);
+//   // assert(0 && "gc_remove_entry(): Illegal address not found.");
+// }
+
+void gc_free(GCEntry *obj) {
+  // TODO: how to deal with pointers?
+
+  char *type = display_type(obj->type);
+  printf("free(): %p | %s\n", obj->address, type);
+  free(type);
+
+  if (obj->type.ptr_count > 0) {
+    // void *old = obj->address;
+
+    // switch (obj->type.kind) {
+    // case TYPE_NONE:
+    //   assert(0 && "Cannot free this type");
+    // case TYPE_INT:
+    //   obj->address = *(int64_t **)obj->address;
+    //   break;
+    // case TYPE_FLOAT:
+    //   obj->address = *(double **)obj->address;
+    //   break;
+    // case TYPE_CHAR:
+    //   obj->address = *(char **)obj->address;
+    //   break;
+    // case TYPE_BOOL:
+    //   obj->address = *(bool **)obj->address;
+    //   break;
+    // case TYPE_LIST:
+    //   obj->address = *(ListNode **)obj->address;
+    //   break;
+    // case TYPE_OBJECT:
+    //   obj->address = *(HashMap **)obj->address;
+    //   break;
+    // case TYPE_ANY_OBJECT:
+    //   obj->address = *(AnyObject **)obj->address;
+    //   break;
+    // case TYPE_STRING:
+    //   obj->address = *(DynString **)obj->address;
+    //   break;
+    // }
+    //
+    // obj->type.ptr_count--;
+    free(obj->address);
+    free(obj);
+    return;
+  }
+
+  switch (obj->type.kind) {
+  case TYPE_NONE:
+    assert(0 && "Cannot free this type");
+  case TYPE_INT:
+  case TYPE_FLOAT:
+  case TYPE_CHAR:
+  case TYPE_BOOL:
+    // free(obj->address);
+    assert(0 && "Cannot free this type");
+    break;
+  case TYPE_LIST:
+    // TODO: double free when traversing list???
+    list_free(obj->address);
+    break;
+  case TYPE_OBJECT:
+    hashmap_free(obj->address);
+    break;
+  case TYPE_ANY_OBJECT:
+    anyobj_free(obj->address);
+    break;
+  case TYPE_STRING:
+    dynstring_free(obj->address);
+    break;
+  default:
+    printf("Invalid type: %s\n", display_type(obj->type));
+    assert(0 && "gc_free(): Cannot free this type");
+  }
+
+  free(obj);
+  // GC_PRINT;
+}
+
 void *gc_alloc(TypeDescriptor type) {
   void *allocated = NULL;
 
+  if (type.ptr_count >= 1) {
+    switch (type.kind) {
+    case TYPE_NONE:
+      assert(0 && "This type is not supported");
+    case TYPE_INT:
+    case TYPE_FLOAT:
+    case TYPE_CHAR:
+    case TYPE_BOOL:
+    case TYPE_LIST:
+    case TYPE_OBJECT:
+    case TYPE_ANY_OBJECT:
+    case TYPE_STRING:
+      allocated = malloc(sizeof(void *));
+      goto finish;
+      break;
+    }
+  }
+
   switch (type.kind) {
   case TYPE_NONE:
-    assert(0 && "This type is not supported");
   case TYPE_INT:
-    assert(0 && "This type is not supported");
   case TYPE_FLOAT:
-    assert(0 && "This type is not supported");
   case TYPE_CHAR:
-    assert(0 && "This type is not supported");
   case TYPE_BOOL:
     assert(0 && "This type is not supported");
   case TYPE_LIST:
@@ -78,41 +225,85 @@ void *gc_alloc(TypeDescriptor type) {
   }
   }
 
+finish:
   gc_add_to_trace(allocated, type);
   // GC_PRINT;
   return allocated;
 }
 
-GCEntry *gc_find_object(GC *self, void *address) {
-  for (int i = 0; i < list_len(self->entries); i++) {
-    ListGetResult currRes = list_at(self->entries, i);
-    assert(currRes.found);
-
-    GCEntry *curr = (GCEntry *)currRes.value;
-    if (curr->address == address) {
-      return curr;
-    }
-  }
-
-  assert(0 && "gc_find_object() could not find object");
-}
-
 void gc_traverse_value(void *root, TypeDescriptor type) {
- GCEntry * obj = gc_find_object(gc, root);
- obj->marked = true;
+  // GC_PRINT;
+  printf("Traversing value %p | %s ptr count: %ld...\n", root,
+         display_type(type), type.ptr_count);
 
- printf("Marked object with address %p\n", obj->address);
+  GCEntry *obj = gc_find_object(gc, root);
+  obj->marked = true;
+
+  printf("gc_traverse_value(): marked address %p\n", obj->address);
+
+  if (type.ptr_count > 0) {
+    TypeDescriptor new_type = type;
+    new_type.ptr_count--;
+
+    void *new_ptr = NULL;
+
+    switch (type.kind) {
+    case TYPE_NONE:
+      puts(display_type(type));
+      assert(0 && "gc_traverse_value(): Unsupported type");
+    case TYPE_INT:
+      new_ptr = *(int64_t **)root;
+      break;
+    case TYPE_FLOAT:
+      new_ptr = *(double **)root;
+      break;
+    case TYPE_CHAR:
+      new_ptr = *(char **)root;
+      break;
+    case TYPE_BOOL:
+      new_ptr = *(bool **)root;
+      break;
+    case TYPE_LIST:
+      new_ptr = *(ListNode **)root;
+      break;
+    case TYPE_OBJECT:
+      new_ptr = *(HashMap **)root;
+      break;
+    case TYPE_ANY_OBJECT:
+      new_ptr = *(AnyObject **)root;
+      break;
+    case TYPE_STRING:
+      new_ptr = *(DynString **)root;
+      break;
+    }
+
+    char *from_type_str = display_type(type);
+    char *new_type_str = display_type(new_type);
+    printf("gc_traverse_value(): deref pointer %s to %s.", from_type_str,
+           new_type_str);
+    free(from_type_str);
+    free(new_type_str);
+
+    gc_traverse_value(root, new_type);
+    return;
+  }
 
   switch (type.kind) {
   case TYPE_INT:
   case TYPE_FLOAT:
   case TYPE_CHAR:
   case TYPE_BOOL:
+    break;
+  case TYPE_STRING: {
+    DynString *string = *(DynString **)root;
+
+    break;
+  }
   case TYPE_NONE:
-    assert(0 && "gc_traverse_root(): Unsupported type");
+    puts(display_type(type));
+    assert(0 && "gc_traverse_value(): Unsupported type");
   case TYPE_LIST: {
     // TODO: what if list is a pointer?
-
     TypeDescriptor list_inner = *type.list_inner;
 
     ListNode *list = (ListNode *)root;
@@ -121,7 +312,9 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
       assert(currRes.found);
 
       // currRes.value
+      //
 
+      list_inner.ptr_count++;
       gc_traverse_value(currRes.value, list_inner);
     }
 
@@ -152,24 +345,29 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
     break;
   }
   case TYPE_ANY_OBJECT:
-  case TYPE_STRING:
+    abort();
     break;
   }
 }
 
-// Mark phase of the garbage collection cycle.
-void gc_mark() {
-  // Unmark every entry.
+// NOTE: in most cases, should only be called before `gc_mark()`
+void gc_internal_unmark_all() {
   for (int i = 0; i < list_len(gc->entries); i++) {
     ListGetResult currRes = list_at(gc->entries, i);
     assert(currRes.found);
     GCEntry *curr = (GCEntry *)currRes.value;
     curr->marked = false;
   }
+}
+
+// Mark phase of the garbage collection cycle.
+void gc_mark() {
+  // Unmark every entry.
+  gc_internal_unmark_all();
 
   // Traverse nodes, starting at the roots.
   for (int i = 0; i < list_len(gc->roots); i++) {
-    ListGetResult currRes = list_at(gc->entries, i);
+    ListGetResult currRes = list_at(gc->roots, i);
     assert(currRes.found);
     GCRoot *curr = (GCRoot *)currRes.value;
     gc_traverse_value(curr->address, curr->type);
@@ -178,7 +376,31 @@ void gc_mark() {
 
 // Sweep phase of the garbage collection cycle.
 void gc_sweep() {
-  // TODO
+  uint len = list_len(gc->entries);
+
+  for (int i = len - 1; i >= 0; i--) {
+    ListGetResult curr = list_at(gc->entries, i);
+    assert(curr.found);
+
+    GCEntry *entry = (GCEntry *)curr.value;
+
+    if (entry->marked) {
+      continue;
+    }
+
+    int before = list_len(gc->entries);
+    // list_print(gc->entries);
+
+    list_delete_index(gc->entries, i);
+
+    // list_print(gc->entries);
+
+    // free(entry->address);
+    gc_free(entry);
+
+    printf("gc_sweep(): removed %ld object(s).\n",
+           before - list_len(gc->entries));
+  }
 }
 
 // void _gc_ref(GC *self, void *address) {
@@ -206,33 +428,6 @@ void gc_sweep() {
 //   GC_PRINT;
 // }
 
-void gc_free(GCEntry *obj) {
-  switch (obj->type.kind) {
-  case TYPE_NONE:
-    assert(0 && "Cannot free this type");
-  case TYPE_INT:
-    assert(0 && "Cannot free this type");
-  case TYPE_FLOAT:
-    assert(0 && "Cannot free this type");
-  case TYPE_CHAR:
-    assert(0 && "Cannot free this type");
-  case TYPE_BOOL:
-    assert(0 && "Cannot free this type");
-  case TYPE_LIST:
-    list_free(obj->address);
-  case TYPE_OBJECT:
-    hashmap_free(obj->address);
-  case TYPE_ANY_OBJECT:
-    anyobj_free(obj->address);
-  case TYPE_STRING:
-    dynstring_free(obj->address);
-  default:
-    assert(0 && "Cannot free this type");
-  }
-
-  // GC_PRINT;
-}
-
 void _gc_mark(GC *self) {}
 
 // void _gc_run(GC *self) {
@@ -249,9 +444,7 @@ void _gc_mark(GC *self) {}
 // }
 
 void gc_run_cycle() {
-  puts("Would run a cycle now...");
-
-  GC_PRINT;
+  // GC_PRINT;
 
   gc_mark();
 
@@ -265,7 +458,7 @@ void gc_run_cycle() {
 void _gc_print(GC *self) {
   uint objs_len = list_len(self->entries);
   puts("--------------------------------------------------------");
-  printf("objects tracked: %d\n", objs_len);
+  printf("# Entries tracked: %d\n", objs_len);
 
   for (int i = 0; i < objs_len; i++) {
     ListGetResult currRes = list_at(self->entries, i);
@@ -273,9 +466,92 @@ void _gc_print(GC *self) {
 
     GCEntry *curr = (GCEntry *)currRes.value;
 
-    printf("- %p | type: %s | marked: %d\n", curr->address,
-           display_type(curr->type), curr->marked);
+    char *type_str = display_type(curr->type);
+
+    printf("    - %p | type: %s | marked: %d\n", curr->address, type_str,
+           curr->marked);
+
+    free(type_str);
+  }
+
+  uint root_len = list_len(gc->roots);
+  printf("# Roots: %d\n", root_len);
+
+  for (int i = 0; i < root_len; i++) {
+    ListGetResult currRes = list_at(self->roots, i);
+    assert(currRes.found);
+
+    GCRoot *curr = (GCRoot *)currRes.value;
+
+    char *type_str = display_type(curr->type);
+
+    printf("    - %p | type: %s | origin: `%s`\n", curr->address, type_str,
+           curr->origin);
+
+    free(type_str);
   }
 }
 
 void gc_print() { _gc_print(gc); }
+
+void gc_remove_root(void *address) {
+  int rootc = list_len(gc->roots);
+
+  for (int i = rootc - 1; i >= 0; i--) {
+    ListGetResult currRes = list_at(gc->roots, i);
+    // printf("curr: %d\n", i);
+    assert(currRes.found);
+
+    GCRoot *root = (GCRoot *)currRes.value;
+
+    if (root->address == address) {
+      // puts("root found!");
+      list_delete_index(gc->roots, i);
+      free(root);
+      return;
+    } else {
+      printf("remove root: %p !== %p\n", root->address, address);
+    }
+  }
+
+  printf("Invalid root address: %p\n", address);
+  // assert(0 && "gc_remove_root(): Could not find root address to remove.");
+}
+
+void gc_remove_roots(int64_t num_roots, void **roots) {
+  for (int i = num_roots - 1; i >= 0; i--) {
+    uint64_t before = list_len(gc->roots);
+    gc_remove_root(roots[i]);
+    if (GC_VERBOSE) {
+      printf("gc_remove_roots(): removed root: %ld -> %ld roots\n", before,
+             list_len(gc->roots));
+    }
+  }
+}
+
+void gc_release_all() {
+  uint root_len = list_len(gc->roots);
+  for (int i = root_len - 1; i >= 0; i--) {
+    ListGetResult currRes = list_at(gc->roots, i);
+    assert(currRes.found);
+
+    GCRoot *root = (GCRoot *)currRes.value;
+    gc_remove_root(root);
+  }
+
+  // NOTE: if there is still garbage, it is not freed normally, so trigger a GC
+  // run.
+  gc_internal_unmark_all();
+  gc_sweep();
+}
+
+void gc_free_self() {
+  list_free(gc->entries);
+  list_free(gc->roots);
+  free(gc);
+}
+
+void gc_die() {
+  gc_release_all();
+  gc_free_self();
+}

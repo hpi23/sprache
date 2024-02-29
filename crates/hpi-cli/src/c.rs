@@ -5,27 +5,42 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Context};
-use rush_analyzer::ast::AnalyzedProgram;
-use rush_transpiler_c::Transpiler;
+use hpi_analyzer::ast::AnalyzedProgram;
+use hpi_transpiler_c::{StyleConfig, Transpiler};
 use tempfile::tempdir;
 
-use crate::cli::{BuildArgs, RunArgs};
+use crate::cli::{RunArgs, TranspileArgs};
 
-pub fn compile(ast: AnalyzedProgram, args: BuildArgs) -> anyhow::Result<()> {
-    let c = Transpiler::new(false).transpile(ast).to_string();
+pub fn compile(ast: AnalyzedProgram, args: TranspileArgs) -> anyhow::Result<()> {
+    let c = Transpiler::new(StyleConfig {
+        emit_comments: true,
+        emit_readable_names: true,
+    })
+    .transpile(ast)
+    .to_string();
 
     // get output path
-    let output = match args.output_file {
-        Some(out) => out,
-        None => {
-            let mut path = PathBuf::from(
-                args.path
-                    .file_stem()
-                    .with_context(|| "cannot get filestem of input file")?,
-            );
-            path.set_extension("c");
-            path
-        }
+    // let output = match args.output_file {
+    //     Some(out) => out,
+    //     None => {
+    //         let mut path = PathBuf::from(
+    //             args.path
+    //                 .file_stem()
+    //                 .with_context(|| "cannot get filestem of input file")?,
+    //         );
+    //         path.set_extension("c");
+    //         path
+    //     }
+    // };
+
+    let output = {
+        let mut path = PathBuf::from(
+            args.path
+                .file_stem()
+                .with_context(|| "cannot get filestem of input file")?,
+        );
+        path.set_extension("c");
+        path
     };
 
     fs::write(&output, c)
@@ -37,10 +52,10 @@ pub fn compile(ast: AnalyzedProgram, args: BuildArgs) -> anyhow::Result<()> {
 pub fn run(ast: AnalyzedProgram, args: RunArgs) -> anyhow::Result<i64> {
     let tmpdir = tempdir()?;
 
-    let mut args: BuildArgs = args.try_into()?;
+    let args: TranspileArgs = args.into();
 
     let c_path = tmpdir.path().join("output.c");
-    args.output_file = Some(c_path.clone());
+    // args.output_file = Some(c_path.clone());
     compile(ast, args)?;
 
     let bin_path = tmpdir.path().join("output");

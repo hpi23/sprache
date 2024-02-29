@@ -1,6 +1,7 @@
 #include "../hpi-c-tests/dynstring/dynstring.h"
 #include "../hpi-c-tests/list/list.h"
 #include "./format.h"
+#include "./libGC.h"
 #include "./to_string.h"
 #include "libAnyObj.h"
 #include "libTime.h"
@@ -13,7 +14,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include "./libGC.h"
 
 size_t argc;
 char **argv;
@@ -48,6 +48,8 @@ void __hpi_internal_print(ssize_t num_args, ...) {
     if (i < num_args && num_args > 1) {
       dynstring_push_char(output, ' ');
     }
+
+    dynstring_free(res);
   }
 
   dynstring_print(output);
@@ -117,22 +119,22 @@ AnyObject *__hpi_internal_env() {
 }
 
 ListNode *__hpi_internal_args() {
-    ListNode * list = list_new();
+  ListNode *list = list_new();
 
-    for (int i = 0; i < argc; i ++) {
-        DynString ** temp_ptr = malloc(sizeof(DynString *));
-        *temp_ptr = dynstring_from(argv[i]);
+  for (int i = 0; i < argc; i++) {
+    TypeDescriptor type_string = {
+        .kind = TYPE_STRING, .ptr_count = 0, .list_inner = NULL};
 
-        list_append(list, temp_ptr);
-    }
+    DynString **temp_ptr = malloc(sizeof(DynString *));
+    *temp_ptr = dynstring_from(argv[i]);
 
-    return list;
+    list_append(list, temp_ptr);
+  }
+
+  return list;
 }
 
-void __hpi_internal_init_libSAP(size_t p_argc, char ** p_argv) {
-    argc = p_argc;
-    argv = p_argv;
-
-    // Initialize garbage collector.
-    gc_init();
+void __hpi_internal_init_libSAP(size_t p_argc, char **p_argv) {
+  argc = p_argc;
+  argv = p_argv;
 }

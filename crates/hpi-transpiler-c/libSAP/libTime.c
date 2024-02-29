@@ -1,5 +1,6 @@
 #include "./libTime.h"
 #include "../hpi-c-tests/hashmap/map.h"
+#include "reflection.h"
 #include <stdint.h>
 #include <time.h>
 
@@ -27,6 +28,7 @@ HashMap *__hpi_internal_time() {
   current = __hpi_internal_time_provider();
 
   // TODO: how to handle this better, meaning correct garbage collection?
+  // FIX: rewrite this function in HPI lang for fun and profit
 
   HashMap *map = hashmap_new();
 

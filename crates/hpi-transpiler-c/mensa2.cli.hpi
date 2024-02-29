@@ -1,0 +1,48 @@
+beantrage Geld von Hasso;
+beantrage Drucke von Drucker;
+beantrage Http von Netzwerk;
+beantrage Gliedere_JSON von Textverarbeitung;
+beantrage Zergliedere_JSON von Textverarbeitung;
+beantrage Formatiere von Textverarbeitung;
+beantrage Aufgeben von libSAP;
+beantrage Umgebungsvariablen von libSAP;
+beantrage Argumente von libSAP;
+beantrage Zeit von Uhr;
+beantrage ReinigungsPlan von FM;
+beantrage Reinigung von FM;
+
+datentyp Speise auf Objekt {
+    Zeichenkette ZeitSlot /
+    Zeichenkette Titel /
+    Zeichenkette Beschreibung /
+    Fließkommazahl Preis /
+};
+
+setze Zahl MENSA_FILMUNI auf 9603;
+setze Zahl MENSA_GRIEBNITZSEE auf 9601;
+
+setze Zeichenkette MENSA_URL_GENERISCH auf "https://swp.webspeiseplan.de/index.php?token=55ed21609e26bbf68ba2b19390bf7961&model=menu&location=%d&languagetype=2&_=1699354619713";
+
+funk Bewerbung() ergibt Zeichenkette { "Hallo Welt!" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+  setze Zahl _ auf Matrikelnummer;
+}
+
+funk Studium() ergibt Nichts {
+    setze Liste von Zeichenkette Args auf Argumente();
+    falls Args.Länge() == 1 {
+        Drucke("Erwartete Befehlszeilenargument <mensa-ort>, bekam nichts");
+        Aufgeben(69);
+    }
+
+    setze Zeichenkette Eingabe auf Args[1];
+
+    Drucke(Eingabe == "aa");
+
+
+    ReinigungsPlan();
+    Reinigung();
+
+    Aufgeben(12);
+}

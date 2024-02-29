@@ -1,8 +1,19 @@
 use hpi_analyzer::Diagnostic;
 pub use transpiler::{Transpiler, StyleConfig};
 
+macro_rules! comment {
+    ($self:ident, $vec:expr, $msg:expr) => {
+        if $self.style_config.emit_comments {
+            $vec.push(Statement::Comment($msg))
+        }
+    };
+}
+
 mod c_ast;
 mod transpiler;
+mod expression;
+mod statement;
+mod gc;
 
 /// Transpiles rush source code to C89 / C90.
 /// The `Ok(_)` variant also returns non-error diagnostics.
