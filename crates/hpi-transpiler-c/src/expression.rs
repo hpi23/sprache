@@ -12,7 +12,7 @@ impl<'src> Transpiler<'src> {
         node: AnalyzedExpression<'src>,
     ) -> (Vec<Statement>, Option<Expression>) {
         let expr = match node {
-            AnalyzedExpression::Block(node) => return self.block_expr(*node),
+            AnalyzedExpression::Block(node) => return self.block_expr(*node, true),
             AnalyzedExpression::If(node) => return self.if_expr(*node),
             AnalyzedExpression::Int(value) => Some(Expression::Int(value)),
             AnalyzedExpression::Float(value) => Some(Expression::Float(value)),
@@ -322,8 +322,11 @@ impl<'src> Transpiler<'src> {
     pub(super) fn block_expr(
         &mut self,
         node: AnalyzedBlock<'src>,
+        scoping: bool,
     ) -> (Vec<Statement>, Option<Expression>) {
-        self.scopes.push(Scope::new());
+        if scoping {
+            self.scopes.push(Scope::new());
+        }
         let mut block = vec![];
 
         comment!(self, block, "begin block".into());
@@ -345,7 +348,9 @@ impl<'src> Transpiler<'src> {
             None => None,
         };
 
-        block.push(self.pop_scope(true));
+        if scoping {
+            block.push(self.pop_scope(true));
+        }
         comment!(self, block, "end block".into());
 
         (block, expr)
@@ -373,7 +378,7 @@ impl<'src> Transpiler<'src> {
             }
         };
 
-        let then_block = match self.block_expr(node.then_block) {
+        let then_block = match self.block_expr(node.then_block, true) {
             (mut stmts, Some(expr)) => {
                 stmts.push(Statement::Assign(AssignStmt {
                     assignee: res_ident.clone().expect("was declared above"),
@@ -387,7 +392,7 @@ impl<'src> Transpiler<'src> {
         };
 
         let else_block = match node.else_block {
-            Some(block) => match self.block_expr(block) {
+            Some(block) => match self.block_expr(block, true) {
                 (mut stmts, Some(expr)) => {
                     stmts.push(Statement::Assign(AssignStmt {
                         assignee: res_ident.clone().expect("was declared above"),
@@ -649,7 +654,7 @@ impl<'src> Transpiler<'src> {
                 "exit".to_string()
             }
             AnalyzedCallBase::Ident("Reinigung") => "gc_run_cycle".to_string(),
-            AnalyzedCallBase::Ident("ReinigungsPlan") => "gc_print".to_string(),
+            AnalyzedCallBase::Ident("ReinigungsPlan") => "external_print_state".to_string(),
             AnalyzedCallBase::Ident("type_descriptor_setup") => "type_descriptor_setup".to_string(),
             AnalyzedCallBase::Ident("gc_init") => "gc_init".to_string(),
             AnalyzedCallBase::Ident("gc_die") => "gc_die".to_string(),

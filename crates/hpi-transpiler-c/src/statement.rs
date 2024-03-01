@@ -11,6 +11,7 @@ use crate::{
         AssignStmt, CType, CallExpr, Expression, IfStmt, PrefixExpr, PrefixOp, Statement,
         VarDeclaration,
     },
+    gc::Scope,
     transpiler::Loop,
     Transpiler,
 };
@@ -30,10 +31,7 @@ impl<'src> Transpiler<'src> {
             AnalyzedStatement::Continue => {
                 let gc_remove_roots = self.pop_scope(false);
                 let loop_ = self.loops.last_mut().expect("there is always a loop");
-                vec![
-                    gc_remove_roots,
-                    Statement::Goto(loop_.head_label.clone())
-                ]
+                vec![gc_remove_roots, Statement::Goto(loop_.head_label.clone())]
             }
             AnalyzedStatement::Expr(node) => {
                 let (mut stmts, expr) = self.expression(node);
@@ -207,7 +205,8 @@ impl<'src> Transpiler<'src> {
             break_label: break_label.to_string(),
         });
 
-        let mut body = match self.block_expr(node.block) {
+        self.scopes.push(Scope::new());
+        let mut body = match self.block_expr(node.block, false) {
             (mut stmts, Some(expr)) => {
                 stmts.push(Statement::Expr(expr));
                 stmts
@@ -216,12 +215,13 @@ impl<'src> Transpiler<'src> {
         };
         body.append(&mut stmts);
         cond_stmts.append(&mut body);
+        cond_stmts.push(self.pop_scope(false));
 
         self.loops.pop();
 
         cond_stmts.push(Statement::Goto(head_label));
         cond_stmts.push(Statement::Label(break_label));
-        cond_stmts.push(self.pop_scope(false));
+        cond_stmts.push(self.pop_scope(true));
 
         cond_stmts
     }

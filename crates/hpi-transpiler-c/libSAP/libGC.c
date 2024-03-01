@@ -18,7 +18,7 @@ GC *gc;
 
 GC *gc_new() {
   GC *new = (GC *)malloc(sizeof(GC));
-  new->entries = list_new();
+  new->entries = vec_new();
   new->roots = list_new();
   return new;
 }
@@ -42,11 +42,8 @@ void gc_add_root(void *address, TypeDescriptor type, char *origin) {
 // Returns `NULL` if the object does not exist.
 // Otherwise, the object is returned.
 GCEntry *gc_find_object_internal(GC *self, void *address) {
-  for (int i = 0; i < list_len(self->entries); i++) {
-    ListGetResult currRes = list_at(self->entries, i);
-    assert(currRes.found);
-
-    GCEntry *curr = (GCEntry *)currRes.value;
+  for (int i = 0; i < self->entries->used; i++) {
+    GCEntry *curr = (GCEntry *)vec_index(self->entries, i);
     if (curr->address == address) {
       return curr;
     }
@@ -79,7 +76,7 @@ void gc_add_to_trace(void *address, TypeDescriptor type) {
   entry->address = address;
   entry->marked = false;
 
-  list_append(gc->entries, entry);
+  vec_push(gc->entries, entry);
   // GC_PRINT;
 }
 
@@ -142,6 +139,7 @@ void gc_free(GCEntry *obj) {
     // obj->type.ptr_count--;
     free(obj->address);
     free(obj);
+    puts("Only shallow free");
     return;
   }
 
@@ -233,8 +231,8 @@ finish:
 
 void gc_traverse_value(void *root, TypeDescriptor type) {
   // GC_PRINT;
-  printf("Traversing value %p | %s ptr count: %ld...\n", root,
-         display_type(type), type.ptr_count);
+  // printf("Traversing value %p | %s ptr count: %ld...\n", root,
+  //        display_type(type), type.ptr_count);
 
   GCEntry *obj = gc_find_object(gc, root);
   obj->marked = true;
@@ -242,9 +240,10 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
   printf("gc_traverse_value(): marked address %p\n", obj->address);
 
   if (type.ptr_count > 0) {
-    TypeDescriptor new_type = type;
-    new_type.ptr_count--;
-
+    TypeDescriptor new_type = {.ptr_count = type.ptr_count - 1,
+                               .kind = type.kind,
+                               .list_inner = type.list_inner,
+                               .obj_fields = type.obj_fields};
     void *new_ptr = NULL;
 
     switch (type.kind) {
@@ -252,39 +251,40 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
       puts(display_type(type));
       assert(0 && "gc_traverse_value(): Unsupported type");
     case TYPE_INT:
-      new_ptr = *(int64_t **)root;
+      new_ptr = (void *)*(int64_t **)root;
       break;
     case TYPE_FLOAT:
-      new_ptr = *(double **)root;
+      new_ptr = (void *)*(double **)root;
       break;
     case TYPE_CHAR:
-      new_ptr = *(char **)root;
+      new_ptr = (void *)*(char **)root;
       break;
     case TYPE_BOOL:
-      new_ptr = *(bool **)root;
+      new_ptr = (void *)*(bool **)root;
       break;
     case TYPE_LIST:
-      new_ptr = *(ListNode **)root;
+      new_ptr = (void *)*(ListNode **)root;
       break;
     case TYPE_OBJECT:
-      new_ptr = *(HashMap **)root;
+      new_ptr = (void *)*(HashMap **)root;
       break;
     case TYPE_ANY_OBJECT:
-      new_ptr = *(AnyObject **)root;
+      new_ptr = (void *)*(AnyObject **)root;
       break;
     case TYPE_STRING:
-      new_ptr = *(DynString **)root;
+      new_ptr = (void *)*(DynString **)root;
       break;
     }
 
     char *from_type_str = display_type(type);
     char *new_type_str = display_type(new_type);
-    printf("gc_traverse_value(): deref pointer %s to %s.", from_type_str,
+    printf("gc_traverse_value(): deref pointer %s to %s.\n", from_type_str,
            new_type_str);
     free(from_type_str);
     free(new_type_str);
 
-    gc_traverse_value(root, new_type);
+    if (type.ptr_count > 1)
+      gc_traverse_value(root, new_type);
     return;
   }
 
@@ -352,10 +352,8 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
 
 // NOTE: in most cases, should only be called before `gc_mark()`
 void gc_internal_unmark_all() {
-  for (int i = 0; i < list_len(gc->entries); i++) {
-    ListGetResult currRes = list_at(gc->entries, i);
-    assert(currRes.found);
-    GCEntry *curr = (GCEntry *)currRes.value;
+  for (int i = 0; i < gc->entries->used; i++) {
+    GCEntry *curr = (GCEntry *)vec_index(gc->entries, i);
     curr->marked = false;
   }
 }
@@ -376,30 +374,25 @@ void gc_mark() {
 
 // Sweep phase of the garbage collection cycle.
 void gc_sweep() {
-  uint len = list_len(gc->entries);
-
-  for (int i = len - 1; i >= 0; i--) {
-    ListGetResult curr = list_at(gc->entries, i);
-    assert(curr.found);
-
-    GCEntry *entry = (GCEntry *)curr.value;
+  for (int i = 0; i < gc->entries->used; i++) {
+    GCEntry *entry = (GCEntry *)vec_index(gc->entries, i);
 
     if (entry->marked) {
       continue;
     }
 
-    int before = list_len(gc->entries);
+    int before = gc->entries->used;
     // list_print(gc->entries);
 
-    list_delete_index(gc->entries, i);
+    vec_remove(gc->entries, i);
 
     // list_print(gc->entries);
 
     // free(entry->address);
     gc_free(entry);
 
-    printf("gc_sweep(): removed %ld object(s).\n",
-           before - list_len(gc->entries));
+    printf("gc_sweep(): delete index %d; removed %d object(s).\n", i,
+           before - gc->entries->used);
   }
 }
 
@@ -456,15 +449,12 @@ void gc_run_cycle() {
 }
 
 void _gc_print(GC *self) {
-  uint objs_len = list_len(self->entries);
+  uint objs_len = self->entries->used;
   puts("--------------------------------------------------------");
   printf("# Entries tracked: %d\n", objs_len);
 
   for (int i = 0; i < objs_len; i++) {
-    ListGetResult currRes = list_at(self->entries, i);
-    assert(currRes.found);
-
-    GCEntry *curr = (GCEntry *)currRes.value;
+    GCEntry *curr = (GCEntry *)vec_index(self->entries, i);
 
     char *type_str = display_type(curr->type);
 
@@ -546,12 +536,17 @@ void gc_release_all() {
 }
 
 void gc_free_self() {
-  list_free(gc->entries);
+  vec_free(gc->entries);
   list_free(gc->roots);
   free(gc);
 }
 
 void gc_die() {
-  gc_release_all();
+  //gc_release_all();
   gc_free_self();
+}
+
+void external_print_state() {
+  gc_mark();
+  gc_print();
 }

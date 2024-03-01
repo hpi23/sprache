@@ -42,12 +42,32 @@ funk Studium() ergibt Nichts {
     //Reinigung();
 
     //setze Liste von Zeichenkette a auf [ "aa" ];
+    setze Zahl z auf 0;
+    solange z < 10
     {
-        //setze Liste von Zeichenkette a auf [ "aa" ];
-        setze Liste von Zahl a auf [ 42 / 69 ];
+        setze Zeichenkette aaa auf "Hallo Weltasjdkasjdkasjdkasdkasdjaskdjaksldjlaskjdlaksjdlkasjdlkasjdlkjaslkdjaldja";
+        setze Liste von Zeichenkette a auf [ aaa ];
+        //setze Liste von Zahl a auf [ 42 / 69 / 123 / 341 ];
         //setze Zeichenkette a auf "hello world";
+        //Drucke(Formatiere("Z: %s" / z));
+        z += 1;
+        //Reinigung();
     }
+
     Reinigung();
+
+    // solange ja {
+        // Reinigung();
+        // Schlummere(1F);
+    // }
+
+    //Reinigung();
+
+    //Reinigung();
+
+    //Reinigung();
+    //}
+    //Reinigung();
     //Drucke(a);
 
 
@@ -55,7 +75,8 @@ funk Studium() ergibt Nichts {
 
     //ReinigungsPlan();
 
-    //solange ja {
-        //Schlummere(1F);
-    //}
+    // solange ja {
+        // Schlummere(1F);
+        // ReinigungsPlan();
+    // }
 }

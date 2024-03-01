@@ -1,5 +1,6 @@
 #pragma once
 #include "../hpi-c-tests/list/list.h"
+#include "../hpi-c-tests/vec/vec.h"
 #include "assert.h"
 #include "libAnyObj.h"
 #include "reflection.h"
@@ -20,7 +21,7 @@ typedef struct {
 
 typedef struct {
   // List of entries
-  ListNode *entries;
+  Vec *entries;
   // List of roots
   ListNode *roots;
 } GC;
@@ -33,3 +34,4 @@ void gc_remove_roots(int64_t argc, void ** roots);
 void gc_run_cycle();
 void gc_print();
 void gc_die();
+void external_print_state();
