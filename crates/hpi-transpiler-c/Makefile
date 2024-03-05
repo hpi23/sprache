@@ -12,7 +12,7 @@ dbg: main
 
 output.c: $(HPI_FILE) src/*.rs
 	echo $(HPI_FILE)
-	cargo r $(HPI_FILE)
+	cargo r $(HPI_FILE) 1 1 1 1
 
 libSAP:
 	mkdir -p libSAP/obj
@@ -36,6 +36,7 @@ init_wrapper:
 	cd ./hpi-c-tests/hashmap/ && make
 	cd ./hpi-c-tests/json-parser/ && make
 	cd ./hpi-c-tests/dynstring/ && make
+	cd ./hpi-c-tests/vec/ && make
 
 cleanSAP:
 	rm -f ./libSAP/libSAP.a ./libSAP/libSAP_raw.a
