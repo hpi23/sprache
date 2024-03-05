@@ -1,8 +1,9 @@
 #include "./libGC.h"
-#include "libAnyObj.h"
-#include "reflection.h"
+#include "./libAnyObj.h"
+#include "./libMem.h"
+#include "./reflection.h"
 #include <assert.h>
-#include <math.h>
+#include <malloc.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -16,15 +17,16 @@
 
 GC *gc;
 
-GC *gc_new() {
+GC *gc_new(bool clean_up_on_exit) {
   GC *new = (GC *)malloc(sizeof(GC));
   new->entries = vec_new();
   new->roots = list_new();
+  new->clean_up_on_exit = clean_up_on_exit;
   return new;
 }
 
-void gc_init() {
-  gc = gc_new();
+void gc_init(bool clean_up_on_exit) {
+  gc = gc_new(clean_up_on_exit);
   assert(gc != NULL);
 }
 
@@ -56,7 +58,8 @@ GCEntry *gc_find_object_internal(GC *self, void *address) {
 // found.
 GCEntry *gc_find_object(GC *self, void *address) {
   GCEntry *object = gc_find_object_internal(self, address);
-  printf("find %p: %p\n", address, object);
+  if (GC_VERBOSE)
+    printf("gc_find_object() %p: %p\n", address, object);
   assert(object != NULL && "gc_find_object() could not find object");
   return object;
 }
@@ -66,7 +69,8 @@ void gc_add_to_trace(void *address, TypeDescriptor type) {
   GCEntry *object = gc_find_object_internal(gc, address);
 
   if (object != NULL) {
-    printf("gc_add_to_trace(): address %p already traced.\n", address);
+    if (GC_VERBOSE)
+      printf("gc_add_to_trace(): address %p already traced.\n", address);
     return;
   }
 
@@ -101,45 +105,17 @@ void gc_free(GCEntry *obj) {
   // TODO: how to deal with pointers?
 
   char *type = display_type(obj->type);
-  printf("free(): %p | %s\n", obj->address, type);
+  if (GC_VERBOSE)
+    printf("free(): %p | %s\n", obj->address, type);
   free(type);
 
   if (obj->type.ptr_count > 0) {
-    // void *old = obj->address;
-
-    // switch (obj->type.kind) {
-    // case TYPE_NONE:
-    //   assert(0 && "Cannot free this type");
-    // case TYPE_INT:
-    //   obj->address = *(int64_t **)obj->address;
-    //   break;
-    // case TYPE_FLOAT:
-    //   obj->address = *(double **)obj->address;
-    //   break;
-    // case TYPE_CHAR:
-    //   obj->address = *(char **)obj->address;
-    //   break;
-    // case TYPE_BOOL:
-    //   obj->address = *(bool **)obj->address;
-    //   break;
-    // case TYPE_LIST:
-    //   obj->address = *(ListNode **)obj->address;
-    //   break;
-    // case TYPE_OBJECT:
-    //   obj->address = *(HashMap **)obj->address;
-    //   break;
-    // case TYPE_ANY_OBJECT:
-    //   obj->address = *(AnyObject **)obj->address;
-    //   break;
-    // case TYPE_STRING:
-    //   obj->address = *(DynString **)obj->address;
-    //   break;
-    // }
-    //
-    // obj->type.ptr_count--;
     free(obj->address);
     free(obj);
-    puts("Only shallow free");
+
+    if (GC_VERBOSE)
+      puts("gc_free(): Only shallow free, not traversing");
+
     return;
   }
 
@@ -176,56 +152,8 @@ void gc_free(GCEntry *obj) {
 }
 
 void *gc_alloc(TypeDescriptor type) {
-  void *allocated = NULL;
-
-  if (type.ptr_count >= 1) {
-    switch (type.kind) {
-    case TYPE_NONE:
-      assert(0 && "This type is not supported");
-    case TYPE_INT:
-    case TYPE_FLOAT:
-    case TYPE_CHAR:
-    case TYPE_BOOL:
-    case TYPE_LIST:
-    case TYPE_OBJECT:
-    case TYPE_ANY_OBJECT:
-    case TYPE_STRING:
-      allocated = malloc(sizeof(void *));
-      goto finish;
-      break;
-    }
-  }
-
-  switch (type.kind) {
-  case TYPE_NONE:
-  case TYPE_INT:
-  case TYPE_FLOAT:
-  case TYPE_CHAR:
-  case TYPE_BOOL:
-    assert(0 && "This type is not supported");
-  case TYPE_LIST:
-    allocated = list_new();
-    break;
-  case TYPE_OBJECT:
-    allocated = hashmap_new();
-    break;
-  case TYPE_ANY_OBJECT:
-    allocated = anyobj_new();
-    break;
-  case TYPE_STRING:
-    allocated = dynstring_new();
-    break;
-  default: {
-    char *typ = display_type(type);
-    printf("gc_alloc(): illegal type: `%s`\n", typ);
-    free(typ);
-    assert(0 && "GC crashed");
-  }
-  }
-
-finish:
+  void *allocated = non_tracing_alloc(type);
   gc_add_to_trace(allocated, type);
-  // GC_PRINT;
   return allocated;
 }
 
@@ -237,7 +165,8 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
   GCEntry *obj = gc_find_object(gc, root);
   obj->marked = true;
 
-  printf("gc_traverse_value(): marked address %p\n", obj->address);
+  if (GC_VERBOSE)
+    printf("gc_traverse_value(): marked address %p\n", obj->address);
 
   if (type.ptr_count > 0) {
     TypeDescriptor new_type = {.ptr_count = type.ptr_count - 1,
@@ -278,8 +207,9 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
 
     char *from_type_str = display_type(type);
     char *new_type_str = display_type(new_type);
-    printf("gc_traverse_value(): deref pointer %s to %s.\n", from_type_str,
-           new_type_str);
+    if (GC_VERBOSE)
+      printf("gc_traverse_value(): deref pointer %s to %s.\n", from_type_str,
+             new_type_str);
     free(from_type_str);
     free(new_type_str);
 
@@ -372,28 +302,44 @@ void gc_mark() {
   }
 }
 
-// Sweep phase of the garbage collection cycle.
-void gc_sweep() {
+void gc_sweep_rec() {
+  GCEntry *remove_entry = NULL;
+  int remove_index = -1;
+
   for (int i = 0; i < gc->entries->used; i++) {
     GCEntry *entry = (GCEntry *)vec_index(gc->entries, i);
 
-    if (entry->marked) {
-      continue;
+    if (!entry->marked) {
+      remove_entry = entry;
+      remove_index = i;
+      break;
     }
-
-    int before = gc->entries->used;
-    // list_print(gc->entries);
-
-    vec_remove(gc->entries, i);
-
-    // list_print(gc->entries);
-
-    // free(entry->address);
-    gc_free(entry);
-
-    printf("gc_sweep(): delete index %d; removed %d object(s).\n", i,
-           before - gc->entries->used);
   }
+
+  if (remove_entry == NULL) {
+    return;
+  }
+
+  int before = gc->entries->used;
+  void *removed_addr = remove_entry->address;
+
+  gc_free(remove_entry);
+  vec_remove(gc->entries, remove_index);
+
+  int nremoved = before - gc->entries->used;
+  assert(nremoved > 0);
+
+  if (GC_VERBOSE)
+    printf("gc_sweep(): delete index %d; removed %d object(s) %p.\n",
+           remove_index, nremoved, removed_addr);
+
+  gc_sweep_rec();
+}
+
+// Sweep phase of the garbage collection cycle.
+void gc_sweep() {
+  gc_sweep_rec();
+  malloc_trim(0);
 }
 
 // void _gc_ref(GC *self, void *address) {
@@ -437,7 +383,7 @@ void _gc_mark(GC *self) {}
 // }
 
 void gc_run_cycle() {
-  // GC_PRINT;
+  GC_PRINT;
 
   gc_mark();
 
@@ -542,7 +488,7 @@ void gc_free_self() {
 }
 
 void gc_die() {
-  //gc_release_all();
+  // gc_release_all();
   gc_free_self();
 }
 

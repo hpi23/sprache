@@ -54,6 +54,7 @@ char *display_type(TypeDescriptor type) {
       }
     }
 
+    list_free(keys);
     dynstring_push_char(output, '}');
     break;
   case TYPE_ANY_OBJECT:

@@ -45,7 +45,9 @@ DynString *to_string(TypeDescriptor type, void *value) {
           list_at(list, i); // TODO: list has the same value for each member
       assert(res.found);
       assert(type.list_inner != NULL);
-      dynstring_push(output, to_string(*type.list_inner, res.value));
+      DynString * elem_str = to_string(*type.list_inner, res.value);
+      dynstring_push(output, elem_str);
+      dynstring_free(elem_str);
 
       if (i + 1 < len) {
         dynstring_push_string(output, ", ");
@@ -61,6 +63,7 @@ DynString *to_string(TypeDescriptor type, void *value) {
 
     HashMap *map = *(HashMap **)value;
     ListNode *keys = hashmap_keys(map);
+    ListNode *keys_first = keys;
 
     while (keys != NULL) {
       char *key = keys->value;
@@ -78,7 +81,9 @@ DynString *to_string(TypeDescriptor type, void *value) {
 
       dynstring_push_fmt(output, "%s: ", key);
       indent_str += 4;
-      dynstring_push(output, to_string(type_descriptor, res.value));
+      DynString *field_str = to_string(type_descriptor, res.value);
+      dynstring_push(output, field_str);
+      dynstring_free(field_str);
       indent_str -= 4;
 
       if (keys->next != NULL) {
@@ -93,6 +98,7 @@ DynString *to_string(TypeDescriptor type, void *value) {
       dynstring_push_char(output, ' ');
     }
 
+    list_free(keys_first);
     dynstring_push_char(output, '}');
     break;
   }

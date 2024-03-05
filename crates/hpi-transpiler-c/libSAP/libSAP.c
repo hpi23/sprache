@@ -42,14 +42,12 @@ void __hpi_internal_print(ssize_t num_args, ...) {
     void *value = va_arg(args, void *);
 
     DynString *res = to_string(type, value);
-
     dynstring_push(output, res);
+    dynstring_free(res);
 
     if (i < num_args && num_args > 1) {
       dynstring_push_char(output, ' ');
     }
-
-    dynstring_free(res);
   }
 
   dynstring_print(output);
