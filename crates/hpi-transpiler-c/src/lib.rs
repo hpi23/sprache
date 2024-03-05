@@ -1,9 +1,9 @@
 use hpi_analyzer::Diagnostic;
-pub use transpiler::{Transpiler, StyleConfig};
+pub use transpiler::{Transpiler, TranspileArgs};
 
 macro_rules! comment {
     ($self:ident, $vec:expr, $msg:expr) => {
-        if $self.style_config.emit_comments {
+        if $self.user_config.emit_comments {
             $vec.push(Statement::Comment($msg))
         }
     };
@@ -21,7 +21,7 @@ mod gc;
 pub fn transpile<'tree>(
     text: &'tree str,
     path: &'tree str,
-    style_config: StyleConfig,
+    style_config: TranspileArgs,
 ) -> Result<(String, Vec<Diagnostic<'tree>>), Vec<Diagnostic<'tree>>> {
     let (tree, diagnostics) = hpi_analyzer::analyze(text, path)?;
     let c_ast = Transpiler::new(style_config).transpile(tree);

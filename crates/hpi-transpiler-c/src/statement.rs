@@ -31,7 +31,12 @@ impl<'src> Transpiler<'src> {
             AnalyzedStatement::Continue => {
                 let gc_remove_roots = self.pop_scope(false);
                 let loop_ = self.loops.last_mut().expect("there is always a loop");
-                vec![gc_remove_roots, Statement::Goto(loop_.head_label.clone())]
+                let mut res_stmt = vec![];
+                if let Some(roots) = gc_remove_roots {
+                    res_stmt.push(roots);
+                }
+                res_stmt.push(Statement::Goto(loop_.head_label.clone()));
+                res_stmt
             }
             AnalyzedStatement::Expr(node) => {
                 let (mut stmts, expr) = self.expression(node);
@@ -215,13 +220,17 @@ impl<'src> Transpiler<'src> {
         };
         body.append(&mut stmts);
         cond_stmts.append(&mut body);
-        cond_stmts.push(self.pop_scope(false));
+        if let Some(stmt) = self.pop_scope(false) {
+            cond_stmts.push(stmt);
+        }
 
         self.loops.pop();
 
         cond_stmts.push(Statement::Goto(head_label));
         cond_stmts.push(Statement::Label(break_label));
-        cond_stmts.push(self.pop_scope(true));
+        if let Some(stmt) = self.pop_scope(true) {
+            cond_stmts.push(stmt);
+        }
 
         cond_stmts
     }

@@ -9,11 +9,15 @@ use crate::c_ast::*;
 use crate::gc::Scope;
 
 #[derive(Clone, Copy)]
-pub struct StyleConfig {
+pub struct TranspileArgs {
     /// If set to `true`, the transpiler will emit some comments in the `C` code.
     pub emit_comments: bool,
     /// If set to `true`, the compiler will generate readable type descriptors
     pub emit_readable_names: bool,
+    /// If enabled, GC code is inserted into the final program.
+    pub gc_enable: bool,
+    /// If enabled, the GC runs a final time before exiting
+    pub gc_cleanup_on_exit: bool,
 }
 
 pub struct Transpiler<'src> {
@@ -21,8 +25,6 @@ pub struct Transpiler<'src> {
     pub(super) in_main_fn: bool,
     /// The first element is the global scope while last element is the current scope.
     pub(super) scopes: Vec<Scope<'src>>,
-    /// Keeps track of which variables need to be deallocated
-    pub(super) frees: Vec<Statement>,
     /// Type map created by the analyzer.
     pub(super) types: HashMap<&'src str, Type>,
     /// Maps a function's name to a mangeled name.
@@ -37,16 +39,20 @@ pub struct Transpiler<'src> {
     pub(super) type_descriptor_declarations: Vec<Statement>,
     /// Global variable setup function
     pub(super) global_variable_setup: Vec<Statement>,
+
     /// Type descriptor setup function
     pub(super) type_descriptor_setup: Vec<Statement>,
-    /// Configures code generation style
-    pub(super) style_config: StyleConfig,
+    /// Type descriptor teardown function
+    pub(super) type_descriptor_teardown: Vec<Statement>,
+
     /// The first element is the most outer loop while the last element is the current loop.
     pub(super) loops: Vec<Loop>,
     /// Counter for `break` labels which is increased during loop generation.
     pub(super) break_label_cnt: usize,
     /// Specifies which functions from the corelib are required.
     pub(super) required_corelib_functions: HashSet<&'static str>,
+    /// Configures code generation style and user settings.
+    pub(super) user_config: TranspileArgs,
 }
 
 pub(super) struct Loop {
@@ -56,28 +62,32 @@ pub(super) struct Loop {
 
 impl<'src> Transpiler<'src> {
     /// Creates a new [`Transpiler`].
-    pub fn new(style_config: StyleConfig) -> Self {
+    pub fn new(config: TranspileArgs) -> Self {
         let mut required_includes = HashSet::new();
         // usages of booleans are hard to track, therefore `stdbool.h` is always included
-        required_includes.insert("stdbool.h");
         required_includes.insert("./hpi-c-tests/dynstring/dynstring.h");
-        required_includes.insert("./hpi-c-tests/list/list.h");
-        required_includes.insert("./hpi-c-tests/hashmap/map.h");
-        required_includes.insert("./libSAP/libGC.h");
+        required_includes.insert("stdbool.h");
+        // required_includes.insert("./hpi-c-tests/list/list.h");
+        // required_includes.insert("./hpi-c-tests/hashmap/map.h");
+
+        if config.gc_enable {
+            required_includes.insert("./libSAP/libGC.h");
+        } else {
+            required_includes.insert("./libSAP/libMem.h");
+        }
 
         Self {
             in_main_fn: false,
             types: HashMap::new(),
             scopes: vec![Scope::new()],
-            frees: vec![],
             funcs: HashMap::new(),
             let_cnt: 0,
             required_includes,
-            style_config,
+            user_config: config,
             loops: vec![],
             break_label_cnt: 0,
             required_corelib_functions: HashSet::new(),
-            type_descriptor_declarations: if style_config.emit_comments {
+            type_descriptor_declarations: if config.emit_comments {
                 vec![Statement::Comment(
                     "Type definitions for runtime 'reflection'".into(),
                 )]
@@ -86,6 +96,7 @@ impl<'src> Transpiler<'src> {
             },
             type_descriptor_map: HashMap::new(),
             type_descriptor_setup: vec![],
+            type_descriptor_teardown: vec![],
             global_variable_setup: vec![],
         }
     }
@@ -137,61 +148,98 @@ impl<'src> Transpiler<'src> {
         let main_fn = AnalyzedBlock {
             result_type: Type::Int(0),
             stmts: vec![
-                AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
-                    result_type: Type::String(0),
-                    func: AnalyzedCallBase::Ident("type_descriptor_setup"),
-                    args: vec![],
-                }))),
-                // Initialize the garbage collector.
-                AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
-                    result_type: Type::Nichts,
-                    func: AnalyzedCallBase::Ident("gc_init"),
-                    args: vec![],
-                }))),
-                AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
-                    result_type: Type::String(0),
-                    func: AnalyzedCallBase::Ident("global_variable_setup"),
-                    args: vec![],
-                }))),
-                AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
-                    result_type: Type::Nichts,
-                    func: AnalyzedCallBase::Ident("__hpi_internal_init_libSAP"),
-                    args: vec![
-                        AnalyzedExpression::Ident(AnalyzedIdentExpr {
-                            result_type: Type::Int(0),
-                            ident: "argc",
-                        }),
-                        AnalyzedExpression::Ident(AnalyzedIdentExpr {
-                            result_type: Type::Char(2),
-                            ident: "argv",
-                        }),
-                    ],
-                }))),
-                AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
-                    result_type: Type::String(0),
-                    func: AnalyzedCallBase::Ident("bewerbung"),
-                    args: vec![],
-                }))),
-                AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
-                    result_type: Type::Nichts,
-                    func: AnalyzedCallBase::Ident("einschreibung"),
-                    args: vec![AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
-                        result_type: Type::Int(0),
-                        func: AnalyzedCallBase::Ident("__hpi_internal_generate_matrikelnummer"),
+                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
+                    AnalyzedCallExpr {
+                        result_type: Type::String(0),
+                        func: AnalyzedCallBase::Ident("type_descriptor_setup"),
                         args: vec![],
-                    }))],
-                }))),
-                AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
-                    result_type: Type::String(0),
-                    func: AnalyzedCallBase::Ident("studium"),
-                    args: vec![],
-                }))),
-                AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
-                    result_type: Type::Nichts,
-                    func: AnalyzedCallBase::Ident("gc_die"),
-                    args: vec![],
-                }))),
-            ],
+                    },
+                )))),
+                if self.user_config.gc_enable {
+                    // Initialize the garbage collector.
+                    Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
+                        AnalyzedCallExpr {
+                            result_type: Type::Nichts,
+                            func: AnalyzedCallBase::Ident("gc_init"),
+                            args: vec![AnalyzedExpression::Bool(
+                                self.user_config.gc_cleanup_on_exit,
+                            )],
+                        },
+                    ))))
+                } else {
+                    None
+                },
+                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
+                    AnalyzedCallExpr {
+                        result_type: Type::Nichts,
+                        func: AnalyzedCallBase::Ident("global_variable_setup"),
+                        args: vec![],
+                    },
+                )))),
+                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
+                    AnalyzedCallExpr {
+                        result_type: Type::Nichts,
+                        func: AnalyzedCallBase::Ident("__hpi_internal_init_libSAP"),
+                        args: vec![
+                            AnalyzedExpression::Ident(AnalyzedIdentExpr {
+                                result_type: Type::Int(0),
+                                ident: "argc",
+                            }),
+                            AnalyzedExpression::Ident(AnalyzedIdentExpr {
+                                result_type: Type::Char(2),
+                                ident: "argv",
+                            }),
+                        ],
+                    },
+                )))),
+                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
+                    AnalyzedCallExpr {
+                        result_type: Type::String(0),
+                        func: AnalyzedCallBase::Ident("bewerbung"),
+                        args: vec![],
+                    },
+                )))),
+                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
+                    AnalyzedCallExpr {
+                        result_type: Type::Nichts,
+                        func: AnalyzedCallBase::Ident("einschreibung"),
+                        args: vec![AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
+                            result_type: Type::Nichts,
+                            func: AnalyzedCallBase::Ident("__hpi_internal_generate_matrikelnummer"),
+                            args: vec![],
+                        }))],
+                    },
+                )))),
+                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
+                    AnalyzedCallExpr {
+                        result_type: Type::Nichts,
+                        func: AnalyzedCallBase::Ident("studium"),
+                        args: vec![],
+                    },
+                )))),
+                if self.user_config.gc_enable {
+                    Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
+                        AnalyzedCallExpr {
+                            result_type: Type::Nichts,
+                            func: AnalyzedCallBase::Ident("gc_die"),
+                            args: vec![],
+                        },
+                    ))))
+                } else {
+                    None
+                },
+                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
+                    AnalyzedCallExpr {
+                        result_type: Type::Nichts,
+                        func: AnalyzedCallBase::Ident("type_descriptor_teardown"),
+                        args: vec![],
+                    },
+                )))),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
+            // TODO: call exit function, do not do this
             expr: Some(AnalyzedExpression::Int(0)),
         };
 
@@ -227,6 +275,13 @@ impl<'src> Transpiler<'src> {
             type_: Type::Nichts.into(),
             params: vec![],
             body: self.type_descriptor_setup.clone(),
+        });
+
+        functions.push_back(FnDefinition {
+            name: "type_descriptor_teardown".to_string(),
+            type_: Type::Nichts.into(),
+            params: vec![],
+            body: self.type_descriptor_teardown.clone(),
         });
 
         functions.push_back(FnDefinition {
@@ -438,10 +493,12 @@ impl<'src> Transpiler<'src> {
                 }
             };
 
-            body.push(self.pop_scope(true));
+            if let Some(stmt) = self.pop_scope(true) {
+                body.push(stmt);
+            }
             body.append(&mut stmts);
-        } else {
-            body.push(self.pop_scope(true));
+        } else if let Some(stmt) = self.pop_scope(true) {
+            body.push(stmt);
         }
 
         FnDefinition {

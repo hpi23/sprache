@@ -41,84 +41,26 @@ impl<'src> Transpiler<'src> {
                 let dynstr_ident = format!("string_temp{}", self.let_cnt);
                 self.let_cnt += 1;
 
-                return (
-                    vec![
-                        Statement::VarDeclaration(VarDeclaration {
-                            name: dynstr_ident.clone(),
-                            type_: Type::String(0).into(),
-                            expr: raw_string,
-                        }),
-                        Statement::Expr(Expression::Call(Box::new(CallExpr {
-                            func: "gc_add_to_trace".into(),
-                            args: vec![
-                                Expression::Ident(dynstr_ident.clone()),
-                                Expression::Ident(self.get_type_reflector(Type::String(0))),
-                            ],
-                        }))),
-                    ],
-                    Some(Expression::Ident(dynstr_ident)),
-                );
-            }
-            AnalyzedExpression::List(list) => return self.list_literal(list),
-            AnalyzedExpression::Object(inner) => {
-                let obj_temp_ident = match self.style_config.emit_readable_names {
-                    true => format!("object_temp{}", self.let_cnt),
-                    false => format!("obj{}", self.let_cnt),
-                };
-                self.let_cnt += 1;
-
                 let mut stmts = vec![Statement::VarDeclaration(VarDeclaration {
-                    name: obj_temp_ident.clone(),
-                    type_: CType::Ident(1, "HashMap".to_string()),
-                    // expr: Expression::Call(Box::new(CallExpr {
-                    //     func: "hashmap_new".to_string(), // TODO: use vec in the long run?
-                    //     args: vec![],
-                    // })),
-                    expr: self.malloc(Type::Object(vec![], 0), true),
+                    name: dynstr_ident.clone(),
+                    type_: Type::String(0).into(),
+                    expr: raw_string,
                 })];
 
-                for value in inner.members.iter() {
-                    let temp_ident = match self.style_config.emit_readable_names {
-                        true => format!("object_member_{}_n{}", value.key, self.let_cnt),
-                        false => format!("om{}", self.let_cnt),
-                    };
-                    self.let_cnt += 1;
-
-                    let (mut expr_stmts, expr) = self.expression(value.value.clone());
-                    stmts.append(&mut expr_stmts);
-
-                    if let Some(expr) = expr {
-                        stmts.push(Statement::VarDeclaration(VarDeclaration {
-                            name: temp_ident.clone(),
-                            type_: value.value.result_type().add_ref().unwrap().into(),
-                            expr: self.malloc(value.value.result_type(), true),
-                        }));
-                        self.let_cnt += 1;
-
-                        // TODO: use expr
-                        stmts.push(Statement::Assign(AssignStmt {
-                            assignee: temp_ident.clone(),
-                            assignee_ptr_count: 1,
-                            op: AssignOp::Basic,
-                            expr,
-                        }));
-
-                        // BUG: this is not enough, heap allocation is required!
-                        // THe same goes for list literal creation
-
-                        stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
-                            func: "hashmap_insert".to_string(),
-                            args: vec![
-                                Expression::Ident(obj_temp_ident.clone()),
-                                Expression::StringLiteral(value.key.clone()),
-                                Expression::Ident(temp_ident),
-                            ],
-                        }))));
-                    }
+                if self.user_config.gc_enable {
+                    stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                        func: "gc_add_to_trace".into(),
+                        args: vec![
+                            Expression::Ident(dynstr_ident.clone()),
+                            Expression::Ident(self.get_type_reflector(Type::String(0))),
+                        ],
+                    }))));
                 }
 
-                return (stmts, Some(Expression::Ident(obj_temp_ident)));
+                return (stmts, Some(Expression::Ident(dynstr_ident)));
             }
+            AnalyzedExpression::List(list) => return self.list_literal(list),
+            AnalyzedExpression::Object(inner) => return self.obj_literal(*inner),
             AnalyzedExpression::Index(index) => {
                 let (mut base_stmts, base_expr) = self.expression(index.expr.clone());
                 let (mut index_stmts, index_expr) = self.expression(index.index.clone());
@@ -222,6 +164,66 @@ impl<'src> Transpiler<'src> {
         (vec![], expr)
     }
 
+    fn obj_literal(&mut self, obj: AnalyzedObjectExpr<'src>) -> (Vec<Statement>, Option<Expression>) {
+        let obj_temp_ident = match self.user_config.emit_readable_names {
+            true => format!("object_temp{}", self.let_cnt),
+            false => format!("obj{}", self.let_cnt),
+        };
+        self.let_cnt += 1;
+
+        let mut stmts = vec![Statement::VarDeclaration(VarDeclaration {
+            name: obj_temp_ident.clone(),
+            type_: CType::Ident(1, "HashMap".to_string()),
+            // expr: Expression::Call(Box::new(CallExpr {
+            //     func: "hashmap_new".to_string(), // TODO: use vec in the long run?
+            //     args: vec![],
+            // })),
+            expr: self.malloc(Type::Object(vec![], 0)),
+        })];
+
+        for value in obj.members.iter() {
+            let temp_ident = match self.user_config.emit_readable_names {
+                true => format!("object_member_{}_n{}", value.key, self.let_cnt),
+                false => format!("om{}", self.let_cnt),
+            };
+            self.let_cnt += 1;
+
+            let (mut expr_stmts, expr) = self.expression(value.value.clone());
+            stmts.append(&mut expr_stmts);
+
+            if let Some(expr) = expr {
+                stmts.push(Statement::VarDeclaration(VarDeclaration {
+                    name: temp_ident.clone(),
+                    type_: value.value.result_type().add_ref().unwrap().into(),
+                    expr: self.malloc(value.value.result_type().add_ref().unwrap()),
+                }));
+                self.let_cnt += 1;
+
+                // TODO: use expr
+                stmts.push(Statement::Assign(AssignStmt {
+                    assignee: temp_ident.clone(),
+                    assignee_ptr_count: 1,
+                    op: AssignOp::Basic,
+                    expr,
+                }));
+
+                // BUG: this is not enough, heap allocation is required!
+                // THe same goes for list literal creation
+
+                stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                    func: "hashmap_insert".to_string(),
+                    args: vec![
+                        Expression::Ident(obj_temp_ident.clone()),
+                        Expression::StringLiteral(value.key.clone()),
+                        Expression::Ident(temp_ident),
+                    ],
+                }))));
+            }
+        }
+
+        return (stmts, Some(Expression::Ident(obj_temp_ident)));
+    }
+
     fn list_literal(
         &mut self,
         literal: AnalyzedListExpression<'src>,
@@ -237,7 +239,7 @@ impl<'src> Transpiler<'src> {
             //     args: vec![],
             // })),
             // expr: self.malloc(Type::List(Type::Unknown.into(), 0)),
-            expr: self.malloc(Type::List(literal.inner_type.into(), 0), true),
+            expr: self.malloc(Type::List(literal.inner_type.into(), 0)),
         })];
 
         for (idx, value) in literal.values.iter().enumerate() {
@@ -252,7 +254,7 @@ impl<'src> Transpiler<'src> {
                 stmts.push(Statement::VarDeclaration(VarDeclaration {
                     name: temp_ident.clone(),
                     type_: res_type.clone().into(),
-                    expr: self.malloc(res_type, true),
+                    expr: self.malloc(res_type),
                 }));
                 self.let_cnt += 1;
 
@@ -349,7 +351,9 @@ impl<'src> Transpiler<'src> {
         };
 
         if scoping {
-            block.push(self.pop_scope(true));
+            if let Some(stmt) = self.pop_scope(true) {
+                block.push(stmt);
+            }
         }
         comment!(self, block, "end block".into());
 
@@ -653,9 +657,16 @@ impl<'src> Transpiler<'src> {
                 self.required_includes.insert("stdlib.h");
                 "exit".to_string()
             }
-            AnalyzedCallBase::Ident("Reinigung") => "gc_run_cycle".to_string(),
-            AnalyzedCallBase::Ident("ReinigungsPlan") => "external_print_state".to_string(),
+            AnalyzedCallBase::Ident("Reinigung") => match self.user_config.gc_enable {
+                true => "gc_run_cycle".to_string(),
+                false => return (vec![], None),
+            },
+            AnalyzedCallBase::Ident("ReinigungsPlan") => match self.user_config.gc_enable {
+                true => "external_print_state".to_string(),
+                false => return (vec![], None),
+            },
             AnalyzedCallBase::Ident("type_descriptor_setup") => "type_descriptor_setup".to_string(),
+            AnalyzedCallBase::Ident("type_descriptor_teardown") => "type_descriptor_teardown".to_string(),
             AnalyzedCallBase::Ident("gc_init") => "gc_init".to_string(),
             AnalyzedCallBase::Ident("gc_die") => "gc_die".to_string(),
             AnalyzedCallBase::Ident("global_variable_setup") => "global_variable_setup".to_string(),
@@ -758,7 +769,7 @@ impl<'src> Transpiler<'src> {
                                 //         )],
                                 //     }))],
                                 // })),
-                                expr: self.malloc(type_list[0].clone(), true),
+                                expr: self.malloc(type_list[0].clone()),
                             }));
 
                             stmts.push(Statement::Assign(AssignStmt {
