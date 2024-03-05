@@ -6,18 +6,18 @@ use std::{
 
 use anyhow::{anyhow, bail, Context};
 use hpi_analyzer::ast::AnalyzedProgram;
-use hpi_transpiler_c::{StyleConfig, Transpiler};
+use hpi_transpiler_c::{TranspileArgs, Transpiler};
 use tempfile::tempdir;
 
-use crate::cli::{RunArgs, TranspileArgs};
+use crate::cli::{RunArgs, TranspileArgs as CliTrans};
 
-pub fn compile(ast: AnalyzedProgram, args: TranspileArgs) -> anyhow::Result<()> {
-    let c = Transpiler::new(StyleConfig {
+pub fn compile(ast: AnalyzedProgram, args: CliTrans) -> anyhow::Result<()> {
+    let c = Transpiler::new(TranspileArgs {
         emit_comments: true,
         emit_readable_names: true,
-    })
-    .transpile(ast)
-    .to_string();
+        gc_enable: true,
+        gc_cleanup_on_exit: true,
+    }).transpile(ast).to_string();
 
     // get output path
     // let output = match args.output_file {
@@ -52,7 +52,7 @@ pub fn compile(ast: AnalyzedProgram, args: TranspileArgs) -> anyhow::Result<()> 
 pub fn run(ast: AnalyzedProgram, args: RunArgs) -> anyhow::Result<i64> {
     let tmpdir = tempdir()?;
 
-    let args: TranspileArgs = args.into();
+    let args: CliTrans = args.into();
 
     let c_path = tmpdir.path().join("output.c");
     // args.output_file = Some(c_path.clone());

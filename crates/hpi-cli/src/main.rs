@@ -6,7 +6,7 @@ use cli::{Cli, Command};
 
 use hpi_analyzer::{ast::AnalyzedProgram, Diagnostic};
 use hpi_interpreter_tree::{HPIHttpClient, Interpreter};
-use hpi_transpiler_c::StyleConfig;
+use hpi_transpiler_c::TranspileArgs;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Method,
@@ -65,8 +65,7 @@ async fn main() -> anyhow::Result<()> {
             let path = args.path.clone();
             let path_str = path.to_string_lossy().to_string();
 
-            let code =
-                fs::read_to_string(path).with_context(|| "Could not read source file")?;
+            let code = fs::read_to_string(path).with_context(|| "Could not read source file")?;
 
             let file_read_time = start.elapsed();
             start = Instant::now();
@@ -74,9 +73,11 @@ async fn main() -> anyhow::Result<()> {
             let (out, diagnostics) = hpi_transpiler_c::transpile(
                 &code,
                 &path_str,
-                StyleConfig {
+                TranspileArgs {
                     emit_comments: true,
                     emit_readable_names: true,
+                    gc_enable: true,
+                    gc_cleanup_on_exit: true,
                 },
             )
             .unwrap_or_else(|diagnostics| {
@@ -121,10 +122,7 @@ async fn main() -> anyhow::Result<()> {
             if root_args.time {
                 eprintln!("Datei Einlesen: {file_read_time:?}");
                 eprintln!("Transpilierung: {:?}", start.elapsed());
-                eprintln!(
-                    "\x1b[90mGes:          {:?}\x1b[0m",
-                    total_start.elapsed()
-                );
+                eprintln!("\x1b[90mGes:          {:?}\x1b[0m", total_start.elapsed());
             }
 
             // Ok(exit_code)
