@@ -12,11 +12,11 @@ libSAP.a: $(OBJ_FILES)
 	$(archiver) -cq libSAP_raw.a $(OBJ_FILES)
 
 	cd obj \
-	&& $(archiver) -x ../../hpi-c-tests/dynstring/libDynstring.a \
-	&& $(archiver) -x ../../hpi-c-tests/list/libList.a \
-	&& $(archiver) -x ../../hpi-c-tests/vec/libVec.a \
-	&& $(archiver) -x ../../hpi-c-tests/json-parser/libJson.a \
-	&& $(archiver) -x ../../hpi-c-tests/hashmap/libHashMap.a \
+	&& $(archiver) -x ../dynstring/libDynstring.a \
+	&& $(archiver) -x ../list/libList.a \
+	&& $(archiver) -x ../vec/libVec.a \
+	&& $(archiver) -x ../json-parser/libJson.a \
+	&& $(archiver) -x ../hashmap/libHashMap.a \
 
 	$(archiver) -cq libSAP.a $(OBJ_FILES) obj/*.o
 

@@ -1,9 +1,9 @@
 #pragma once
-#include "../hpi-c-tests/list/list.h"
-#include "../hpi-c-tests/vec/vec.h"
 #include "assert.h"
 #include "libAnyObj.h"
+#include "list/list.h"
 #include "reflection.h"
+#include "vec/vec.h"
 #include <sys/types.h>
 
 typedef struct {
@@ -17,6 +17,8 @@ typedef struct {
   TypeDescriptor type;
   void *address;
   bool marked;
+  // If this type has an associated type which is on the heap, it should be freed alongside the type.
+  TypeDescriptor *associated_type_heap;
 } GCEntry;
 
 typedef struct {
@@ -26,10 +28,12 @@ typedef struct {
   ListNode *roots;
   // If set to `true`, the GC performs a final run before program exit
   bool clean_up_on_exit;
+  // Tracks the amount of bytes that the program currently uses,
+  // is only updated if the memory is freed or allocated.
 } GC;
 
 void gc_init(bool clean_up_on_exit);
-void gc_add_to_trace(void *address, TypeDescriptor type);
+void gc_add_to_trace(void *address, TypeDescriptor type, TypeDescriptor * type_to_free);
 void *gc_alloc(TypeDescriptor type);
 void gc_add_root(void *address, TypeDescriptor type, char *origin);
 void gc_remove_roots(int64_t argc, void **roots);

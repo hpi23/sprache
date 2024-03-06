@@ -1,17 +1,16 @@
-#pragma once
-#include "./reflection.h"
 #include "./libMem.h"
 #include "./libAnyObj.h"
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include <assert.h>
+#include "./reflection.h"
+#include "dynstring/dynstring.h"
 
-void *non_tracing_alloc(TypeDescriptor type) {
+void *alloc_maybe_trace(TypeDescriptor type,
+                        void(trace_func)(void *addr, TypeDescriptor type)) {
   void *allocated = NULL;
 
   if (type.ptr_count >= 1) {
     switch (type.kind) {
     case TYPE_NONE:
-      assert(0 && "This type is not supported");
+      goto fail;
     case TYPE_INT:
     case TYPE_FLOAT:
     case TYPE_CHAR:
@@ -19,8 +18,15 @@ void *non_tracing_alloc(TypeDescriptor type) {
     case TYPE_LIST:
     case TYPE_OBJECT:
     case TYPE_ANY_OBJECT:
-    case TYPE_STRING:
-      return malloc(sizeof(void *));
+    case TYPE_ANY_VALUE:
+    case TYPE_STRING: {
+      void *ptr = malloc(sizeof(void *));
+      if (trace_func != NULL)
+        trace_func(ptr, type);
+      return ptr;
+    }
+    default:
+      goto fail;
     }
   }
 
@@ -30,20 +36,45 @@ void *non_tracing_alloc(TypeDescriptor type) {
   case TYPE_FLOAT:
   case TYPE_CHAR:
   case TYPE_BOOL:
-    assert(0 && "This type is not supported");
-  case TYPE_LIST:
-    return list_new();
-  case TYPE_OBJECT:
-    return hashmap_new();
-  case TYPE_ANY_OBJECT:
-    return anyobj_new();
-  case TYPE_STRING:
-    return dynstring_new();
-  default: {
-    char *typ = display_type(type);
-    printf("gc_alloc(): illegal type: `%s`\n", typ);
-    free(typ);
-    assert(0 && "GC crashed");
+    goto fail;
+  case TYPE_LIST: {
+    ListNode *ptr = list_new();
+    if (trace_func != NULL)
+      trace_func(ptr, type);
+    return ptr;
   }
+  case TYPE_OBJECT: {
+    HashMap *ptr = hashmap_new();
+    if (trace_func != NULL)
+      trace_func(ptr, type);
+    return ptr;
   }
+  case TYPE_ANY_OBJECT: {
+    AnyObject *ptr = anyobj_new();
+    if (trace_func != NULL)
+      trace_func(ptr, type);
+    return ptr;
+  }
+  case TYPE_ANY_VALUE: {
+    AnyValue *ptr = malloc(sizeof(AnyValue));
+    if (trace_func != NULL)
+      trace_func(ptr, type);
+    return ptr;
+  }
+  case TYPE_STRING: {
+    DynString *ptr = dynstring_new();
+    if (trace_func != NULL)
+      trace_func(ptr, type);
+    return ptr;
+  }
+  default:
+    goto fail;
+  }
+
+fail: {
+  char *typ = display_type(type);
+  printf("gc_alloc(): illegal type: `%s`\n", typ);
+  free(typ);
+  abort();
+}
 }

@@ -65,7 +65,7 @@ impl<'src> Transpiler<'src> {
     pub fn new(config: TranspileArgs) -> Self {
         let mut required_includes = HashSet::new();
         // usages of booleans are hard to track, therefore `stdbool.h` is always included
-        required_includes.insert("./hpi-c-tests/dynstring/dynstring.h");
+        required_includes.insert("./libSAP/dynstring/dynstring.h");
         required_includes.insert("stdbool.h");
         // required_includes.insert("./hpi-c-tests/list/list.h");
         // required_includes.insert("./hpi-c-tests/hashmap/map.h");
@@ -217,22 +217,11 @@ impl<'src> Transpiler<'src> {
                         args: vec![],
                     },
                 )))),
-                if self.user_config.gc_enable {
-                    Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
-                        AnalyzedCallExpr {
-                            result_type: Type::Nichts,
-                            func: AnalyzedCallBase::Ident("gc_die"),
-                            args: vec![],
-                        },
-                    ))))
-                } else {
-                    None
-                },
                 Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
                     AnalyzedCallExpr {
                         result_type: Type::Nichts,
-                        func: AnalyzedCallBase::Ident("type_descriptor_teardown"),
-                        args: vec![],
+                        func: AnalyzedCallBase::Ident("cexit"),
+                        args: vec![AnalyzedExpression::Int(0)],
                     },
                 )))),
             ]
@@ -240,7 +229,7 @@ impl<'src> Transpiler<'src> {
             .flatten()
             .collect(),
             // TODO: call exit function, do not do this
-            expr: Some(AnalyzedExpression::Int(0)),
+            expr: None,
         };
 
         functions.push_back(self.fn_declaration(AnalyzedFunctionDefinition {
@@ -289,6 +278,30 @@ impl<'src> Transpiler<'src> {
             type_: Type::Nichts.into(),
             params: vec![],
             body: self.global_variable_setup.clone(),
+        });
+
+        functions.push_back(FnDefinition {
+            name: "cexit".to_string(),
+            type_: Type::Nichts.into(),
+            params: vec![("code".to_string(), CType::Int(0))],
+            body: vec![
+                self.pop_scope(true),
+                if self.user_config.gc_enable {
+                    Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                        func: "gc_die".to_string(),
+                        args: vec![],
+                    }))))
+                } else {
+                    None
+                },
+                Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                    func: "type_descriptor_teardown".to_string(),
+                    args: vec![],
+                })))),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
         });
 
         // functions.push_back(FnDefinition {

@@ -1,3 +1,4 @@
 #include "reflection.h"
 
-void *non_tracing_alloc(TypeDescriptor type);
+void *alloc_maybe_trace(TypeDescriptor type,
+                        void(trace_func)(void *addr, TypeDescriptor type, TypeDescriptor * associated_type));

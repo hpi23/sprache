@@ -1,7 +1,7 @@
 #pragma once
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include "../hpi-c-tests/list/list.h"
-#include "./libSAP.h"
+#include "dynstring/dynstring.h"
+#include "list/list.h"
+#include "libSAP.h"
 #include <stdbool.h>
 
 // List utility functions

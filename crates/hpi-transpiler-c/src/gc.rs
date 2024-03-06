@@ -137,12 +137,6 @@ impl<'src> Transpiler<'src> {
 
     fn teardown_type(&mut self, ident: String, type_: Type) {
         match &type_ {
-            Type::List(inner, ptr) => {
-                self.type_descriptor_teardown
-                    .append(&mut vec![Statement::Comment(
-                        format!("Type descriptor `{type_}`").into(),
-                    )]);
-            }
             Type::Object(fields, ptr) => {
                 self.type_descriptor_teardown.append(&mut vec![
                     Statement::Comment(

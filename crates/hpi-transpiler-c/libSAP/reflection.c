@@ -1,5 +1,6 @@
 #include "./reflection.h"
-#include "../hpi-c-tests/dynstring/dynstring.h"
+#include "dynstring/dynstring.h"
+#include "list/list.h"
 #include <assert.h>
 
 char *display_type(TypeDescriptor type) {
@@ -60,6 +61,9 @@ char *display_type(TypeDescriptor type) {
   case TYPE_ANY_OBJECT:
     dynstring_set(output, "Speicherbox");
     break;
+  case TYPE_ANY_VALUE:
+    dynstring_set(output, "<AnyValue>");
+    break;
   case TYPE_STRING:
     dynstring_set(output, "Zeichenkette");
     break;
@@ -71,3 +75,37 @@ char *display_type(TypeDescriptor type) {
   dynstring_free(pointer_prefix);
   return out;
 }
+
+// TODO: remove this
+// uint type_sizeof(TypeDescriptor type) {
+//   if (type.ptr_count > 1) {
+//     return sizeof(void *);
+//   }
+//
+//   switch (type.kind) {
+//   case TYPE_NONE:
+//       goto fail;
+//   case TYPE_INT:
+//       return sizeof(int64_t);
+//   case TYPE_FLOAT:
+//       return sizeof(double);
+//   case TYPE_CHAR:
+//       return sizeof(char);
+//   case TYPE_BOOL:
+//       return sizeof(char);
+//   case TYPE_LIST:
+//       return sizeof(ListNode);
+//   case TYPE_OBJECT:
+//   case TYPE_ANY_OBJECT:
+//   case TYPE_ANY_VALUE:
+//   case TYPE_STRING:
+//     break;
+//   }
+//
+// fail: {
+//   char *type_str = display_type(type);
+//   printf("type_sizeof(): Illegal type: %s\n", type_str);
+//   free(type_str);
+//   abort();
+// }
+// }

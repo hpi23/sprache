@@ -1,0 +1,17 @@
+{
+  "content": [
+    {
+      "speiseplanGerichtData": [
+        {
+          "zusatzinformationen": {
+            "sustainability": {
+              "co2": null,
+              "nutriscore": null,
+              "trafficLight": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

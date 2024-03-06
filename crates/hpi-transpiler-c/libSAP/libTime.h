@@ -1,5 +1,5 @@
 #pragma once
-#include "../hpi-c-tests/hashmap/map.h"
+#include "hashmap/map.h"
 
 typedef struct {
     int64_t year;

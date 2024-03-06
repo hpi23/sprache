@@ -1,7 +1,7 @@
 #pragma once
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include "../hpi-c-tests/hashmap/map.h"
-#include "./libAnyObj.h"
+#include "dynstring/dynstring.h"
+#include "hashmap/map.h"
+#include "libAnyObj.h"
 #include <stdio.h>
 
 void __hpi_internal_libSAP_reset();

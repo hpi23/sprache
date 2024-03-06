@@ -1,7 +1,7 @@
 #include "./libAnyObj.h"
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include "../hpi-c-tests/json-parser/parser.h"
-#include "libSAP.h"
+#include "dynstring/dynstring.h"
+#include "json-parser/parser.h"
+#include "list/list.h"
 #include "reflection.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -10,9 +10,12 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
-  TypeDescriptor res_type = {
-      .ptr_count = 0, .list_inner = NULL, .obj_fields = NULL};
+AnyValue __hpi_internal_anyvalue_from_json(
+        JsonValue value,
+        void *(allocator)(TypeDescriptor),
+        void(trace_allocation)(void * addr, TypeDescriptor type, TypeDescriptor *type_ptr)
+) {
+  TypeDescriptor res_type = {.ptr_count = 0, .list_inner = NULL, .obj_fields = NULL};
 
   AnyValue res = {.value = NULL, .type = res_type};
 
@@ -20,7 +23,12 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
   case JSON_TYPE_OBJECT: {
     res.type.kind = TYPE_ANY_OBJECT;
 
-    AnyObject *any_obj = anyobj_new();
+    TypeDescriptor type_descriptor_anyobj = {.ptr_count = 0, .list_inner = NULL, .kind = TYPE_ANY_OBJECT, .obj_fields = NULL};
+
+    AnyObject *any_obj = allocator(type_descriptor_anyobj);
+    printf("ALLOCATED ANY_OBJ (leak): %p\n", any_obj);
+    // TODO: remove
+    // AnyObject *any_obj = anyobj_new();
 
     ListNode *keys = hashmap_keys(value.object.fields);
     int64_t key_len = list_len(keys);
@@ -32,14 +40,28 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
       MapGetResult value_res = hashmap_get(value.object.fields, key_res.value);
       assert(value_res.found);
 
-      AnyValue *value_ptr = malloc(sizeof(AnyValue));
-      *value_ptr =
-          __hpi_internal_anyvalue_from_json(*(JsonValue *)value_res.value);
+      // TODO: is this a memory leak?
+      // AnyValue *value_ptr = (AnyValue *)malloc(sizeof(AnyValue));
+      AnyValue *value_ptr = allocator((TypeDescriptor){
+          .ptr_count = 0,
+          .obj_fields = NULL,
+          .kind = TYPE_ANY_VALUE,
+          .list_inner = NULL,
+      });
+
+      assert(value_ptr != NULL);
+
+      // TODO: this is broken for sure
+      *value_ptr = __hpi_internal_anyvalue_from_json(*(JsonValue *)value_res.value, allocator, trace_allocation);
 
       hashmap_insert(any_obj->fields, key_res.value, value_ptr);
     }
 
-    AnyObject **obj_temp = (AnyObject **)malloc(sizeof(AnyObject *));
+    list_free(keys);
+
+    TypeDescriptor ptr_to_anyobj = type_descriptor_anyobj;
+    ptr_to_anyobj.ptr_count = 1;
+    AnyObject **obj_temp = (AnyObject **)allocator(ptr_to_anyobj);
     *obj_temp = any_obj;
     res.value = obj_temp;
 
@@ -47,8 +69,12 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
   }
   case JSON_TYPE_ARRAY: {
     res.type.kind = TYPE_LIST;
-    TypeDescriptor inner = {
-        .obj_fields = NULL, .list_inner = NULL, .ptr_count = 0};
+
+    // Type setup
+    TypeDescriptor inner = {.obj_fields = NULL, .list_inner = NULL, .ptr_count = 0};
+    TypeDescriptor *inner_heap = malloc(sizeof(TypeDescriptor));
+    *inner_heap = inner;
+    TypeDescriptor list_type = {.obj_fields = NULL, .ptr_count = 0, .kind = TYPE_LIST, .list_inner = NULL};
 
     ListNode *list_temp = list_new();
 
@@ -57,11 +83,12 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
       ListGetResult curr = list_at(value.array.fields, i);
       assert(curr.found);
 
-      AnyValue *converted_ptr = malloc(sizeof(AnyValue));
+      // AnyValue *converted_ptr = malloc(sizeof(AnyValue));
+      AnyValue *converted_ptr = allocator((TypeDescriptor){.kind = TYPE_ANY_VALUE, .list_inner = NULL, .ptr_count = 0, .obj_fields = NULL});
 
       JsonValue inner_json = *(JsonValue *)curr.value;
 
-      *converted_ptr = __hpi_internal_anyvalue_from_json(inner_json);
+      *converted_ptr = __hpi_internal_anyvalue_from_json(inner_json, allocator, trace_allocation);
 
       // TODO: this expects a known inner type,
       // must convert the any type to a known one
@@ -76,6 +103,9 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
       // TODO: implement extensive runtime type checking
     }
 
+    if (trace_allocation != NULL)
+      trace_allocation(list_temp, list_type, inner_heap);
+
     TypeDescriptor *inner_ptr = malloc(sizeof(TypeDescriptor));
     *inner_ptr = inner;
     res.type.list_inner = inner_ptr;
@@ -88,26 +118,43 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
   }
   case JSON_TYPE_INT: {
     res.type.kind = TYPE_INT;
-    res.value = malloc(sizeof(int64_t));
+    res.value = allocator((TypeDescriptor){.kind = TYPE_INT, .list_inner = NULL, .ptr_count = 1, .obj_fields = NULL});
     *(int64_t *)res.value = value.num_int;
     break;
   }
   case JSON_TYPE_FLOAT: {
     res.type.kind = TYPE_FLOAT;
-    res.value = malloc(sizeof(double));
+    res.value = allocator((TypeDescriptor){.kind = TYPE_FLOAT, .list_inner = NULL, .ptr_count = 1, .obj_fields = NULL});
     *(double *)res.value = value.num_float;
     break;
   }
   case JSON_TYPE_BOOL: {
     res.type.kind = TYPE_BOOL;
-    res.value = malloc(sizeof(bool));
+    // res.value = malloc(sizeof(bool));
+    res.value = allocator((TypeDescriptor){.kind = TYPE_BOOL, .list_inner = NULL, .ptr_count = 1, .obj_fields = NULL});
     *(bool *)res.value = value.boolean;
     break;
   }
   case JSON_TYPE_STRING: {
     res.type.kind = TYPE_STRING;
-    DynString **ptr_temp = malloc(sizeof(DynString *));
+
+    TypeDescriptor dynstring_type = {
+        .ptr_count = 0,
+        .kind = TYPE_STRING,
+        .list_inner = NULL,
+        .obj_fields = NULL,
+    };
+
+    // DynString **ptr_temp = malloc(sizeof(DynString *));
+    TypeDescriptor dynstring_double_pointer_type = dynstring_type;
+    dynstring_double_pointer_type.ptr_count = 1;
+    DynString **ptr_temp = allocator(dynstring_double_pointer_type);
+
+    // NOTE: must trace allocation since it was not aallocated using the built-in allocator.
     DynString *str = dynstring_from(value.string);
+    if (trace_allocation != NULL)
+      trace_allocation(str, dynstring_type, NULL);
+
     *ptr_temp = str;
     res.value = ptr_temp;
     break;
@@ -123,31 +170,33 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value) {
   return res;
 }
 
-AnyValue __hpi_internal_parse_json(DynString *input) {
+AnyValue __hpi_internal_parse_json(DynString *input, void *(allocator)(), void(trace_allocation)(void *, TypeDescriptor, TypeDescriptor*)) {
   char *input_cstr = dynstring_as_cstr(input);
 
   NewJsonParserResult create_res = parser_new(input_cstr);
   JsonParser parser = create_res.parser;
   if (create_res.error != NULL) {
     printf("Runtime JSON parser creation error: `%s`\n", create_res.error);
-    exit(-1);
+    abort();
   }
 
-  JsonParseResult parse_res = parse_json(&parser);
+  JsonParseResult parse_res = parse_json(&parser, allocator);
   if (parse_res.error != NULL) {
     printf("Runtime JSON parse error: `%s`\n", parse_res.error);
-    exit(-1);
+    abort();
   }
 
   parser_free(&parser);
-  // printf("JSON: RES: %s\n", json_value_to_string(parse_res.value));
 
-  // convert JSON value to anyvalue
-  return __hpi_internal_anyvalue_from_json(parse_res.value);
+  // Convert JSON value to anyvalue.
+  AnyValue anyval = __hpi_internal_anyvalue_from_json(parse_res.value, allocator, trace_allocation);
+
+  json_parse_result_free(parse_res);
+
+  return anyval;
 }
 
-JsonValue __hpi_internal_json_value_from_void(TypeDescriptor type,
-                                              void *value) {
+JsonValue __hpi_internal_json_value_from_void(TypeDescriptor type, void *value) {
   JsonValue res = {};
   switch (type.kind) {
   case TYPE_NONE:
@@ -181,8 +230,7 @@ JsonValue __hpi_internal_json_value_from_void(TypeDescriptor type,
       ListGetResult curr = list_at(list, i);
       assert(curr.found);
 
-      JsonValue converted =
-          __hpi_internal_json_value_from_void(*type.list_inner, curr.value);
+      JsonValue converted = __hpi_internal_json_value_from_void(*type.list_inner, curr.value);
       JsonValue *converted_ptr = malloc(sizeof(JsonValue));
       *converted_ptr = converted;
       list_append(arr.fields, converted_ptr);
@@ -210,8 +258,7 @@ JsonValue __hpi_internal_json_value_from_void(TypeDescriptor type,
       MapGetResult type_res = hashmap_get(type.obj_fields, key.value);
       assert(type_res.found);
 
-      JsonValue converted = __hpi_internal_json_value_from_void(
-          *(TypeDescriptor *)type_res.value, value.value);
+      JsonValue converted = __hpi_internal_json_value_from_void(*(TypeDescriptor *)type_res.value, value.value);
 
       JsonValue *converted_ptr = malloc(sizeof(JsonValue));
       *converted_ptr = converted;
@@ -239,8 +286,7 @@ JsonValue __hpi_internal_json_value_from_void(TypeDescriptor type,
 
       AnyValue value = *(AnyValue *)value_res.value;
 
-      JsonValue converted =
-          __hpi_internal_json_value_from_void(value.type, value.value);
+      JsonValue converted = __hpi_internal_json_value_from_void(value.type, value.value);
       JsonValue *converted_ptr = malloc(sizeof(JsonValue));
       *converted_ptr = converted;
       hashmap_insert(obj.fields, key.value, converted_ptr);

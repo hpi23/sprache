@@ -1,6 +1,7 @@
 #include "./libSAP.h"
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include "../hpi-c-tests/vec/vec.h"
+#include "vec/vec.h"
+#include "dynstring/dynstring.h"
+#include "list/list.h"
 #include "reflection.h"
 #include <sys/types.h>
 
@@ -125,13 +126,19 @@ DynString *to_string(TypeDescriptor type, void *value) {
       dynstring_push_string(output, key);
       indent_str += 4;
       dynstring_push_string(output, ": ");
-      dynstring_push(output, to_string(item->type, item->value));
+
+      DynString * field_str = to_string(item->type, item->value);
+      dynstring_push(output, field_str);
+      dynstring_free(field_str);
+
       indent_str -= 4;
 
       if (i + 1 < keys_len) {
         dynstring_push_string(output, ",\n");
       }
     }
+
+    list_free(keys);
 
     dynstring_push_char(output, '\n');
     for (int i = 0; i < indent_str - 4; i++) {

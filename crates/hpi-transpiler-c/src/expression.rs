@@ -53,6 +53,7 @@ impl<'src> Transpiler<'src> {
                         args: vec![
                             Expression::Ident(dynstr_ident.clone()),
                             Expression::Ident(self.get_type_reflector(Type::String(0))),
+                            Expression::Ident("NULL".to_string()),
                         ],
                     }))));
                 }
@@ -654,8 +655,7 @@ impl<'src> Transpiler<'src> {
 
         let func = match node.func {
             AnalyzedCallBase::Ident("Aufgeben") => {
-                self.required_includes.insert("stdlib.h");
-                "exit".to_string()
+                "cexit".to_string()
             }
             AnalyzedCallBase::Ident("Reinigung") => match self.user_config.gc_enable {
                 true => "gc_run_cycle".to_string(),
@@ -665,6 +665,7 @@ impl<'src> Transpiler<'src> {
                 true => "external_print_state".to_string(),
                 false => return (vec![], None),
             },
+            AnalyzedCallBase::Ident("cexit") => "cexit".to_string(),
             AnalyzedCallBase::Ident("type_descriptor_setup") => "type_descriptor_setup".to_string(),
             AnalyzedCallBase::Ident("type_descriptor_teardown") => "type_descriptor_teardown".to_string(),
             AnalyzedCallBase::Ident("gc_init") => "gc_init".to_string(),
@@ -675,6 +676,22 @@ impl<'src> Transpiler<'src> {
             AnalyzedCallBase::Ident("studium") => "studium".to_string(),
             AnalyzedCallBase::Ident("Zergliedere_JSON") => {
                 self.required_includes.insert("./libSAP/libJson.h");
+                args.push_back(Expression::Ident(
+                    if self.user_config.gc_enable {
+                        "gc_alloc".to_string()
+                    } else {
+                        "non_tracing_alloc".to_string()
+                    }
+                ));
+
+                args.push_back(Expression::Ident(
+                    if self.user_config.gc_enable {
+                        "gc_add_to_trace".to_string()
+                    } else {
+                        "NULL".to_string()
+                    }
+                ));
+
                 "__hpi_internal_parse_json".to_string()
             }
             AnalyzedCallBase::Ident("Gliedere_JSON") => {

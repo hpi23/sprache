@@ -1,5 +1,6 @@
 #pragma once
-#include "../hpi-c-tests/hashmap/map.h"
+#include "hashmap/map.h"
+#include <sys/types.h>
 
 typedef enum {
   TYPE_NONE,
@@ -10,6 +11,7 @@ typedef enum {
   TYPE_LIST,
   TYPE_OBJECT,
   TYPE_ANY_OBJECT,
+  TYPE_ANY_VALUE,
   TYPE_STRING,
 } TypeKind;
 

@@ -1,4 +1,5 @@
 #include "./libAnyObj.h"
+#include "hashmap/map.h"
 #include "reflection.h"
 #include <assert.h>
 #include <stddef.h>
@@ -20,7 +21,15 @@ AnyObject *anyobj_new() {
 }
 
 void anyobj_free(AnyObject * obj) {
-    assert(0 && "Not implemented");
+    // BUG: this might also create a memory leak?
+    // RECURSIVE VALUES ARE NOT FREED
+
+    puts("anyobj_free(): Leaked memory");
+
+    hashmap_free(obj->fields);
+    free(obj);
+
+    // assert(0 && "Not implemented");
 }
 
 AnyValue __hpi_internal_anyobj_take(AnyObject *obj, DynString *key) {
@@ -57,6 +66,7 @@ ListNode *__hpi_internal_anyobj_keys(AnyObject *obj) {
   return new_list;
 }
 
+// TODO: this leaks a lot of memory!!!
 void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type) {
   // Detect basic type mismatch
   if (from.type.kind != as_type.kind ||

@@ -1,7 +1,7 @@
 #pragma once
 #include "./reflection.h"
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include "../hpi-c-tests/hashmap/map.h"
+#include "dynstring/dynstring.h"
+#include "hashmap/map.h"
 
 typedef struct {
   TypeDescriptor type;
