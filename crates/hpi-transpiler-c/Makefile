@@ -31,12 +31,12 @@ valgrind: main
          --verbose ./main
 
 init_wrapper:
-	bash fetch_deps.sh
-	cd ./hpi-c-tests/list/ && make
-	cd ./hpi-c-tests/hashmap/ && make
-	cd ./hpi-c-tests/json-parser/ && make
-	cd ./hpi-c-tests/dynstring/ && make
-	cd ./hpi-c-tests/vec/ && make
+	# bash fetch_deps.sh
+	cd ./libSAP/list/ && make
+	cd ./libSAP/hashmap/ && make
+	cd ./libSAP/json-parser/ && make
+	cd ./libSAP/dynstring/ && make
+	cd ./libSAP/vec/ && make
 
 cleanSAP:
 	rm -f ./libSAP/libSAP.a ./libSAP/libSAP_raw.a
