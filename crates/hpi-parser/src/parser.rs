@@ -173,7 +173,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             TokenKind::Ident("Wahrheitswert") => Type::Bool(ptr_count),
             TokenKind::Ident("Zeichen") => Type::Char(ptr_count),
             TokenKind::Ident("Speicherbox") => Type::AnyObject(ptr_count),
-            TokenKind::Ident("Objekt") => {
+            TokenKind::Ident("Objekt") | TokenKind::Ident("Schtruckt") => {
                 self.next()?;
 
                 self.expect(TokenKind::LBrace)?;
@@ -205,7 +205,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
 
                 self.expect_recoverable(
                     TokenKind::RBrace,
-                    "Fehlende schließende geschweifte Klammer.",
+                    "Fehlende schließende geschweifte Klammer im Schtruckt.",
                     self.curr_tok.span,
                 )?;
 
