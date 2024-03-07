@@ -1,0 +1,28 @@
+beantrage Drucke von Drucker;
+beantrage Formatiere von Textverarbeitung;
+beantrage Zeit von Uhr;
+beantrage Reinigung von FM;
+beantrage ReinigungsPlan von FM;
+beantrage Zergliedere_JSON von Textverarbeitung;
+beantrage Argumente von libSAP;
+beantrage Aufgeben von libSAP;
+
+funk Bewerbung() ergibt Zeichenkette { "Bitte bitte" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {}
+
+funk Studium() ergibt Nichts {
+    setze Liste von Zeichenkette Args auf Argumente();
+    falls Args.Länge() == 1 {
+        Drucke("Erwartete Befehlszeilenargument <mensa-ort>, bekam nichts");
+        Reinigung();
+        Aufgeben(69);
+    }
+
+    {
+        setze Zeichenkette Foo auf "{\"key\": [ 1, 2, 3 ]}";
+        Zergliedere_JSON(Foo) als Speicherbox;
+    }
+
+    Reinigung();
+}

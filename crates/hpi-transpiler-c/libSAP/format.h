@@ -1,6 +1,6 @@
 #include "./reflection.h"
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include "../hpi-c-tests/vec/vec.h"
+#include "dynstring/dynstring.h"
+#include "vec/vec.h"
 
 typedef struct {
   TypeDescriptor type;

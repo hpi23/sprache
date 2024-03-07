@@ -1,7 +1,9 @@
 #include "./reflection.h"
 #include "dynstring/dynstring.h"
+#include "hashmap/map.h"
 #include "list/list.h"
 #include <assert.h>
+#include <sys/types.h>
 
 char *display_type(TypeDescriptor type) {
   DynString *output = dynstring_new();
@@ -27,6 +29,7 @@ char *display_type(TypeDescriptor type) {
     break;
   case TYPE_LIST:
     dynstring_set(output, "Liste von ");
+    assert(type.list_inner != NULL);
     char *inner_type_str = display_type(*type.list_inner);
     dynstring_push_string(output, inner_type_str);
     free(inner_type_str);
@@ -109,3 +112,86 @@ char *display_type(TypeDescriptor type) {
 //   abort();
 // }
 // }
+//
+
+void free_type(TypeDescriptor *type) {
+  assert(type != NULL);
+  switch (type->kind) {
+  case TYPE_NONE:
+  case TYPE_INT:
+  case TYPE_FLOAT:
+  case TYPE_CHAR:
+  case TYPE_BOOL:
+  case TYPE_STRING:
+  case TYPE_ANY_OBJECT:
+  case TYPE_ANY_VALUE:
+    break;
+  case TYPE_LIST:
+    free_type(type->list_inner);
+    break;
+  case TYPE_OBJECT: {
+    ListNode *keys = hashmap_keys(type->obj_fields);
+
+    uint key_len = list_len(keys);
+    for (int i = 0; i < key_len; i++) {
+      ListGetResult curr_res = list_at(keys, i);
+      assert(curr_res.found);
+
+      TypeDescriptor *curr = (TypeDescriptor *)curr_res.value;
+      free_type(curr);
+    }
+
+    list_free(keys);
+    break;
+  }
+  default: {
+    char *type_str = display_type(*type);
+    printf("free_type(): Unsupported type: %s\n", type_str);
+    free(type_str);
+    abort();
+  }
+  }
+  free(type);
+}
+
+TypeDescriptor clone_type(TypeDescriptor in) {
+  switch (in.kind) {
+  case TYPE_NONE:
+  case TYPE_INT:
+  case TYPE_FLOAT:
+  case TYPE_CHAR:
+  case TYPE_BOOL:
+  case TYPE_STRING:
+  case TYPE_ANY_OBJECT:
+  case TYPE_ANY_VALUE:
+    return in;
+  case TYPE_LIST: {
+    TypeDescriptor new = {.kind = in.kind, .ptr_count = in.ptr_count, .list_inner = NULL, .obj_fields = NULL};
+    new.list_inner = malloc(sizeof(TypeDescriptor));
+    *new.list_inner = clone_type(*in.list_inner);
+    return new;
+  }
+  case TYPE_OBJECT: {
+    TypeDescriptor new = {.kind = in.kind, .ptr_count = in.ptr_count, .list_inner = NULL, .obj_fields = NULL};
+    new.obj_fields = hashmap_new();
+
+    ListNode *keys = hashmap_keys(in.obj_fields);
+    uint key_len = list_len(keys);
+
+    for (int i = 0; i < key_len; i++) {
+      ListGetResult key_res = list_at(keys, i);
+      assert(key_res.found);
+
+      MapGetResult value_res = hashmap_get(new.obj_fields, key_res.value);
+      assert(value_res.found);
+
+      TypeDescriptor *field_heap = malloc(sizeof(TypeDescriptor));
+      *field_heap = clone_type(*(TypeDescriptor *)value_res.value);
+      hashmap_insert(new.obj_fields, key_res.value, field_heap);
+    }
+
+    *new.list_inner = clone_type(*in.list_inner);
+    return new;
+  }
+  }
+}

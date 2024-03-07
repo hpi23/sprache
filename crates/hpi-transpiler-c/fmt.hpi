@@ -1,0 +1,26 @@
+beantrage Drucke von Drucker;
+beantrage Formatiere von Textverarbeitung;
+beantrage Zeit von Uhr;
+beantrage Reinigung von FM;
+beantrage ReinigungsPlan von FM;
+beantrage Zergliedere_JSON von Textverarbeitung;
+
+funk Bewerbung() ergibt Zeichenkette { "Bitte bitte" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {}
+
+datentyp Essen auf Objekt {
+    Zeichenkette Titel /
+    Fließkommazahl Preis /
+    Zeichenkette Beschreibung
+};
+
+funk Studium() ergibt Nichts {
+     // setze Essen S auf erstelle {
+         // Zeichenkette Titel auf "Relevo" /
+         // Fließkommazahl Preis auf 12,32 /
+         // Zeichenkette Beschreibung auf "Test Test" /
+     // };
+    //Drucke(Formatiere("%s | %.2f€ | %s" / S.Titel / S.Preis / S.Beschreibung));
+    Drucke(Formatiere("%.2f€ %s" / 3,123 / "Foo"));
+}

@@ -298,6 +298,10 @@ impl<'src> Transpiler<'src> {
                     func: "type_descriptor_teardown".to_string(),
                     args: vec![],
                 })))),
+                Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                    func: "exit".to_string(),
+                    args: vec![Expression::Ident("code".to_string())],
+                })))),
             ]
             .into_iter()
             .flatten()

@@ -1,5 +1,6 @@
 #include "./format.h"
 #include "./to_string.h"
+#include "reflection.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -112,7 +113,7 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
 
     break;
   }
-  case 't':
+  case 't': {
     assert(arg.type.kind == TYPE_BOOL);
     assert(arg.type.ptr_count == 0);
 
@@ -123,15 +124,18 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
     }
 
     break;
-  case 's':
+  }
+  case 's': {
     assert(arg.type.kind == TYPE_STRING);
     assert(arg.type.ptr_count == 0);
     dynstring_push(fmt->output_buf, *(DynString **)arg.value);
     break;
-  case 'v':
+  }
+  case 'v': {
     // TODO: Does this work?
     dynstring_push(fmt->output_buf, to_string(arg.type, arg.value));
     break;
+  }
   default: {
     if (false) {
       // TODO: error: illegal combination
@@ -167,8 +171,7 @@ void formatter_start_escape(Formatter *fmt) {
 
     DynStringParseInt padding_res = dynstring_parse_int64(padding);
     if (padding_res.error != NULL) {
-      printf("Formatierungsfehler: Konnte Pufferung nicht verarbeiten: %s\n",
-             padding_res.error);
+      printf("Formatierungsfehler: Konnte Pufferung nicht verarbeiten: %s\n", padding_res.error);
       assert(0);
     }
 
@@ -185,8 +188,7 @@ void formatter_start_escape(Formatter *fmt) {
 
     DynStringParseInt padding_res = dynstring_parse_int64(padding);
     if (padding_res.error != NULL) {
-      printf("Formatierungsfehler: Konnte Pufferung nicht verarbeiten: %s\n",
-             padding_res.error);
+      printf("Formatierungsfehler: Konnte Pufferung nicht verarbeiten: %s\n", padding_res.error);
       assert(0);
     }
 

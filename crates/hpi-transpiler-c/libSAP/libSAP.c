@@ -1,11 +1,11 @@
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include "../hpi-c-tests/list/list.h"
-#include "./format.h"
-#include "./libGC.h"
-#include "./to_string.h"
+#include "dynstring/dynstring.h"
+#include "format.h"
 #include "libAnyObj.h"
+#include "libGC.h"
 #include "libTime.h"
+#include "list/list.h"
 #include "reflection.h"
+#include "to_string.h"
 #include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -99,8 +99,7 @@ AnyObject *__hpi_internal_env() {
 
     char *key_cstr = dynstring_as_cstr(key.value);
 
-    TypeDescriptor string_type_descriptor = {.kind = TYPE_STRING,
-                                             .ptr_count = 0};
+    TypeDescriptor string_type_descriptor = {.kind = TYPE_STRING, .ptr_count = 0};
 
     DynString **val = malloc(sizeof(DynString *));
     *val = value.value;
@@ -116,15 +115,32 @@ AnyObject *__hpi_internal_env() {
   return obj;
 }
 
-ListNode *__hpi_internal_args() {
+ListNode *__hpi_internal_args(void *(allocator)(TypeDescriptor type), void(tracer)(void *addr, TypeDescriptor type, TypeDescriptor *type_heap)) {
+  // ListNode *list = list_new();
+  TypeDescriptor type_string = {.kind = TYPE_STRING, .obj_fields = NULL, .ptr_count = 0, .list_inner = NULL};
+
+  TypeDescriptor *type_list_str_heap = malloc(sizeof(TypeDescriptor));
+  *type_list_str_heap = type_string;
+
+  // ListNode *list = allocator();
+
   ListNode *list = list_new();
+  if (tracer != NULL)
+    tracer(list, (TypeDescriptor){.kind = TYPE_LIST, .list_inner = type_list_str_heap, .ptr_count = 0, .obj_fields = NULL}, type_list_str_heap);
 
   for (int i = 0; i < argc; i++) {
-    TypeDescriptor type_string = {
-        .kind = TYPE_STRING, .ptr_count = 0, .list_inner = NULL};
+    // TypeDescriptor type_string = {.kind = TYPE_STRING, .ptr_count = 0, .list_inner = NULL};
 
-    DynString **temp_ptr = malloc(sizeof(DynString *));
-    *temp_ptr = dynstring_from(argv[i]);
+    // DynString **temp_ptr = malloc(sizeof(DynString *));
+
+    TypeDescriptor type_ptr_string = type_string;
+    type_ptr_string.ptr_count = 1;
+    DynString **temp_ptr = allocator(type_ptr_string);
+
+    DynString *dynstr_from = dynstring_from(argv[i]);
+    *temp_ptr = dynstr_from;
+    if (tracer != NULL)
+      tracer(dynstr_from, type_string, NULL);
 
     list_append(list, temp_ptr);
   }

@@ -1,5 +1,5 @@
 #include "./libSAP.h"
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include "../hpi-c-tests/vec/vec.h"
+#include "dynstring/dynstring.h"
+#include "vec/vec.h"
 
 DynString *to_string(TypeDescriptor type, void *value);

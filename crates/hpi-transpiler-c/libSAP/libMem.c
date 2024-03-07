@@ -4,7 +4,7 @@
 #include "dynstring/dynstring.h"
 
 void *alloc_maybe_trace(TypeDescriptor type,
-                        void(trace_func)(void *addr, TypeDescriptor type)) {
+                        void(trace_func)(void *addr, TypeDescriptor type, TypeDescriptor * type_heap)) {
   void *allocated = NULL;
 
   if (type.ptr_count >= 1) {
@@ -22,7 +22,7 @@ void *alloc_maybe_trace(TypeDescriptor type,
     case TYPE_STRING: {
       void *ptr = malloc(sizeof(void *));
       if (trace_func != NULL)
-        trace_func(ptr, type);
+        trace_func(ptr, type, NULL);
       return ptr;
     }
     default:
@@ -40,31 +40,31 @@ void *alloc_maybe_trace(TypeDescriptor type,
   case TYPE_LIST: {
     ListNode *ptr = list_new();
     if (trace_func != NULL)
-      trace_func(ptr, type);
+      trace_func(ptr, type, NULL);
     return ptr;
   }
   case TYPE_OBJECT: {
     HashMap *ptr = hashmap_new();
     if (trace_func != NULL)
-      trace_func(ptr, type);
+      trace_func(ptr, type, NULL);
     return ptr;
   }
   case TYPE_ANY_OBJECT: {
     AnyObject *ptr = anyobj_new();
     if (trace_func != NULL)
-      trace_func(ptr, type);
+      trace_func(ptr, type, NULL);
     return ptr;
   }
   case TYPE_ANY_VALUE: {
     AnyValue *ptr = malloc(sizeof(AnyValue));
     if (trace_func != NULL)
-      trace_func(ptr, type);
+      trace_func(ptr, type, NULL);
     return ptr;
   }
   case TYPE_STRING: {
     DynString *ptr = dynstring_new();
     if (trace_func != NULL)
-      trace_func(ptr, type);
+      trace_func(ptr, type, NULL);
     return ptr;
   }
   default:

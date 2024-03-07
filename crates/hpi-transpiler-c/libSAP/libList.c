@@ -1,6 +1,6 @@
-#include "./libSAP.h"
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include "../hpi-c-tests/list/list.h"
+#include "libSAP.h"
+#include "dynstring/dynstring.h"
+#include "list/list.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -89,11 +89,11 @@ int64_t __hpi_internal_list_len(ListNode *list) { return list_len(list); }
 void *__hpi_internal_list_index(ListNode *list, int64_t index) {
   ListGetResult result = list_at(list, index);
   if (!result.found) {
-    printf("Runtime error: Buffer overdrive: Index out of bounds: cannot index list of length "
+    printf("__hpi_internal_list_index(): Buffer overdrive: Index out of bounds: cannot index list of length "
            "%ld using index "
            "%ld\n",
            list_len(list), index);
-    exit(-1);
+    abort();
   }
 
   return result.value;

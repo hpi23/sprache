@@ -1,6 +1,6 @@
-#include "./libAnyObj.h"
 #include "dynstring/dynstring.h"
 #include "json-parser/parser.h"
+#include "libAnyObj.h"
 #include "list/list.h"
 #include "reflection.h"
 #include <assert.h>
@@ -10,11 +10,8 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-AnyValue __hpi_internal_anyvalue_from_json(
-        JsonValue value,
-        void *(allocator)(TypeDescriptor),
-        void(trace_allocation)(void * addr, TypeDescriptor type, TypeDescriptor *type_ptr)
-) {
+AnyValue __hpi_internal_anyvalue_from_json(JsonValue value, void *(allocator)(TypeDescriptor),
+                                           void(trace_allocation)(void *addr, TypeDescriptor type, TypeDescriptor *type_ptr)) {
   TypeDescriptor res_type = {.ptr_count = 0, .list_inner = NULL, .obj_fields = NULL};
 
   AnyValue res = {.value = NULL, .type = res_type};
@@ -71,10 +68,14 @@ AnyValue __hpi_internal_anyvalue_from_json(
     res.type.kind = TYPE_LIST;
 
     // Type setup
-    TypeDescriptor inner = {.obj_fields = NULL, .list_inner = NULL, .ptr_count = 0};
     TypeDescriptor *inner_heap = malloc(sizeof(TypeDescriptor));
-    *inner_heap = inner;
-    TypeDescriptor list_type = {.obj_fields = NULL, .ptr_count = 0, .kind = TYPE_LIST, .list_inner = NULL};
+    // TypeDescriptor inner = {.obj_fields = NULL, .list_inner = NULL, .ptr_count = 0};
+    inner_heap->kind = TYPE_NONE;
+    inner_heap->obj_fields = NULL;
+    inner_heap->list_inner = NULL;
+    inner_heap->ptr_count = 0;
+
+    TypeDescriptor list_type = {.obj_fields = NULL, .ptr_count = 0, .kind = TYPE_LIST, .list_inner = inner_heap};
 
     ListNode *list_temp = list_new();
 
@@ -98,19 +99,31 @@ AnyValue __hpi_internal_anyvalue_from_json(
       // the ideal case, this is not even handled by this function Instead, use
       // a different cast function
       list_append(list_temp, converted_ptr);
-
-      inner = converted_ptr->type;
+      *inner_heap = converted_ptr->type;
       // TODO: implement extensive runtime type checking
     }
 
-    if (trace_allocation != NULL)
-      trace_allocation(list_temp, list_type, inner_heap);
+    if (trace_allocation != NULL) {
+      // TODO: clone the inner_heap type spec
 
-    TypeDescriptor *inner_ptr = malloc(sizeof(TypeDescriptor));
-    *inner_ptr = inner;
-    res.type.list_inner = inner_ptr;
+      TypeDescriptor *inner_ptr = malloc(sizeof(TypeDescriptor));
+      *inner_ptr = clone_type(*inner_heap);
 
-    ListNode **temp_list_ptr = malloc(sizeof(ListNode **));
+      trace_allocation(list_temp, list_type, inner_ptr);
+    }
+
+    // TODO: remov all of this!
+    // NOTE: this is needed because if an `AnyValue` is freed, its type is also freed as well.
+    // So if every list element shared the same pointer, there would be double frees.
+    // TypeDescriptor *inner_ptr = malloc(sizeof(TypeDescriptor));
+    // *inner_ptr = clone_type(*inner_heap);
+    res.type.list_inner = inner_heap;
+
+    // ListNode **temp_list_ptr = allocator((TypeDescriptor){.kind = TYPE_LIST, .ptr_count = 1, .list_inner = inner_heap, .obj_fields = NULL});
+    ListNode **temp_list_ptr = malloc(sizeof(ListNode *));
+    trace_allocation(temp_list_ptr, (TypeDescriptor){.kind = TYPE_LIST, .ptr_count = 1, .list_inner = inner_heap, .obj_fields = NULL}, inner_heap);
+
+    // ListNode **temp_list_ptr = malloc(sizeof(ListNode **));
     *temp_list_ptr = list_temp;
     res.value = temp_list_ptr;
 
@@ -170,7 +183,7 @@ AnyValue __hpi_internal_anyvalue_from_json(
   return res;
 }
 
-AnyValue __hpi_internal_parse_json(DynString *input, void *(allocator)(), void(trace_allocation)(void *, TypeDescriptor, TypeDescriptor*)) {
+AnyValue __hpi_internal_parse_json(DynString *input, void *(allocator)(), void(trace_allocation)(void *, TypeDescriptor, TypeDescriptor *)) {
   char *input_cstr = dynstring_as_cstr(input);
 
   NewJsonParserResult create_res = parser_new(input_cstr);
@@ -197,6 +210,9 @@ AnyValue __hpi_internal_parse_json(DynString *input, void *(allocator)(), void(t
 }
 
 JsonValue __hpi_internal_json_value_from_void(TypeDescriptor type, void *value) {
+  puts("JSON marshaling is currently not supported");
+  abort();
+
   JsonValue res = {};
   switch (type.kind) {
   case TYPE_NONE:
