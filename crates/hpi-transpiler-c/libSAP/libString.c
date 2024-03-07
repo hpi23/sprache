@@ -1,7 +1,6 @@
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include "../hpi-c-tests/list/list.h"
+#include "dynstring/dynstring.h"
+#include "list/list.h"
 #include <assert.h>
-#include <stdio.h>
 #include <sys/types.h>
 
 bool __hpi_internal_string_starts_with(DynString *base, DynString *test) {

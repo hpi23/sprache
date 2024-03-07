@@ -17,4 +17,5 @@ typedef struct {
 } Formatter;
 
 Formatter *formatter_new(char *fmt, ListNode *input_args);
+void formatter_free(Formatter *self);
 DynString *formatter_fmt(Formatter *formatter);

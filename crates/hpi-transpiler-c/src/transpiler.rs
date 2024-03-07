@@ -189,6 +189,9 @@ impl<'src> Transpiler<'src> {
                                 result_type: Type::Char(2),
                                 ident: "argv",
                             }),
+                            AnalyzedExpression::Bool(
+                                self.required_includes.contains("./libSAP/libHttp.h"),
+                            ),
                         ],
                     },
                 )))),
@@ -298,6 +301,14 @@ impl<'src> Transpiler<'src> {
                     func: "type_descriptor_teardown".to_string(),
                     args: vec![],
                 })))),
+                if self.required_includes.contains("./libSAP/libHttp.h") {
+                    Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                        func: "__hpi_inernal_curl_cleanup".to_string(),
+                        args: vec![],
+                    }))))
+                } else {
+                    None
+                },
                 Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
                     func: "exit".to_string(),
                     args: vec![Expression::Ident("code".to_string())],

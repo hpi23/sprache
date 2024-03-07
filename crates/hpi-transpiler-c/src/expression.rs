@@ -743,6 +743,13 @@ impl<'src> Transpiler<'src> {
             }
             AnalyzedCallBase::Ident("Http") => {
                 self.required_includes.insert("./libSAP/libHttp.h");
+
+                args.push_back(Expression::Ident(if self.user_config.gc_enable {
+                    "gc_add_to_trace".to_string()
+                } else {
+                    "NULL".to_string()
+                }));
+
                 "__hpi_internal_http".to_string()
             }
             AnalyzedCallBase::Ident("Formatiere") => {
@@ -751,6 +758,13 @@ impl<'src> Transpiler<'src> {
             }
             AnalyzedCallBase::Ident("Zeit") => {
                 self.required_includes.insert("./libSAP/libTime.h");
+
+                args.push_back(Expression::Ident(if self.user_config.gc_enable {
+                    "gc_add_to_trace".to_string()
+                } else {
+                    "NULL".to_string()
+                }));
+
                 "__hpi_internal_time".to_string()
             }
             AnalyzedCallBase::Ident("Schlummere") => {
@@ -764,6 +778,9 @@ impl<'src> Transpiler<'src> {
             AnalyzedCallBase::Ident("__hpi_internal_init_libSAP") => {
                 self.required_includes.insert("./libSAP/libSAP.h");
                 "__hpi_internal_init_libSAP".to_string()
+            }
+            AnalyzedCallBase::Ident("__hpi_inernal_curl_cleanup") => {
+                "__hpi_inernal_curl_cleanup".to_string()
             }
             AnalyzedCallBase::Ident(other) => self
                 .funcs
@@ -889,6 +906,11 @@ impl<'src> Transpiler<'src> {
 
                 new_args.push(Expression::Int(args.len() as i64 - 1));
                 new_args.push(args[0].clone());
+                new_args.push(Expression::Ident(if self.user_config.gc_enable {
+                    "gc_add_to_trace".to_string()
+                } else {
+                    "NULL".to_string()
+                }));
 
                 dbg!(&new_args);
 
@@ -1025,6 +1047,11 @@ impl<'src> Transpiler<'src> {
                             args: vec![
                                 Expression::Ident(from_expr_ident.clone()),
                                 Expression::Ident(self.get_type_reflector(as_type.clone())),
+                                Expression::Ident(if self.user_config.gc_enable {
+                                    "gc_alloc".to_string()
+                                } else {
+                                    "non_tracing_alloc".to_string()
+                                }),
                             ],
                         })),
                         type_: as_type.clone().add_ref().unwrap().into(),

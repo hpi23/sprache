@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 
 AnyValue __hpi_internal_anyvalue_from_json(JsonValue value, void *(allocator)(TypeDescriptor),
@@ -23,6 +24,10 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value, void *(allocator)(Ty
     TypeDescriptor type_descriptor_anyobj = {.ptr_count = 0, .list_inner = NULL, .kind = TYPE_ANY_OBJECT, .obj_fields = NULL};
 
     AnyObject *any_obj = allocator(type_descriptor_anyobj);
+    // JUST TO TEST:
+
+    printf("======%p\n", any_obj->fields->buckets->values);
+
     printf("ALLOCATED ANY_OBJ (leak): %p\n", any_obj);
     // TODO: remove
     // AnyObject *any_obj = anyobj_new();

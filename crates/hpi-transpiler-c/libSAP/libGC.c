@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-#define GC_VERBOSE true
+#define GC_VERBOSE false
 #define GC_PRINT                                                                                                                                     \
   if (GC_VERBOSE)                                                                                                                                    \
   gc_print()
@@ -120,6 +120,7 @@ void gc_free(GCEntry *obj) {
 
   if (obj->type.ptr_count > 0) {
     free(obj->address);
+    obj->address = NULL;
 
     if (GC_VERBOSE)
       puts("gc_free(): Only shallow free, not traversing");
@@ -137,21 +138,26 @@ void gc_free(GCEntry *obj) {
   case TYPE_LIST:
     // TODO: double free when traversing list???
     list_free(obj->address);
+    obj->address = NULL;
     break;
   case TYPE_OBJECT:
     hashmap_free(obj->address);
+    obj->address = NULL;
     break;
   case TYPE_ANY_OBJECT:
     anyobj_free(obj->address);
+    obj->address = NULL;
     break;
   case TYPE_STRING:
     dynstring_free(obj->address);
+    obj->address = NULL;
     break;
   case TYPE_ANY_VALUE: {
     // DO NOT FREE THE INNER VALUE????
     AnyValue *value = obj->address;
     printf("gc_free(): Just leaked inner memory of %p\n", value);
     free(value);
+    obj->address = NULL;
     break;
   }
   default:
@@ -258,6 +264,8 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
   case TYPE_NONE:
     puts(display_type(type));
     assert(0 && "gc_traverse_value(): Unsupported type");
+    abort();
+    break;
   case TYPE_LIST: {
     // TODO: what if list is a pointer?
     TypeDescriptor list_inner = *type.list_inner;
@@ -302,6 +310,7 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
   }
   case TYPE_ANY_OBJECT: {
     AnyObject obj = *(AnyObject *)root;
+    printf("OF ROOT: %p | %s\n", root, display_type(type));
 
     ListNode *keys = hashmap_keys(obj.fields);
     uint key_len = list_len(keys);
@@ -315,11 +324,9 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
 
       AnyValue value = *(AnyValue *)value_res.value;
 
-      assert(value.value != NULL);
-
-      gc_traverse_value(value.value, value.type);
-
-      // TODO: free something???
+      if (value.value != NULL) {
+        gc_traverse_value(value.value, value.type);
+      }
     }
 
     list_free(keys);
@@ -373,6 +380,10 @@ void gc_sweep_rec() {
     return;
   }
 
+  char *type_str;
+  if (GC_VERBOSE)
+    type_str = display_type(remove_entry->type);
+
   int before = gc->entries->used;
   void *removed_addr = remove_entry->address;
 
@@ -382,8 +393,10 @@ void gc_sweep_rec() {
   int nremoved = before - gc->entries->used;
   assert(nremoved > 0);
 
-  if (GC_VERBOSE)
-    printf("gc_sweep(): delete index %d; removed %d object(s) %p.\n", remove_index, nremoved, removed_addr);
+  if (GC_VERBOSE) {
+    printf("gc_sweep_rec(): delete `%s` (index %d); removed %d object(s) %p.\n", type_str, remove_index, nremoved, removed_addr);
+    free(type_str);
+  }
 
   gc_sweep_rec();
 }

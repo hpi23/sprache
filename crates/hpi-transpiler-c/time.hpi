@@ -1,0 +1,34 @@
+beantrage Drucke von Drucker;
+beantrage Formatiere von Textverarbeitung;
+beantrage Zeit von Uhr;
+beantrage Reinigung von FM;
+beantrage ReinigungsPlan von FM;
+beantrage Zergliedere_JSON von Textverarbeitung;
+beantrage Argumente von libSAP;
+beantrage Aufgeben von libSAP;
+
+datentyp Foo auf Objekt {
+    Zahl Jahr /
+    Zahl Monat /
+    Zahl Kalendar_Tag /
+    Zahl Wochentag /
+    Zahl Stunde /
+    Zahl Minute /
+    Zahl Sekunde
+};
+
+funk Bewerbung() ergibt Zeichenkette { "Bitte bitte" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {}
+
+funk Studium() ergibt Nichts {
+    setze Foo a auf erstelle {
+        Zahl Jahr auf 0 /
+        Zahl Monat auf 0 /
+        Zahl Kalendar_Tag auf 0 /
+        Zahl Wochentag auf 0 /
+        Zahl Stunde auf 0 /
+        Zahl Minute auf 0 /
+        Zahl Sekunde auf 0
+    };
+}

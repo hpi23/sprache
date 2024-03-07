@@ -1,0 +1,18 @@
+beantrage Drucke von Drucker;
+beantrage Formatiere von Textverarbeitung;
+beantrage Zeit von Uhr;
+beantrage Reinigung von FM;
+beantrage ReinigungsPlan von FM;
+
+funk Bewerbung() ergibt Zeichenkette { "" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {}
+
+funk Studium() ergibt Nichts {
+    {
+        setze Liste von Zahl Foo auf [ 1 / 2 / 3 ];
+        Drucke(Foo);
+    }
+    Reinigung();
+    ReinigungsPlan();
+}

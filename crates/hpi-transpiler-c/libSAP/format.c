@@ -1,10 +1,14 @@
 #include "./format.h"
 #include "./to_string.h"
+#include "dynstring/dynstring.h"
+#include "list/list.h"
 #include "reflection.h"
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 
 void formatter_next(Formatter *format);
 void formatter_start_escape(Formatter *format);
@@ -22,6 +26,22 @@ Formatter *formatter_new(char *fmt, ListNode *input_args) {
   formatter_next(formatter);
 
   return formatter;
+}
+
+void formatter_free(Formatter *self) {
+  uint args_len = list_len(self->input_args);
+  for (int i = 0; i < args_len; i++) {
+    ListGetResult curr_res = list_at(self->input_args, i);
+    assert(curr_res.found);
+
+    FmtArg *arg = (FmtArg *)curr_res.value;
+    free(arg);
+  }
+
+  list_free(self->input_args);
+
+  free(self->fmt);
+  free(self);
 }
 
 DynString *formatter_fmt(Formatter *fmt) {
@@ -82,6 +102,7 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
 
     dynstring_push_fmt(fmt->output_buf, format_c_str, *(int64_t *)arg.value);
     free(format_c_str);
+    dynstring_free(fmt_specifier);
 
     break;
   }

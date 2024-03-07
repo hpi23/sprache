@@ -188,7 +188,9 @@ void json_value_object_free(JsonValueObject obj) {
   ListNode *keys = keys_start;
   while (keys != NULL) {
     char *key = (char *)keys->value;
-    assert(key != NULL);
+    if (key == NULL) {
+        break;
+    }
 
     MapGetResult value = hashmap_get(obj.fields, key);
     assert(value.found);

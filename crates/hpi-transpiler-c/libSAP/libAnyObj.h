@@ -20,4 +20,4 @@ AnyValue __hpi_internal_anyobj_take(AnyObject *obj, DynString *key);
 void anyobj_insert(AnyObject *obj, char *key, AnyValue value);
 
 // Runtime type casting
-void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type);
+void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type, void *(allocator)(TypeDescriptor type));

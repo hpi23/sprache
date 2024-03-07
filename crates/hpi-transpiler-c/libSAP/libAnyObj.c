@@ -1,5 +1,6 @@
 #include "./libAnyObj.h"
 #include "hashmap/map.h"
+#include "list/list.h"
 #include "reflection.h"
 #include <assert.h>
 #include <stddef.h>
@@ -20,16 +21,16 @@ AnyObject *anyobj_new() {
   return obj;
 }
 
-void anyobj_free(AnyObject * obj) {
-    // BUG: this might also create a memory leak?
-    // RECURSIVE VALUES ARE NOT FREED
+void anyobj_free(AnyObject *obj) {
+  // BUG: this might also create a memory leak?
+  // RECURSIVE VALUES ARE NOT FREED
 
-    puts("anyobj_free(): Leaked memory");
+  puts("anyobj_free(): Leaked memory");
 
-    hashmap_free(obj->fields);
-    free(obj);
+  hashmap_free(obj->fields);
+  free(obj);
 
-    // assert(0 && "Not implemented");
+  // assert(0 && "Not implemented");
 }
 
 AnyValue __hpi_internal_anyobj_take(AnyObject *obj, DynString *key) {
@@ -67,17 +68,19 @@ ListNode *__hpi_internal_anyobj_keys(AnyObject *obj) {
 }
 
 // TODO: this leaks a lot of memory!!!
-void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type) {
+void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type, void *(allocator)(TypeDescriptor type)) {
   // Detect basic type mismatch
-  if (from.type.kind != as_type.kind ||
-      from.type.ptr_count != as_type.ptr_count) {
+  if (from.type.kind != as_type.kind || from.type.ptr_count != as_type.ptr_count) {
 
+    // TODO: remove leaks from here
     if (from.type.kind == TYPE_FLOAT && as_type.kind == TYPE_INT) {
-      int64_t *as_int = malloc(sizeof(int64_t));
+      // int64_t *as_int = malloc(sizeof(int64_t));
+      int64_t *as_int = allocator((TypeDescriptor){.obj_fields = NULL, .ptr_count = 1, .list_inner = NULL, .kind = TYPE_INT});
       *as_int = (int64_t) * (double *)from.value;
       return as_int;
     } else if (from.type.kind == TYPE_INT && as_type.kind == TYPE_FLOAT) {
-      double *as_double = malloc(sizeof(double));
+      // double *as_double = malloc(sizeof(double));
+      double *as_double = allocator((TypeDescriptor){.obj_fields = NULL, .ptr_count = 1, .list_inner = NULL, .kind = TYPE_FLOAT});
       *as_double = (double)*(int64_t *)from.value;
       return as_double;
     }
@@ -105,17 +108,19 @@ void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type) {
       assert(res.found);
 
       AnyValue *val = (AnyValue *)res.value;
-      list_append(new_list,
-                  __hpi_internal_runtime_cast(*val, *as_type.list_inner));
+      list_append(new_list, __hpi_internal_runtime_cast(*val, *as_type.list_inner, allocator));
 
       // cleanup
-      free(res.value);
+      // free(res.value);
     }
 
     // cleanup
-    list_free(old_list);
+    // list_free(old_list);
 
-    ListNode **list_ptr = malloc(sizeof(ListNode *));
+    // ListNode **list_ptr = malloc(sizeof(ListNode *));
+
+    ListNode **list_ptr = allocator((TypeDescriptor){.kind = TYPE_LIST, .list_inner = as_type.list_inner, .ptr_count = 1, .obj_fields = NULL});
+
     *list_ptr = new_list;
     return list_ptr;
   }

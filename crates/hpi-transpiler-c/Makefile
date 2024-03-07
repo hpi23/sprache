@@ -3,6 +3,7 @@
 HPI_FILE:=test.hpi
 DEBUG:=true
 CFLAGS:=-ggdb3
+VG_EXEC:=./main
 
 run: main
 	./main
@@ -28,7 +29,8 @@ valgrind: main
 	valgrind --leak-check=full \
          --show-leak-kinds=all \
          --track-origins=yes \
-         --verbose ./main
+		 --suppressions=valgrind.suppressions \
+         $(VG_EXEC)
 
 init_wrapper:
 	# bash fetch_deps.sh

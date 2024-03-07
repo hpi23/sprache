@@ -1,5 +1,6 @@
-#include "../hpi-c-tests/dynstring/dynstring.h"
-#include "../hpi-c-tests/hashmap/map.h"
+#include "dynstring/dynstring.h"
+#include "hashmap/map.h"
+#include "reflection.h"
 #include <assert.h>
 #include <curl/curl.h>
 #include <errno.h>
@@ -18,14 +19,12 @@ size_t curl_write(char *ptr, size_t size, size_t nmemb, void *stream) {
 }
 
 // Returns the HTTP status code
-int64_t __hpi_internal_http(
-    DynString *method, // HTTP method
-    DynString *url,    // Request URL
-    DynString *body,   // Request body
-    ListNode *
-        headers_input, // contains objects with `key=Schlüssel` and `value=Wert`
-    DynString **body_dest // Pointer to read the response body into
-) {
+int64_t __hpi_internal_http(DynString *method,       // HTTP method
+                            DynString *url,          // Request URL
+                            DynString *body,         // Request body
+                            ListNode *headers_input, // contains objects with `key=Schlüssel` and `value=Wert`
+                            DynString **body_dest,   // Pointer to read the response body into
+                            void(trace_alloc)(void *addr, TypeDescriptor type, TypeDescriptor *type_heap)) {
   body_buf = *body_dest;
   dynstring_clear(body_buf);
 
@@ -40,7 +39,7 @@ int64_t __hpi_internal_http(
 
   curl = curl_easy_init();
   if (!curl) {
-    fprintf(stderr, "Runtime error: curl_easy_init failed.\n");
+    fprintf(stderr, "Runtime error: curl_easy_init() failed.\n");
     exit(-1);
   }
 
@@ -70,11 +69,18 @@ int64_t __hpi_internal_http(
     MapGetResult value_res = hashmap_get(header, "Wert");
     assert(value_res.found);
 
+    // TODO: does this modify the parameter without the knowledge of the user?
     DynString *header_entry = *(DynString **)key_res.value;
-    dynstring_push_string(header_entry, ": ");
-    dynstring_push(header_entry, *(DynString **)value_res.value);
 
-    headers = curl_slist_append(headers, dynstring_as_cstr(header_entry));
+    DynString *header_entry_cloned = dynstring_clone(header_entry);
+
+    dynstring_push_string(header_entry_cloned, ": ");
+    dynstring_push(header_entry_cloned, *(DynString **)value_res.value);
+
+    char *c_str_header = dynstring_as_cstr(header_entry_cloned);
+    headers = curl_slist_append(headers, c_str_header);
+    free(c_str_header);
+    dynstring_free(header_entry_cloned);
   }
 
   // printf("headers: `%s`\n", headers->data);
@@ -85,11 +91,11 @@ int64_t __hpi_internal_http(
   char *method_cstr = dynstring_as_cstr(method);
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method_cstr);
 
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, dynstring_as_cstr(body));
+  char *post_fields_cstr = dynstring_as_cstr(body);
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_fields_cstr);
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, -1L);
 
   char *url_cstr = dynstring_as_cstr(url);
-
   curl_easy_setopt(curl, CURLOPT_URL, url_cstr);
 
   curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
@@ -98,8 +104,6 @@ int64_t __hpi_internal_http(
   char *response;
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-
-  // dynstring_set(body_buf, response);
 
   res = curl_easy_perform(curl);
 
@@ -115,7 +119,13 @@ int64_t __hpi_internal_http(
 cleanup:
   curl_slist_free_all(headers);
   curl_easy_cleanup(curl);
+
+  free(method_cstr);
+  free(post_fields_cstr);
+  free(url_cstr);
   errno = 0;
 
   return http_code;
 }
+
+void __hpi_inernal_curl_cleanup() { curl_global_cleanup(); }

@@ -1,0 +1,100 @@
+beantrage Geld von Hasso;
+beantrage Drucke von Drucker;
+beantrage Http von Netzwerk;
+beantrage Gliedere_JSON von Textverarbeitung;
+beantrage Zergliedere_JSON von Textverarbeitung;
+beantrage Formatiere von Textverarbeitung;
+beantrage Aufgeben von libSAP;
+beantrage Umgebungsvariablen von libSAP;
+beantrage Argumente von libSAP;
+beantrage Zeit von Uhr;
+
+datentyp Speise auf Objekt {
+    Zeichenkette ZeitSlot /
+    Zeichenkette Titel /
+    Zeichenkette Beschreibung /
+    Fließkommazahl Preis /
+};
+
+setze Zahl MENSA_FILMUNI auf 9603;
+setze Zahl MENSA_GRIEBNITZSEE auf 9601;
+
+setze Zeichenkette MENSA_URL_GENERISCH auf "https://swp.webspeiseplan.de/index.php?token=55ed21609e26bbf68ba2b19390bf7961&model=menu&location=%d&languagetype=2&_=1699354619713";
+
+funk Bewerbung() ergibt Zeichenkette { "Hallo Welt!" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+  setze Zahl _ auf Matrikelnummer;
+}
+
+funk Studium() ergibt Nichts {
+    Aktualisiere(MENSA_GRIEBNITZSEE);
+}
+
+funk Aktualisiere(Zahl Mensa_Ort) ergibt Nichts {
+    setze Liste von Speise Speisen auf Lade_Speiseangebot(Mensa_Ort);
+}
+
+funk Lade_Speiseangebot(Zahl Mensa_Ort) ergibt Liste von Speise {
+    setze Zeichenkette Körper auf "";
+    setze Zahl Antwort_Zahl auf Http(
+        "GET" /
+        Formatiere(MENSA_URL_GENERISCH / Mensa_Ort) /
+        "" /
+        [
+            erstelle {
+                Zeichenkette Schlüssel auf "Referer" /
+                Zeichenkette Wert auf "https://swp.webspeiseplan.de/menu" /
+            }
+        ] /
+        &Körper /
+    );
+
+    falls Antwort_Zahl != 200 {
+        Aufgeben(1);
+    }
+
+    setze Speicherbox Res auf Zergliedere_JSON(Körper) als Speicherbox;
+    setze Liste von Speicherbox ContentRes auf Res.Nehmen("content") als Liste von Speicherbox;
+    setze Zahl Zähler auf 0;
+
+    setze Liste von Speise Resultat auf [];
+
+    solange Zähler < ContentRes.Länge() {
+        setze Speicherbox ResTemp auf ContentRes[Zähler];
+        setze Liste von Speicherbox Gerichte auf ResTemp.Nehmen("speiseplanGerichtData") als Liste von Speicherbox;
+        setze Speicherbox SpeiseplanAdvanced auf ResTemp.Nehmen("speiseplanAdvanced") als Speicherbox;
+        setze Zeichenkette ZeitSlot auf SpeiseplanAdvanced.Nehmen("titel") als Zeichenkette;
+
+        setze Zahl Gerichtzähler auf 0;
+        solange (Gerichtzähler < Gerichte.Länge()) {
+             setze Speicherbox Gericht auf Gerichte[Gerichtzähler];
+             Gerichtzähler += 1;
+
+             setze Speicherbox ZusatzInfos auf Gericht.Nehmen("zusatzinformationen") als Speicherbox;
+             setze Fließkommazahl Preis auf ZusatzInfos.Nehmen("mitarbeiterpreisDecimal2") als Fließkommazahl;
+             setze Speicherbox GerichtInfos auf Gericht.Nehmen("speiseplanAdvancedGericht") als Speicherbox;
+             setze Zeichenkette GerichtDatumRoh auf GerichtInfos.Nehmen("datum") als Zeichenkette;
+             setze Zeichenkette GerichtDatum auf GerichtDatumRoh.Zertrenne("T")[0];
+             //setze Zeichenkette HeuteDatum auf Formatiere("%d-%2d-%2d" / Zeit().Jahr / Zeit().Monat / Zeit().Kalendar_Tag);
+             //setze Zeichenkette Gerichtname auf GerichtInfos.Nehmen("gerichtname") als Zeichenkette;
+             //falls (GerichtDatum != HeuteDatum)
+                 //|| (Gerichtname.Startet_Mit("Salatbuffet"))
+                 //|| (Gerichtname.Enthält("Relevo")) {
+                 //// Drucke("Überspringe" / Gerichtname / GerichtDatum / HeuteDatum);
+                 //weitermachen;
+             //}
+             //Resultat.Hinzufügen(erstelle {
+                 //Zeichenkette ZeitSlot auf ZeitSlot /
+                 //Zeichenkette Titel auf Formatiere("Angebot %d" / Resultat.Länge() + 1) /
+                 //Zeichenkette Beschreibung auf Gerichtname /
+                 //Fließkommazahl Preis auf Preis /
+             //});
+
+        }
+
+        Zähler += 1;
+    }
+
+    Resultat
+}

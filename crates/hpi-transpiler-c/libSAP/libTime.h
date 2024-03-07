@@ -1,5 +1,6 @@
 #pragma once
 #include "hashmap/map.h"
+#include "reflection.h"
 
 typedef struct {
     int64_t year;
@@ -12,4 +13,4 @@ typedef struct {
 } TimeStruct;
 
 TimeStruct __hpi_internal_time_provider();
-HashMap *__hpi_internal_time();
+HashMap *__hpi_internal_time(void(tracer)(void *addr, TypeDescriptor type, TypeDescriptor *type_heap));

@@ -7,6 +7,7 @@
 #include "reflection.h"
 #include "to_string.h"
 #include <assert.h>
+#include <curl/curl.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -56,10 +57,10 @@ void __hpi_internal_print(ssize_t num_args, ...) {
   va_end(args);
 }
 
-DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, ...) {
+DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, void(tracer)(void *addr, TypeDescriptor type, TypeDescriptor *type_heap), ...) {
   va_list args;
 
-  va_start(args, fmt);
+  va_start(args, tracer);
 
   char *fmt_str = dynstring_as_cstr(fmt);
 
@@ -67,7 +68,7 @@ DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, ...) {
   ListNode *input_args = input_args_temp;
 
   for (int i = 0; i < num_args; i++) {
-    FmtArg *fmt_arg = malloc(sizeof(FmtArg));
+    // FmtArg *fmt_arg = malloc(sizeof(FmtArg));
     TypeDescriptor fmt_type = va_arg(args, TypeDescriptor);
     FmtArg *arg = (FmtArg *)malloc(sizeof(FmtArg));
     arg->value = va_arg(args, void *);
@@ -78,7 +79,11 @@ DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, ...) {
   Formatter *formatter = formatter_new(fmt_str, input_args);
   DynString *output = formatter_fmt(formatter);
 
-  list_free(input_args_temp);
+  if (tracer != NULL) {
+    tracer(output, (TypeDescriptor){.kind = TYPE_STRING, .ptr_count = 0, .list_inner = NULL, .obj_fields = NULL}, NULL);
+  }
+
+  formatter_free(formatter);
 
   return output;
 }
@@ -148,7 +153,10 @@ ListNode *__hpi_internal_args(void *(allocator)(TypeDescriptor type), void(trace
   return list;
 }
 
-void __hpi_internal_init_libSAP(size_t p_argc, char **p_argv) {
+void __hpi_internal_init_libSAP(size_t p_argc, char **p_argv, bool init_curl) {
   argc = p_argc;
   argv = p_argv;
+
+  if (init_curl)
+    curl_global_init(CURL_GLOBAL_DEFAULT);
 }
