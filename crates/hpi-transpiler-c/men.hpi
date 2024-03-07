@@ -68,15 +68,15 @@ funk Lade_Speiseangebot(Zahl Mensa_Ort) ergibt Liste von Speise {
 
         setze Zahl Gerichtzähler auf 0;
         solange (Gerichtzähler < Gerichte.Länge()) {
-             setze Speicherbox Gericht auf Gerichte[Gerichtzähler];
+             //setze Speicherbox Gericht auf Gerichte[Gerichtzähler];
              Gerichtzähler += 1;
 
-             setze Speicherbox ZusatzInfos auf Gericht.Nehmen("zusatzinformationen") als Speicherbox;
-             setze Fließkommazahl Preis auf ZusatzInfos.Nehmen("mitarbeiterpreisDecimal2") als Fließkommazahl;
-             setze Speicherbox GerichtInfos auf Gericht.Nehmen("speiseplanAdvancedGericht") als Speicherbox;
-             setze Zeichenkette GerichtDatumRoh auf GerichtInfos.Nehmen("datum") als Zeichenkette;
-             setze Zeichenkette GerichtDatum auf GerichtDatumRoh.Zertrenne("T")[0];
-             //setze Zeichenkette HeuteDatum auf Formatiere("%d-%2d-%2d" / Zeit().Jahr / Zeit().Monat / Zeit().Kalendar_Tag);
+             //setze Speicherbox ZusatzInfos auf Gericht.Nehmen("zusatzinformationen") als Speicherbox;
+             //setze Fließkommazahl Preis auf ZusatzInfos.Nehmen("mitarbeiterpreisDecimal2") als Fließkommazahl;
+             //setze Speicherbox GerichtInfos auf Gericht.Nehmen("speiseplanAdvancedGericht") als Speicherbox;
+             //setze Zeichenkette GerichtDatumRoh auf GerichtInfos.Nehmen("datum") als Zeichenkette;
+             //setze Zeichenkette GerichtDatum auf GerichtDatumRoh.Zertrenne("T")[0];
+             setze Zeichenkette HeuteDatum auf Formatiere("%d" / Zeit().Sekunde);
              //setze Zeichenkette Gerichtname auf GerichtInfos.Nehmen("gerichtname") als Zeichenkette;
              //falls (GerichtDatum != HeuteDatum)
                  //|| (Gerichtname.Startet_Mit("Salatbuffet"))

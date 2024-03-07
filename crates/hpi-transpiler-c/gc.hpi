@@ -12,17 +12,19 @@ funk Bewerbung() ergibt Zeichenkette { "Bitte bitte" }
 funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {}
 
 funk Studium() ergibt Nichts {
-    setze Liste von Zeichenkette Args auf Argumente();
-    falls Args.Länge() == 1 {
-        Drucke("Erwartete Befehlszeilenargument <mensa-ort>, bekam nichts");
-        Reinigung();
-        Aufgeben(69);
-    }
+     // setze Liste von Zeichenkette Args auf Argumente();
+     // falls Args.Länge() == 1 {
+         // Drucke("Erwartete Befehlszeilenargument <mensa-ort>, bekam nichts");
+         // Reinigung();
+         // Aufgeben(69);
+     // }
+    //
+     // {
+         // setze Zeichenkette Foo auf "{\"key\": [ 1, 2, 3 ]}";
+         // Zergliedere_JSON(Foo) als Speicherbox;
+     // }
 
-    {
-        setze Zeichenkette Foo auf "{\"key\": [ 1, 2, 3 ]}";
-        Zergliedere_JSON(Foo) als Speicherbox;
-    }
-
+    //setze Zeichenkette HeuteDatum auf Formatiere("%d" / Zeit().Sekunde);
+    Drucke(Zeit().Sekunde);
     Reinigung();
 }

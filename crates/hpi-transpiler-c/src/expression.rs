@@ -874,6 +874,13 @@ impl<'src> Transpiler<'src> {
                         (Type::String(0), "Zertrenne") => {
                             self.required_includes.insert("./libSAP/libString.h");
                             args.push_front(member_expr.expect("A string always produces a value"));
+
+                            args.push_back(Expression::Ident(if self.user_config.gc_enable {
+                                "gc_add_to_trace".to_string()
+                            } else {
+                                "NULL".to_string()
+                            }));
+
                             "__hpi_internal_string_split".to_string()
                         }
                         (Type::String(0), "Startet_Mit") => {

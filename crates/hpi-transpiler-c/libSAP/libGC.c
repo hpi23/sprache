@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-#define GC_VERBOSE false
+#define GC_VERBOSE true
 #define GC_PRINT                                                                                                                                     \
   if (GC_VERBOSE)                                                                                                                                    \
   gc_print()
@@ -173,6 +173,7 @@ _free:
     }
     free_type(obj->associated_type_heap);
   }
+
   free(obj);
   return;
 
@@ -202,7 +203,12 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
     printf("gc_traverse_value(): marked address %p\n", obj->address);
 
   if (type.ptr_count > 0) {
-    TypeDescriptor new_type = {.ptr_count = type.ptr_count - 1, .kind = type.kind, .list_inner = type.list_inner, .obj_fields = type.obj_fields};
+    TypeDescriptor new_type = {
+        .ptr_count = type.ptr_count - 1,
+        .kind = type.kind,
+        .list_inner = type.list_inner,
+        .obj_fields = type.obj_fields,
+    };
     void *new_ptr = NULL;
 
     switch (type.kind) {
@@ -245,8 +251,9 @@ void gc_traverse_value(void *root, TypeDescriptor type) {
     free(from_type_str);
     free(new_type_str);
 
-    if (type.ptr_count > 1)
+    if (type.ptr_count > 1) {
       gc_traverse_value(root, new_type);
+    }
     return;
   }
 
@@ -469,7 +476,7 @@ void _gc_print(GC *self) {
 
     char *type_str = display_type(curr->type);
 
-    printf("    - %p | type: %s | marked: %d\n", curr->address, type_str, curr->marked);
+    printf("    - %p | marked: %d | type-heap: %p | type: %s\n", curr->address, curr->marked, curr->associated_type_heap, type_str);
 
     free(type_str);
   }

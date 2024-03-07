@@ -1,0 +1,35 @@
+beantrage Drucke von Drucker;
+beantrage Formatiere von Textverarbeitung;
+beantrage Zeit von Uhr;
+beantrage Reinigung von FM;
+beantrage ReinigungsPlan von FM;
+beantrage Zergliedere_JSON von Textverarbeitung;
+beantrage Argumente von libSAP;
+beantrage Aufgeben von libSAP;
+
+funk Bewerbung() ergibt Zeichenkette { "Bitte bitte" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {}
+
+funk Studium() ergibt Nichts {
+    setze Liste von Zeichenkette Args auf Argumente();
+    falls Args.Länge() == 1 {
+        Drucke("Erwartete Befehlszeilenargument <BESTTUNG>, bekam nichts");
+        Reinigung();
+        Aufgeben(69);
+    }
+
+    falls Args[1] == "JA" {
+        Drucke("********************************************************");
+        Drucke("*  FAHRE HPI script version V0.1.3 für LINUX           *");
+        Drucke("*  MÜLLSAMMLER_AKTIV                                   *");
+        Drucke("********************************************************");
+    } sonst {
+        Drucke("********************************************************");
+        Drucke("*  FAHRE HPI script version V0.1.3 für LINUX           *");
+        Drucke("*  HAVARIE: ILLEGALES ARGUMENT                         *");
+        Drucke("********************************************************");
+    }
+
+    Reinigung();
+}

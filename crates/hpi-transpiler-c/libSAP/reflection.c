@@ -131,26 +131,27 @@ void free_type(TypeDescriptor *type) {
     break;
   case TYPE_OBJECT: {
     ListNode *keys = hashmap_keys(type->obj_fields);
-
-    uint key_len = list_len(keys);
+    int key_len = list_len(keys);
     for (int i = 0; i < key_len; i++) {
       ListGetResult curr_res = list_at(keys, i);
       assert(curr_res.found);
 
       TypeDescriptor *curr = (TypeDescriptor *)curr_res.value;
-      free_type(curr);
+      // free_type(curr);
     }
 
     list_free(keys);
+    hashmap_free(type->obj_fields);
     break;
   }
   default: {
     char *type_str = display_type(*type);
-    printf("free_type(): Unsupported type: %s\n", type_str);
+    printf("free_type(): (addr = %p) Unsupported type: %s (%d; %ld)\n", type, type_str, type->kind, type->ptr_count);
     free(type_str);
     abort();
   }
   }
+
   free(type);
 }
 
