@@ -32,7 +32,7 @@ typedef struct {
   // is only updated if the memory is freed or allocated.
 } GC;
 
-void gc_init(bool clean_up_on_exit);
+void gc_init(bool clean_up_on_exit, bool verbose);
 void gc_add_to_trace(void *address, TypeDescriptor type, TypeDescriptor * type_to_free);
 void *gc_alloc(TypeDescriptor type);
 void gc_add_root(void *address, TypeDescriptor type, char *origin);

@@ -11,7 +11,6 @@ fn main() {
         emit_comments: env::args().nth(2).expect("<emit-comments> is required") == "1",
         emit_readable_names: env::args().nth(3).expect("<emit-readable-names> is required") == "1",
         gc_enable: env::args().nth(4).expect("<gc-enable> is required") == "1",
-        gc_cleanup_on_exit: env::args().nth(5).expect("<gc-cleanup-on-exit> is required") == "1",
     };
 
     let (out, diagnostics) =

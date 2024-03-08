@@ -2,6 +2,7 @@
 #include "list/list.h"
 #include "reflection.h"
 #include <assert.h>
+#include <stdint.h>
 #include <sys/types.h>
 
 bool __hpi_internal_string_starts_with(DynString *base, DynString *test) {
@@ -49,3 +50,10 @@ ListNode *__hpi_internal_string_split(DynString *base, DynString *delim, void(tr
 
   return res;
 }
+
+DynString *__hpi_internal_string_repeat(DynString *base, int64_t repeat_n) {
+  dynstring_repeat(base, repeat_n);
+  return base;
+}
+
+int64_t __hpi_internal_string_length(DynString *base) { return base->length; }

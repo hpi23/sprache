@@ -6,25 +6,64 @@ beantrage ReinigungsPlan von FM;
 beantrage Zergliedere_JSON von Textverarbeitung;
 beantrage Argumente von libSAP;
 beantrage Aufgeben von libSAP;
+beantrage Versions_Nummer von libSAP;
 
 funk Bewerbung() ergibt Zeichenkette { "Bitte bitte" }
 
 funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {}
 
 funk Studium() ergibt Nichts {
-     // setze Liste von Zeichenkette Args auf Argumente();
-     // falls Args.Länge() == 1 {
-         // Drucke("Erwartete Befehlszeilenargument <mensa-ort>, bekam nichts");
-         // Reinigung();
-         // Aufgeben(69);
-     // }
-    //
-     // {
-         // setze Zeichenkette Foo auf "{\"key\": [ 1, 2, 3 ]}";
-         // Zergliedere_JSON(Foo) als Speicherbox;
-     // }
+      setze Liste von Zeichenkette Args auf Argumente();
+      falls Args.Länge() == 1 {
+          Drucke("Erwartete Befehlszeilenargument <mensa-ort>, bekam nichts");
+          Reinigung();
+          Aufgeben(69);
+      }
+
+      {
+          setze Zeichenkette Foo auf "{\"key\": [ 1, 2, 3 ]}";
+          Zergliedere_JSON(Foo) als Speicherbox;
+     }
 
     //setze Zeichenkette HeuteDatum auf Formatiere("%d" / Zeit().Sekunde);
-    Drucke(Zeit().Sekunde);
+    //Drucke(Zeit().Sekunde);
+
+    // BEGIN_MAINFRAME_PRINT
+    setze Zahl Breite auf 100;
+    Drucke("*".Mal(Breite));
+
+    setze Liste von Zeichenkette Zeilen auf [
+        Formatiere("- Fahre HPI Skript Version Nummber <%s>." / Versions_Nummer()) /
+        "- Gebaut mit dem HPI Sckript C Übersetzer." /
+        Formatiere(
+            "- C Konstrukte gebaut am %02d.%02d.02 um %02d:%02d:%02d" /
+            Zeit().Kalendar_Tag / Zeit().Monat / Zeit().Jahr / Zeit().Stunde / Zeit().Minute / Zeit().Sekunde
+        ) /
+    ];
+
+    //iteriere mit Zeile über Zeilen {
+    //
+    //}
+
+    setze Zahl Z auf 0;
+    solange Z < Zeilen.Länge() {
+        setze Fließkommazahl PufferBreite auf ((Breite - Zeilen[Z].Länge()) als Fließkommazahl : 2F);
+
+        solange (PufferBreite.AufRunden() + Zeilen[Z].Länge() + PufferBreite.AbRunden()) < Breite {
+            PufferBreite -= 1F;
+            ändere PufferBreite auf PufferBreite.AbRunden() als Fließkommazahl;
+        }
+
+        setze Zeichenkette PufferL auf " ".Mal(PufferBreite.AufRunden());
+        setze Zeichenkette PufferR auf " ".Mal(PufferBreite.AbRunden());
+
+        Drucke(Formatiere("*%s%s%s*" / PufferL / Zeilen[Z] / PufferR));
+
+        //erhöhe Z um 1;
+        Z += 1;
+    }
+
+    Drucke("*".Mal(Breite));
+
     Reinigung();
 }

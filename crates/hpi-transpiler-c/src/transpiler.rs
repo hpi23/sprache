@@ -16,8 +16,6 @@ pub struct TranspileArgs {
     pub emit_readable_names: bool,
     /// If enabled, GC code is inserted into the final program.
     pub gc_enable: bool,
-    /// If enabled, the GC runs a final time before exiting
-    pub gc_cleanup_on_exit: bool,
 }
 
 pub struct Transpiler<'src> {
@@ -155,20 +153,6 @@ impl<'src> Transpiler<'src> {
                         args: vec![],
                     },
                 )))),
-                if self.user_config.gc_enable {
-                    // Initialize the garbage collector.
-                    Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
-                        AnalyzedCallExpr {
-                            result_type: Type::Nichts,
-                            func: AnalyzedCallBase::Ident("gc_init"),
-                            args: vec![AnalyzedExpression::Bool(
-                                self.user_config.gc_cleanup_on_exit,
-                            )],
-                        },
-                    ))))
-                } else {
-                    None
-                },
                 Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
                     AnalyzedCallExpr {
                         result_type: Type::Nichts,
@@ -192,6 +176,7 @@ impl<'src> Transpiler<'src> {
                             AnalyzedExpression::Bool(
                                 self.required_includes.contains("./libSAP/libHttp.h"),
                             ),
+                            AnalyzedExpression::Bool(self.user_config.gc_enable),
                         ],
                     },
                 )))),

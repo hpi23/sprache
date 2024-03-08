@@ -99,9 +99,8 @@ HashMap *__hpi_internal_time(void(tracer)(void *addr, TypeDescriptor type, TypeD
   obj->list_inner = NULL;
   obj->obj_fields = hashmap_new();
 
-  const int len = 1;
-  // char *keys[1] = {"Sekunde"};
-  int64_t *ptrs[1] = {NULL};
+#define len 7
+  char *keys[len] = {"Sekunde", "Minute", "Stunde", "Wochentag", "Kalendar_Tag", "Monat", "Jahr"};
 
   HashMap *map = hashmap_new();
 
@@ -130,11 +129,11 @@ HashMap *__hpi_internal_time(void(tracer)(void *addr, TypeDescriptor type, TypeD
       *ptr = current.second;
       break;
     }
-    hashmap_insert(map, "Sekunde", ptr);
+    hashmap_insert(map, keys[i], ptr);
 
     TypeDescriptor *type_descriptor_Zahl = malloc(sizeof(TypeDescriptor));
     *type_descriptor_Zahl = (TypeDescriptor){.kind = TYPE_INT, .ptr_count = 1, .list_inner = NULL, .obj_fields = NULL};
-    hashmap_insert(obj->obj_fields, "Sekunde", type_descriptor_Zahl);
+    hashmap_insert(obj->obj_fields, keys[i], type_descriptor_Zahl);
 
     if (tracer != NULL) {
       TypeDescriptor *type_descriptor_Zahl2 = malloc(sizeof(TypeDescriptor));

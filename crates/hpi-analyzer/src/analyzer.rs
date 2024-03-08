@@ -435,6 +435,9 @@ impl<'src> Analyzer<'src> {
             ("Aufgeben", "libSAP") => {
                 self.builtin_functions.insert("Aufgeben", BuiltinFunction::new(ParamTypes::Normal(vec![Type::Int(0)]), Type::Never));
             },
+            ("Versions_Nummer", "libSAP") => {
+                self.builtin_functions.insert("Versions_Nummer", BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::String(0)));
+            },
             ("Umgebungsvariablen", "libSAP") => {
                 self.builtin_functions.insert("Umgebungsvariablen", BuiltinFunction::new(ParamTypes::Normal(vec![]), Type::AnyObject(0)));
             },
@@ -2597,6 +2600,22 @@ impl<'src> Analyzer<'src> {
         });
 
         let members = match &type_ {
+            Type::Float(0) => HashMap::from([
+                (
+                    "AufRunden".to_string(),
+                    Type::Function {
+                        params: vec![],
+                        result_type: Box::new(Type::Int(0)),
+                    },
+                ),
+                (
+                    "AbRunden".to_string(),
+                    Type::Function {
+                        params: vec![],
+                        result_type: Box::new(Type::Int(0)),
+                    },
+                ),
+            ]),
             Type::AnyObject(0) => HashMap::from([
                 (
                     "Schlüssel".to_string(),
@@ -2691,6 +2710,20 @@ impl<'src> Analyzer<'src> {
                     Type::Function {
                         params: vec![Type::String(0), Type::String(0)],
                         result_type: Box::new(Type::String(0)),
+                    },
+                ),
+                (
+                    "Mal".to_string(),
+                    Type::Function {
+                        params: vec![Type::Int(0)],
+                        result_type: Box::new(Type::String(0)),
+                    },
+                ),
+                (
+                    "Länge".to_string(),
+                    Type::Function {
+                        params: vec![],
+                        result_type: Box::new(Type::Int(0)),
                     },
                 ),
                 (

@@ -12,7 +12,8 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-#define GC_VERBOSE true
+bool GC_VERBOSE = false;
+
 #define GC_PRINT                                                                                                                                     \
   if (GC_VERBOSE)                                                                                                                                    \
   gc_print()
@@ -27,7 +28,8 @@ GC *gc_new(bool clean_up_on_exit) {
   return new;
 }
 
-void gc_init(bool clean_up_on_exit) {
+void gc_init(bool clean_up_on_exit, bool verbose) {
+  GC_VERBOSE = verbose;
   gc = gc_new(clean_up_on_exit);
   assert(gc != NULL);
 }
@@ -153,9 +155,7 @@ void gc_free(GCEntry *obj) {
     obj->address = NULL;
     break;
   case TYPE_ANY_VALUE: {
-    // DO NOT FREE THE INNER VALUE????
     AnyValue *value = obj->address;
-    printf("gc_free(): Just leaked inner memory of %p\n", value);
     free(value);
     obj->address = NULL;
     break;

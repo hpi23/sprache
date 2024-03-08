@@ -25,8 +25,6 @@ void anyobj_free(AnyObject *obj) {
   // BUG: this might also create a memory leak?
   // RECURSIVE VALUES ARE NOT FREED
 
-  puts("anyobj_free(): Leaked memory");
-
   hashmap_free(obj->fields);
   free(obj);
 

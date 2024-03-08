@@ -72,7 +72,7 @@ impl<'src> Transpiler<'src> {
                 //         ("column".to_string(), Expression::Int(loc.column() as i64))
                 //     ]),
                 // }),
-                Expression::StringLiteral(expr.to_string()),
+                Expression::StringLiteral(expr.to_string().replace('\"', "\\\"").replace('\n', "<newline>")),
             ],
         }))));
         // Expression::Call(Box::new(CallExpr {

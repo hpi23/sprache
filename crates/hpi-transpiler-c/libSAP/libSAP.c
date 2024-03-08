@@ -1,5 +1,6 @@
 #include "dynstring/dynstring.h"
 #include "format.h"
+#include "hashmap/map.h"
 #include "libAnyObj.h"
 #include "libGC.h"
 #include "libTime.h"
@@ -15,6 +16,15 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+const Semver LIBSAP_VERSION = {
+    .major = 0,
+    .minor = 1,
+    .patch = 0,
+};
+
+char *GC_CLEANUP_KEY = "LIBSAP_GC_CLEANUP_ON_EXIT";
+char *GC_VERBOSE_KEY = "LIBSAP_GC_CLEANUP_VERBOSE";
 
 size_t argc;
 char **argv;
@@ -153,10 +163,49 @@ ListNode *__hpi_internal_args(void *(allocator)(TypeDescriptor type), void(trace
   return list;
 }
 
-void __hpi_internal_init_libSAP(size_t p_argc, char **p_argv, bool init_curl) {
+bool bool_env_flag(AnyObject *anyobj, char *key) {
+  MapGetResult res = hashmap_get(anyobj->fields, GC_VERBOSE_KEY);
+  if (!res.found) {
+    return false;
+  }
+
+  AnyValue *val = (AnyValue *)res.value;
+  DynString *str_val = (DynString *)val->value;
+
+  char *c_val = dynstring_as_cstr(str_val);
+
+  if (strcmp(c_val, "1") != 0) {
+    printf("bool_env_flag(): Illegal value of environment variable `%s`: %s", key, c_val);
+    free(c_val);
+    abort();
+  }
+
+  free(c_val);
+  return true;
+}
+
+DynString *__hpi_inernal_get_version(void(tracer)(void *addr, TypeDescriptor type, TypeDescriptor *type_heap)) {
+  DynString *v_str = dynstring_new();
+  dynstring_push_fmt(v_str, "%d.%d.%d", LIBSAP_VERSION.major, LIBSAP_VERSION.minor, LIBSAP_VERSION.patch);
+  tracer(v_str, (TypeDescriptor){.kind = TYPE_STRING, .ptr_count = 0, .obj_fields = NULL, .list_inner = NULL}, NULL);
+  return v_str;
+}
+
+void __hpi_internal_init_libSAP(size_t p_argc, char **p_argv, bool init_curl, bool init_gc) {
   argc = p_argc;
   argv = p_argv;
 
   if (init_curl)
     curl_global_init(CURL_GLOBAL_DEFAULT);
+
+  if (init_gc) {
+    bool gc_cleanup_on_exit, gc_verbose;
+    AnyObject *env = __hpi_internal_env();
+
+    bool clean = bool_env_flag(env, GC_CLEANUP_KEY);
+    bool verbose = bool_env_flag(env, GC_VERBOSE_KEY);
+
+    gc_init(clean, verbose);
+    anyobj_free(env);
+  }
 }

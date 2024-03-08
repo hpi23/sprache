@@ -677,6 +677,15 @@ impl<'src> Transpiler<'src> {
             AnalyzedCallBase::Ident("bewerbung") => "bewerbung".to_string(),
             AnalyzedCallBase::Ident("einschreibung") => "einschreibung".to_string(),
             AnalyzedCallBase::Ident("studium") => "studium".to_string(),
+            AnalyzedCallBase::Ident("Versions_Nummer") => {
+                args.push_back(Expression::Ident(if self.user_config.gc_enable {
+                    "gc_add_to_trace".to_string()
+                } else {
+                    "NULL".to_string()
+                }));
+
+                "__hpi_inernal_get_version".to_string()
+            },
             AnalyzedCallBase::Ident("Zergliedere_JSON") => {
                 self.required_includes.insert("./libSAP/libJson.h");
                 args.push_back(Expression::Ident(if self.user_config.gc_enable {
@@ -793,6 +802,16 @@ impl<'src> Transpiler<'src> {
                     stmts.append(&mut member_stmts);
 
                     match (member.expr.result_type(), member.member) {
+                        (Type::Float(0), "AufRunden") => {
+                            self.required_includes.insert("./libSAP/libFloat.h");
+                            args.push_back(member_expr.expect("A list always produces a value"));
+                            "__hpi_internal_float_round_to_int_up".to_string()
+                        }
+                        (Type::Float(0), "AbRunden") => {
+                            self.required_includes.insert("./libSAP/libFloat.h");
+                            args.push_back(member_expr.expect("A list always produces a value"));
+                            "__hpi_internal_float_round_to_int_down".to_string()
+                        }
                         (Type::List(_, 0), "Länge") => {
                             self.required_includes.insert("./libSAP/libList.h");
                             args.push_back(member_expr.expect("A list always produces a value"));
@@ -897,6 +916,16 @@ impl<'src> Transpiler<'src> {
                             self.required_includes.insert("./libSAP/libString.h");
                             args.push_front(member_expr.expect("A string always produces a value"));
                             "__hpi_internal_string_replace".to_string()
+                        }
+                        (Type::String(0), "Mal") => {
+                            self.required_includes.insert("./libSAP/libString.h");
+                            args.push_front(member_expr.expect("A string always produces a value"));
+                            "__hpi_internal_string_repeat".to_string()
+                        }
+                        (Type::String(0), "Länge") => {
+                            self.required_includes.insert("./libSAP/libString.h");
+                            args.push_front(member_expr.expect("A string always produces a value"));
+                            "__hpi_internal_string_length".to_string()
                         }
                         (base_type, member) => {
                             unreachable!("Not supported: member `{member}` of base `{base_type}`")

@@ -25,10 +25,6 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value, void *(allocator)(Ty
 
     AnyObject *any_obj = allocator(type_descriptor_anyobj);
     // JUST TO TEST:
-
-    printf("======%p\n", any_obj->fields->buckets->values);
-
-    printf("ALLOCATED ANY_OBJ (leak): %p\n", any_obj);
     // TODO: remove
     // AnyObject *any_obj = anyobj_new();
 

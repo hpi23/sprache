@@ -23,6 +23,7 @@ main: output.c libSAP
 	gcc output.c -ggdb \
 		./libSAP/libSAP.a \
 		-lcurl \
+		-lm \
 		$(CFLAGS) -o main
 
 valgrind: main
