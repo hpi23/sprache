@@ -89,7 +89,7 @@ TimeStruct __hpi_internal_time_provider() {
 //
 //   return map;
 // };
-
+//
 HashMap *__hpi_internal_time(void(tracer)(void *addr, TypeDescriptor type, TypeDescriptor *type_heap)) {
   current = __hpi_internal_time_provider();
 
@@ -133,11 +133,7 @@ HashMap *__hpi_internal_time(void(tracer)(void *addr, TypeDescriptor type, TypeD
     hashmap_insert(map, "Sekunde", ptr);
 
     TypeDescriptor *type_descriptor_Zahl = malloc(sizeof(TypeDescriptor));
-    type_descriptor_Zahl->kind = TYPE_INT;
-    type_descriptor_Zahl->ptr_count = 1;
-    type_descriptor_Zahl->list_inner = NULL;
-    type_descriptor_Zahl->obj_fields = NULL;
-
+    *type_descriptor_Zahl = (TypeDescriptor){.kind = TYPE_INT, .ptr_count = 1, .list_inner = NULL, .obj_fields = NULL};
     hashmap_insert(obj->obj_fields, "Sekunde", type_descriptor_Zahl);
 
     if (tracer != NULL) {

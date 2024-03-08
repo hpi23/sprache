@@ -131,13 +131,17 @@ void free_type(TypeDescriptor *type) {
     break;
   case TYPE_OBJECT: {
     ListNode *keys = hashmap_keys(type->obj_fields);
+
     int key_len = list_len(keys);
     for (int i = 0; i < key_len; i++) {
-      ListGetResult curr_res = list_at(keys, i);
-      assert(curr_res.found);
+      ListGetResult key_res = list_at(keys, i);
+      assert(key_res.found);
 
-      TypeDescriptor *curr = (TypeDescriptor *)curr_res.value;
-      // free_type(curr);
+      MapGetResult value_res = hashmap_get(type->obj_fields, key_res.value);
+      assert(value_res.value);
+
+      TypeDescriptor *curr = (TypeDescriptor *)value_res.value;
+      free_type(curr);
     }
 
     list_free(keys);
