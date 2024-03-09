@@ -16,7 +16,6 @@ pub fn compile(ast: AnalyzedProgram, args: CliTrans) -> anyhow::Result<()> {
         emit_comments: true,
         emit_readable_names: true,
         gc_enable: true,
-        gc_cleanup_on_exit: true,
     }).transpile(ast).to_string();
 
     // get output path
