@@ -12,4 +12,4 @@ int64_t __hpi_internal_http(DynString *method,       // HTTP method
                             DynString **body_dest,   // Pointer to read the response body into
                             void(trace_alloc)(void *addr, TypeDescriptor type, TypeDescriptor *type_heap));
 
-void __hpi_inernal_curl_cleanup();
+void __hpi_internal_curl_cleanup();

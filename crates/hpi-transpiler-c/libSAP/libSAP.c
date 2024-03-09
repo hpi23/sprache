@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -101,10 +102,13 @@ DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, void(tracer)(voi
 void __hpi_internal_sleep(double duration) { sleep(duration); }
 
 AnyObject *__hpi_internal_env() {
-  AnyObject *obj = anyobj_new();
+  AnyObject *obj = gc_alloc((TypeDescriptor){.kind = TYPE_ANY_OBJECT, .ptr_count = 0, .list_inner = NULL, .obj_fields = NULL});
+
+  TypeDescriptor string_type_descriptor = {.kind = TYPE_STRING, .ptr_count = 0, .list_inner = NULL, .obj_fields = NULL};
 
   for (char **env = environ; *env; env++) {
     DynString *env_item_raw = dynstring_from(*env);
+
     ListNode *split = dynstring_split_cstr(env_item_raw, "=", 1);
 
     ListGetResult key = list_at(split, 0);
@@ -114,15 +118,19 @@ AnyObject *__hpi_internal_env() {
 
     char *key_cstr = dynstring_as_cstr(key.value);
 
-    TypeDescriptor string_type_descriptor = {.kind = TYPE_STRING, .ptr_count = 0};
-
     DynString **val = malloc(sizeof(DynString *));
     *val = value.value;
+    gc_add_to_trace(value.value, string_type_descriptor, NULL);
+
+    TypeDescriptor pointer_to_str = string_type_descriptor;
+    pointer_to_str.ptr_count = 1;
+    gc_add_to_trace(val, pointer_to_str, NULL);
 
     AnyValue anyvalue = {.type = string_type_descriptor, .value = val};
 
     anyobj_insert(obj, key_cstr, anyvalue);
 
+    list_free(split);
     free(key_cstr);
     dynstring_free(key.value);
   }
@@ -163,28 +171,22 @@ ListNode *__hpi_internal_args(void *(allocator)(TypeDescriptor type), void(trace
   return list;
 }
 
-bool bool_env_flag(AnyObject *anyobj, char *key) {
-  MapGetResult res = hashmap_get(anyobj->fields, GC_VERBOSE_KEY);
-  if (!res.found) {
+bool bool_env_flag(char *key) {
+  char *val = getenv(GC_CLEANUP_KEY);
+
+  if (val == NULL) {
     return false;
   }
 
-  AnyValue *val = (AnyValue *)res.value;
-  DynString *str_val = (DynString *)val->value;
-
-  char *c_val = dynstring_as_cstr(str_val);
-
-  if (strcmp(c_val, "1") != 0) {
-    printf("bool_env_flag(): Illegal value of environment variable `%s`: %s", key, c_val);
-    free(c_val);
+  if (strcmp(val, "1") != 0) {
+    printf("bool_env_flag(): Illegal value of environment variable `%s`: %s", key, val);
     abort();
   }
 
-  free(c_val);
   return true;
 }
 
-DynString *__hpi_inernal_get_version(void(tracer)(void *addr, TypeDescriptor type, TypeDescriptor *type_heap)) {
+DynString *__hpi_internal_get_version(void(tracer)(void *addr, TypeDescriptor type, TypeDescriptor *type_heap)) {
   DynString *v_str = dynstring_new();
   dynstring_push_fmt(v_str, "%d.%d.%d", LIBSAP_VERSION.major, LIBSAP_VERSION.minor, LIBSAP_VERSION.patch);
   tracer(v_str, (TypeDescriptor){.kind = TYPE_STRING, .ptr_count = 0, .obj_fields = NULL, .list_inner = NULL}, NULL);
@@ -200,12 +202,10 @@ void __hpi_internal_init_libSAP(size_t p_argc, char **p_argv, bool init_curl, bo
 
   if (init_gc) {
     bool gc_cleanup_on_exit, gc_verbose;
-    AnyObject *env = __hpi_internal_env();
 
-    bool clean = bool_env_flag(env, GC_CLEANUP_KEY);
-    bool verbose = bool_env_flag(env, GC_VERBOSE_KEY);
+    bool clean = bool_env_flag(GC_CLEANUP_KEY);
+    bool verbose = bool_env_flag(GC_VERBOSE_KEY);
 
     gc_init(clean, verbose);
-    anyobj_free(env);
   }
 }

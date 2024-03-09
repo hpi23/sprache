@@ -99,35 +99,39 @@ HashMap *__hpi_internal_time(void(tracer)(void *addr, TypeDescriptor type, TypeD
   obj->list_inner = NULL;
   obj->obj_fields = hashmap_new();
 
-#define len 7
-  char *keys[len] = {"Sekunde", "Minute", "Stunde", "Wochentag", "Kalendar_Tag", "Monat", "Jahr"};
+  char *keys[7] = {"Sekunde", "Minute", "Stunde", "Wochentag", "Kalendar_Tag", "Monat", "Jahr"};
 
   HashMap *map = hashmap_new();
 
-  for (int i = 0; i < len; i++) {
+  for (int i = 0; i < 7; i++) {
     int64_t *ptr = malloc(sizeof(int64_t));
+
     switch (i) {
     case 0:
       *ptr = current.second;
       break;
-    case 1:
-      *ptr = current.month;
+    case 1: {
+      *ptr = current.minute;
       break;
+    }
     case 2:
-      *ptr = current.calendar_day;
+      *ptr = current.hour;
       break;
     case 3:
       *ptr = current.week_day;
       break;
     case 4:
-      *ptr = current.hour;
+      *ptr = current.calendar_day;
       break;
     case 5:
-      *ptr = current.minute;
+      *ptr = current.month;
       break;
     case 6:
-      *ptr = current.second;
+      *ptr = current.year;
       break;
+    default:
+      puts("Illegal case in time");
+      abort();
     }
     hashmap_insert(map, keys[i], ptr);
 

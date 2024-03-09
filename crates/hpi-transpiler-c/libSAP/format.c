@@ -196,6 +196,7 @@ void formatter_start_escape(Formatter *fmt) {
       assert(0);
     }
 
+    dynstring_free(padding);
     num_padding = padding_res.num;
   } else if (fmt->curr_char == '.') {
     formatter_next(fmt);

@@ -288,7 +288,7 @@ impl<'src> Transpiler<'src> {
                 })))),
                 if self.required_includes.contains("./libSAP/libHttp.h") {
                     Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
-                        func: "__hpi_inernal_curl_cleanup".to_string(),
+                        func: "__hpi_internal_curl_cleanup".to_string(),
                         args: vec![],
                     }))))
                 } else {

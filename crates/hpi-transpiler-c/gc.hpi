@@ -30,13 +30,13 @@ funk Studium() ergibt Nichts {
 
     // BEGIN_MAINFRAME_PRINT
     setze Zahl Breite auf 100;
-    Drucke("*".Mal(Breite));
+    Drucke("*".Mal(Breite + 2));
 
     setze Liste von Zeichenkette Zeilen auf [
-        Formatiere("- Fahre HPI Skript Version Nummber <%s>." / Versions_Nummer()) /
-        "- Gebaut mit dem HPI Sckript C Übersetzer." /
+        Formatiere("- Fahre HPI Skript Version Nummer <%s>." / Versions_Nummer()) /
+        "- Gebaut mit dem HPI Skript C Übersetzer." /
         Formatiere(
-            "- C Konstrukte gebaut am %02d.%02d.02 um %02d:%02d:%02d" /
+            "- C wurde gebaut am %02d.%02d.%d um %02d:%02d:%02d" /
             Zeit().Kalendar_Tag / Zeit().Monat / Zeit().Jahr / Zeit().Stunde / Zeit().Minute / Zeit().Sekunde
         ) /
     ];
@@ -47,23 +47,15 @@ funk Studium() ergibt Nichts {
 
     setze Zahl Z auf 0;
     solange Z < Zeilen.Länge() {
-        setze Fließkommazahl PufferBreite auf ((Breite - Zeilen[Z].Länge()) als Fließkommazahl : 2F);
+        setze Zahl Puffer auf (Breite - Zeilen[Z].Länge()) : 2;
 
-        solange (PufferBreite.AufRunden() + Zeilen[Z].Länge() + PufferBreite.AbRunden()) < Breite {
-            PufferBreite -= 1F;
-            ändere PufferBreite auf PufferBreite.AbRunden() als Fließkommazahl;
-        }
-
-        setze Zeichenkette PufferL auf " ".Mal(PufferBreite.AufRunden());
-        setze Zeichenkette PufferR auf " ".Mal(PufferBreite.AbRunden());
-
-        Drucke(Formatiere("*%s%s%s*" / PufferL / Zeilen[Z] / PufferR));
+        Drucke(Formatiere("%s%s%s" / " ".Mal(Puffer) / Zeilen[Z] / " ".Mal(Puffer)));
 
         //erhöhe Z um 1;
         Z += 1;
     }
 
-    Drucke("*".Mal(Breite));
+    Drucke("*".Mal(Breite + 2));
 
     Reinigung();
 }

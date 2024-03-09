@@ -18,4 +18,4 @@ void __hpi_internal_sleep(double duration);
 AnyObject *__hpi_internal_env();
 ListNode *__hpi_internal_args(void *(allocator)(TypeDescriptor type), void(tracer)(void *addr, TypeDescriptor type, TypeDescriptor *type_heap));
 void __hpi_internal_init_libSAP(size_t p_argc, char **p_argv, bool init_curl, bool init_gc);
-DynString *__hpi_inernal_get_version();
+DynString *__hpi_internal_get_version();

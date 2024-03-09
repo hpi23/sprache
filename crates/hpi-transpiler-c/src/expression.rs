@@ -684,7 +684,7 @@ impl<'src> Transpiler<'src> {
                     "NULL".to_string()
                 }));
 
-                "__hpi_inernal_get_version".to_string()
+                "__hpi_internal_get_version".to_string()
             },
             AnalyzedCallBase::Ident("Zergliedere_JSON") => {
                 self.required_includes.insert("./libSAP/libJson.h");
@@ -788,8 +788,8 @@ impl<'src> Transpiler<'src> {
                 self.required_includes.insert("./libSAP/libSAP.h");
                 "__hpi_internal_init_libSAP".to_string()
             }
-            AnalyzedCallBase::Ident("__hpi_inernal_curl_cleanup") => {
-                "__hpi_inernal_curl_cleanup".to_string()
+            AnalyzedCallBase::Ident("__hpi_internal_curl_cleanup") => {
+                "__hpi_internal_curl_cleanup".to_string()
             }
             AnalyzedCallBase::Ident(other) => self
                 .funcs

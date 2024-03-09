@@ -128,4 +128,4 @@ cleanup:
   return http_code;
 }
 
-void __hpi_inernal_curl_cleanup() { curl_global_cleanup(); }
+void __hpi_internal_curl_cleanup() { curl_global_cleanup(); }
