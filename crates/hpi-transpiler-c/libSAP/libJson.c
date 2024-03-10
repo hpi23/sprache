@@ -313,6 +313,9 @@ JsonValue __hpi_internal_json_value_from_void(TypeDescriptor type, void *value) 
     res.object = obj;
     break;
   }
+  case TYPE_ANY_VALUE:
+    puts("Any value not handled");
+    abort();
   case TYPE_STRING:
     res.type = JSON_TYPE_STRING;
     DynString *buf_copy = dynstring_clone(*(DynString **)value);

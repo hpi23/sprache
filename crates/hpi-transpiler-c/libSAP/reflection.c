@@ -70,6 +70,9 @@ char *display_type(TypeDescriptor type) {
   case TYPE_STRING:
     dynstring_set(output, "Zeichenkette");
     break;
+  default:
+    printf("Illegal type kind: %d\n", type.kind);
+    abort();
   }
 
   dynstring_push(pointer_prefix, output);

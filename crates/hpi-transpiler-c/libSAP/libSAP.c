@@ -24,8 +24,8 @@ const Semver LIBSAP_VERSION = {
     .patch = 0,
 };
 
-char *GC_CLEANUP_KEY = "LIBSAP_GC_CLEANUP_ON_EXIT";
-char *GC_VERBOSE_KEY = "LIBSAP_GC_CLEANUP_VERBOSE";
+char *GC_CLEANUP_KEY = "HPI_GC_CLEANUP_ON_EXIT";
+char *GC_VERBOSE_KEY = "HPI_GC_VERBOSE";
 
 size_t argc;
 char **argv;
@@ -172,18 +172,18 @@ ListNode *__hpi_internal_args(void *(allocator)(TypeDescriptor type), void(trace
 }
 
 bool bool_env_flag(char *key) {
-  char *val = getenv(GC_CLEANUP_KEY);
+  char *val = getenv(key);
 
-  if (val == NULL) {
+  if (val == NULL || strcmp(val, "0") == 0) {
     return false;
   }
 
-  if (strcmp(val, "1") != 0) {
-    printf("bool_env_flag(): Illegal value of environment variable `%s`: %s", key, val);
-    abort();
+  if (strcmp(val, "1") == 0) {
+    return true;
   }
 
-  return true;
+  printf("bool_env_flag(): Illegal value of environment variable `%s`: %s", key, val);
+  abort();
 }
 
 DynString *__hpi_internal_get_version(void(tracer)(void *addr, TypeDescriptor type, TypeDescriptor *type_heap)) {

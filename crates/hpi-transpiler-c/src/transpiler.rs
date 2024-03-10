@@ -156,13 +156,6 @@ impl<'src> Transpiler<'src> {
                 Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
                     AnalyzedCallExpr {
                         result_type: Type::Nichts,
-                        func: AnalyzedCallBase::Ident("global_variable_setup"),
-                        args: vec![],
-                    },
-                )))),
-                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
-                    AnalyzedCallExpr {
-                        result_type: Type::Nichts,
                         func: AnalyzedCallBase::Ident("__hpi_internal_init_libSAP"),
                         args: vec![
                             AnalyzedExpression::Ident(AnalyzedIdentExpr {
@@ -178,6 +171,13 @@ impl<'src> Transpiler<'src> {
                             ),
                             AnalyzedExpression::Bool(self.user_config.gc_enable),
                         ],
+                    },
+                )))),
+                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
+                    AnalyzedCallExpr {
+                        result_type: Type::Nichts,
+                        func: AnalyzedCallBase::Ident("global_variable_setup"),
+                        args: vec![],
                     },
                 )))),
                 Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(

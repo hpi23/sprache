@@ -28,6 +28,8 @@ typedef struct {
   ListNode *roots;
   // If set to `true`, the GC performs a final run before program exit
   bool clean_up_on_exit;
+  // If set to `true`, the GC logs most of its actions
+  bool verbose;
   // Tracks the amount of bytes that the program currently uses,
   // is only updated if the memory is freed or allocated.
 } GC;
@@ -40,4 +42,6 @@ void gc_remove_roots(int64_t argc, void **roots);
 void gc_run_cycle();
 void gc_print();
 void gc_die();
+void gc_free_addr(void *addr);
+void gc_free_entry(GCEntry * entry);
 void external_print_state();

@@ -1,5 +1,6 @@
 #include "./libAnyObj.h"
 #include "hashmap/map.h"
+#include "libGC.h"
 #include "list/list.h"
 #include "reflection.h"
 #include <assert.h>
@@ -69,17 +70,18 @@ ListNode *__hpi_internal_anyobj_keys(AnyObject *obj) {
 void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type, void *(allocator)(TypeDescriptor type)) {
   // Detect basic type mismatch
   if (from.type.kind != as_type.kind || from.type.ptr_count != as_type.ptr_count) {
-
     // TODO: remove leaks from here
     if (from.type.kind == TYPE_FLOAT && as_type.kind == TYPE_INT) {
       // int64_t *as_int = malloc(sizeof(int64_t));
       int64_t *as_int = allocator((TypeDescriptor){.obj_fields = NULL, .ptr_count = 1, .list_inner = NULL, .kind = TYPE_INT});
       *as_int = (int64_t) * (double *)from.value;
+      gc_free_addr(from.value);
       return as_int;
     } else if (from.type.kind == TYPE_INT && as_type.kind == TYPE_FLOAT) {
       // double *as_double = malloc(sizeof(double));
       double *as_double = allocator((TypeDescriptor){.obj_fields = NULL, .ptr_count = 1, .list_inner = NULL, .kind = TYPE_FLOAT});
       *as_double = (double)*(int64_t *)from.value;
+      gc_free_addr(from.value);
       return as_double;
     }
 
@@ -113,13 +115,17 @@ void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type, void *(
     }
 
     // cleanup
-    // list_free(old_list);
 
     // ListNode **list_ptr = malloc(sizeof(ListNode *));
 
     ListNode **list_ptr = allocator((TypeDescriptor){.kind = TYPE_LIST, .list_inner = as_type.list_inner, .ptr_count = 1, .obj_fields = NULL});
 
     *list_ptr = new_list;
+    //gc_free_addr(old_list);
+
+    // TODO: does this free enough stuff?
+    // gc_free_addr(from.value);
+
     return list_ptr;
   }
   case TYPE_OBJECT: {
@@ -130,6 +136,9 @@ void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type, void *(
       return from.value;
     }
     break;
+  case TYPE_ANY_VALUE:
+    puts("Unsupported.");
+    abort();
   }
 
 fail:
