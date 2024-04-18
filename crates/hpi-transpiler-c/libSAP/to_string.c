@@ -3,6 +3,7 @@
 #include "dynstring/dynstring.h"
 #include "list/list.h"
 #include "reflection.h"
+#include <assert.h>
 #include <sys/types.h>
 
 int indent_str = 4;
@@ -161,6 +162,8 @@ DynString *to_string(TypeDescriptor type, void *value) {
       break;
     }
   }
+ case TYPE_ANY_VALUE:
+    assert(0);
   }
 
   return output;

@@ -1,4 +1,5 @@
 #include "dynstring/dynstring.h"
+#include "json-parser/json.h"
 #include "json-parser/parser.h"
 #include "libAnyObj.h"
 #include "list/list.h"

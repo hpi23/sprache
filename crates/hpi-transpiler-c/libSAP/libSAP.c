@@ -91,7 +91,14 @@ DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, void(tracer)(voi
   DynString *output = formatter_fmt(formatter);
 
   if (tracer != NULL) {
-    tracer(output, (TypeDescriptor){.kind = TYPE_STRING, .ptr_count = 0, .list_inner = NULL, .obj_fields = NULL}, NULL);
+    tracer(output,
+           (TypeDescriptor){
+               .kind = TYPE_STRING,
+               .ptr_count = 0,
+               .list_inner = NULL,
+               .obj_fields = NULL,
+           },
+           NULL);
   }
 
   formatter_free(formatter);

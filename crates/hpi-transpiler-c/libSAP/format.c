@@ -131,6 +131,7 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
 
     dynstring_push_fmt(fmt->output_buf, format_c_str, *(double *)arg.value);
     free(format_c_str);
+    dynstring_free(fmt_specifier);
 
     break;
   }
@@ -215,6 +216,7 @@ void formatter_start_escape(Formatter *fmt) {
     }
 
     num_padding = padding_res.num;
+    dynstring_free(padding);
   }
 
   formatter_process_specifier(fmt, num_padding);

@@ -4,9 +4,10 @@ HPI_FILE:=test.hpi
 DEBUG:=true
 CFLAGS:=-ggdb3
 VG_EXEC:=./main
+RARGS:=
 
 run: main
-	./main
+	./main $(RARGS)
 
 dbg: main
 	gdb ./main

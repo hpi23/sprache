@@ -822,9 +822,11 @@ impl<'src> Transpiler<'src> {
 
                             let temp_ident = format!("push_ptr_{}", self.let_cnt);
 
+                            let push_ptr_type = type_list[0].clone().add_ref().unwrap();
+
                             stmts.push(Statement::VarDeclaration(VarDeclaration {
                                 name: temp_ident.clone(),
-                                type_: type_list[0].clone().add_ref().unwrap().into(),
+                                type_: push_ptr_type.clone().into(),
                                 // expr: Expression::Call(Box::new(CallExpr {
                                 //     func: "malloc".to_string(),
                                 //     args: vec![Expression::Call(Box::new(CallExpr {
@@ -834,7 +836,7 @@ impl<'src> Transpiler<'src> {
                                 //         )],
                                 //     }))],
                                 // })),
-                                expr: self.malloc(type_list[0].clone()),
+                                expr: self.malloc(push_ptr_type),
                             }));
 
                             stmts.push(Statement::Assign(AssignStmt {

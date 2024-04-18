@@ -75,13 +75,15 @@ void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type, void *(
       // int64_t *as_int = malloc(sizeof(int64_t));
       int64_t *as_int = allocator((TypeDescriptor){.obj_fields = NULL, .ptr_count = 1, .list_inner = NULL, .kind = TYPE_INT});
       *as_int = (int64_t) * (double *)from.value;
-      gc_free_addr(from.value);
+      // TODO: is this required?
+      // gc_free_addr(from.value);
       return as_int;
     } else if (from.type.kind == TYPE_INT && as_type.kind == TYPE_FLOAT) {
       // double *as_double = malloc(sizeof(double));
       double *as_double = allocator((TypeDescriptor){.obj_fields = NULL, .ptr_count = 1, .list_inner = NULL, .kind = TYPE_FLOAT});
       *as_double = (double)*(int64_t *)from.value;
-      gc_free_addr(from.value);
+      // TODO: is this required?
+      //gc_free_addr(from.value);
       return as_double;
     }
 
