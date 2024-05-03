@@ -664,7 +664,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
             TokenKind::LBracket => Expression::List(self.list_expr()?),
             invalid => {
                 return Err(Error::new_boxed(
-                    format!("expected an expression, found `{invalid}`"),
+                    format!("Erwartete einen wertbildenden Ausdruck, `{invalid}` wurde aufgespürt."),
                     self.curr_tok.span,
                     self.lexer.source(),
                 ));

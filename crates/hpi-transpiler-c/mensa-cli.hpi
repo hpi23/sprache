@@ -8,6 +8,7 @@ beantrage Aufgeben von libSAP;
 beantrage Umgebungsvariablen von libSAP;
 beantrage Argumente von libSAP;
 beantrage Zeit von Uhr;
+beantrage Version von libSAP;
 
 datentyp Speise auf Objekt {
     Zeichenkette ZeitSlot /
@@ -15,6 +16,10 @@ datentyp Speise auf Objekt {
     Zeichenkette Beschreibung /
     Fließkommazahl Preis /
 };
+
+setze Zeichenkette KEINE_DATEN auf "! OBACHT: Keine Daten vorhanden";
+
+setze Wahrheitswert ZEIGE_MEHR_NACHRICHTEN auf nein;
 
 setze Zahl MENSA_FILMUNI auf 9603;
 setze Zahl MENSA_GRIEBNITZSEE auf 9601;
@@ -47,13 +52,24 @@ funk Studium() ergibt Nichts {
         Aufgeben(42);
     }
 
+    // Erwarte einen Wahrheitswert fuer logging.
+    falls Args.Länge() == 3 {
+        ändere Eingabe auf Args[2];
+        falls Eingabe == "schreibe" {
+            ändere ZEIGE_MEHR_NACHRICHTEN auf ja;
+        }
+    }
+
+    Drucke(Formatiere("FAHRE HPI script version V%s für LINUX" / Version));
+    Drucke("========================================================");
+
     Aktualisiere(Mensa_Ort);
 }
 
 funk Aktualisiere(Zahl Mensa_Ort) ergibt Nichts {
-    Drucke("\t=> Lade Speiseangebot aus dem Internet herunter...");
+    Drucke("    ~> Lade Speiseangebot aus dem Internet herunter...");
     setze Liste von Speise Speisen auf Lade_Speiseangebot(Mensa_Ort);
-    Drucke(Formatiere("\t=> Speiseangebot bereit. %d Speisen geladen." / Speisen.Länge()));
+    Drucke(Formatiere("    ~> Speiseangebot bereit. %d Speisen geladen." / Speisen.Länge()));
 
 
     setze Liste von Speise Mittagessen auf [];
@@ -67,6 +83,10 @@ funk Aktualisiere(Zahl Mensa_Ort) ergibt Nichts {
             Mittagessen.Hinzufügen(S);
         } sonst falls ZeitSlot.Enthält("Abendessen") {
             Abendessen.Hinzufügen(S);
+        } sonst falls ZeitSlot.Enthält("Automatenplan") {
+            falls ZEIGE_MEHR_NACHRICHTEN {
+                Drucke("[NACHRICHT] Ignoriere Automat");
+            }
         } sonst {
             Drucke(Formatiere("Nicht unterstützter ZeitSlot: `%s`" / ZeitSlot));
             Aufgeben(1);
@@ -75,20 +95,30 @@ funk Aktualisiere(Zahl Mensa_Ort) ergibt Nichts {
     }
 
 
-    Drucke("=== Mittagessen ===");
+    Drucke("======= MITTAGESSEN ========");
     ändere Zähler auf 0;
     solange Zähler < Mittagessen.Länge() {
         setze Speise S auf Mittagessen[Zähler];
-        Drucke(Formatiere("%s | %.2f€ | %s" / S.Titel / S.Preis / S.Beschreibung));
+        Drucke(Formatiere("    - %s | %.2f€ | %s" / S.Titel / S.Preis / S.Beschreibung));
         Zähler += 1;
     }
 
-    Drucke("=== Abendessen ===");
+    falls Zähler == 0 {
+        // HOLY BALLS: this fails to compile if there is the ; missing
+        Drucke("    " / KEINE_DATEN);
+    }
+
+    Drucke("======== ABENDESSEN ========");
     ändere Zähler auf 0;
     solange Zähler < Abendessen.Länge() {
         setze Speise S auf Abendessen[Zähler];
-        Drucke(Formatiere("%s | %.2f€ | %s" / S.Titel / S.Preis / S.Beschreibung));
+        Drucke(Formatiere("    - %s | %.2f€ | %s" / S.Titel / S.Preis / S.Beschreibung));
         Zähler += 1;
+    }
+
+    falls Zähler == 0 {
+        // HOLY BALLS: this fails to compile if there is the ; missing
+        Drucke("    " / KEINE_DATEN);
     }
 }
 
@@ -139,9 +169,11 @@ funk Lade_Speiseangebot(Zahl Mensa_Ort) ergibt Liste von Speise {
             setze Zeichenkette HeuteDatum auf Formatiere("%d-%2d-%2d" / Zeit().Jahr / Zeit().Monat / Zeit().Kalendar_Tag);
             setze Zeichenkette Gerichtname auf GerichtInfos.Nehmen("gerichtname") als Zeichenkette;
 
-            falls (GerichtDatum != HeuteDatum)
-                || (Gerichtname.Startet_Mit("Salatbuffet"))
-                || (Gerichtname.Enthält("Relevo")) {
+            falls
+                (GerichtDatum != HeuteDatum)
+                || Gerichtname.Startet_Mit("Salatbuffet")
+                || Gerichtname.Enthält("Relevo")
+                || Gerichtname.Enthält("Wochenende!") {
                 // Drucke("Überspringe" / Gerichtname / GerichtDatum / HeuteDatum);
                 weitermachen;
             }

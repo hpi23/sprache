@@ -329,7 +329,7 @@ void gc_traverse_value(void *root) {
   }
   case TYPE_ANY_OBJECT: {
     AnyObject anyobj = *(AnyObject *)root;
-    printf("OF ROOT: %p | %s\n", root, display_type(obj->type));
+    // printf("OF ROOT: %p | %s\n", root, display_type(obj->type));
 
     ListNode *keys = hashmap_keys(anyobj.fields);
     uint key_len = list_len(keys);

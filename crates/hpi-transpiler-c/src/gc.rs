@@ -152,7 +152,7 @@ impl<'src> Transpiler<'src> {
                     }))),
                 ]);
             }
-            other => println!("Not handling: {other}"),
+            other => println!("[Type teardown] not handling: {other}"),
         }
     }
 

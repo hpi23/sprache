@@ -43,7 +43,12 @@ init_wrapper:
 	cd ./libSAP/vec/ && make
 
 cleanSAP:
+	rm -rf ./libSAP/**/obj/
 	rm -f ./libSAP/libSAP.a ./libSAP/libSAP_raw.a
+	rm -f ./libSAP/**/*.a
+
+clean: cleanSAP
+	rm output.c
 
 .NOTPARALLEL:
-init: init_wrapper cleanSAP libSAP
+init: cleanSAP init_wrapper  libSAP
