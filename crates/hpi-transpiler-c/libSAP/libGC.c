@@ -2,9 +2,9 @@
 #include "./libAnyObj.h"
 #include "./libMem.h"
 #include "./reflection.h"
-#include "hashmap/map.h"
-#include "list/list.h"
-#include "vec/vec.h"
+#include "./hashmap/map.h"
+#include "./list/list.h"
+#include "./vec/vec.h"
 #include <assert.h>
 #include <malloc.h>
 #include <stdbool.h>

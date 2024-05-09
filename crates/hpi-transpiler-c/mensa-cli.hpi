@@ -8,7 +8,7 @@ beantrage Aufgeben von libSAP;
 beantrage Umgebungsvariablen von libSAP;
 beantrage Argumente von libSAP;
 beantrage Zeit von Uhr;
-beantrage Version von libSAP;
+beantrage Versions_Nummer von libSAP;
 
 datentyp Speise auf Objekt {
     Zeichenkette ZeitSlot /
@@ -60,7 +60,7 @@ funk Studium() ergibt Nichts {
         }
     }
 
-    Drucke(Formatiere("FAHRE HPI script version V%s für LINUX" / Version));
+    Drucke(Formatiere("FAHRE HPI script version V%s für LINUX" / Versions_Nummer()));
     Drucke("========================================================");
 
     Aktualisiere(Mensa_Ort);
