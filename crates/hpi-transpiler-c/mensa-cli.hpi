@@ -173,7 +173,8 @@ funk Lade_Speiseangebot(Zahl Mensa_Ort) ergibt Liste von Speise {
                 (GerichtDatum != HeuteDatum)
                 || Gerichtname.Startet_Mit("Salatbuffet")
                 || Gerichtname.Enthält("Relevo")
-                || Gerichtname.Enthält("Wochenende!") {
+                || Gerichtname.Enthält("Wochenende!")
+                || Gerichtname.Enthält("Preis pro 100g") {
                 // Drucke("Überspringe" / Gerichtname / GerichtDatum / HeuteDatum);
                 weitermachen;
             }
