@@ -13,6 +13,7 @@
 
 #ifndef VEC_VALUE_TYPE
 #define VEC_VALUE_TYPE void*
+#define VEC_VALUE_DEFAULT (VEC_VALUE_TYPE) 0
 #endif
 
 #define VEC_IS_VERBOSE false

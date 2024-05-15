@@ -106,7 +106,7 @@ VEC_VALUE_TYPE vec_remove(Vec *vec, size_t index) {
   assert(index >= 0 && index < vec->used);
 
   if (vec->used == 0) {
-    return -1;
+    return VEC_VALUE_DEFAULT;
   }
 
   if (index == vec->used - 1) {
