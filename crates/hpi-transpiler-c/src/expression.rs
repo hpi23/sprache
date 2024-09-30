@@ -1,6 +1,6 @@
 use crate::{gc::Scope, Transpiler};
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 use hpi_analyzer::{ast::*, AssignOp, InfixOp, Type};
 
@@ -290,40 +290,40 @@ impl<'src> Transpiler<'src> {
             }
         }
 
-        return (stmts, Some(Expression::Ident(list_temp_ident)));
+        (stmts, Some(Expression::Ident(list_temp_ident)))
     }
 
-    fn body(&mut self, body: AnalyzedBlock<'src>) -> Vec<Statement> {
-        let mut body_stmts: Vec<Statement> = body
-            .stmts
-            .into_iter()
-            .flat_map(|s| self.statement(s))
-            .collect();
-
-        if let Some(raw_expr) = body.expr.clone() {
-            let (mut stmts, expr) = self.expression(raw_expr.clone());
-            body_stmts.append(&mut stmts);
-            let mut stmts = match (self.in_main_fn, expr) {
-                (true, Some(expr)) => {
-                    vec![
-                        Statement::Expr(expr),
-                        Statement::Return(Some(Expression::Int(0))),
-                    ]
-                }
-                (true, None) => vec![Statement::Return(Some(Expression::Int(0)))],
-                (false, expr) => {
-                    if raw_expr.result_type() == Type::Nichts {
-                        vec![Statement::Return(None)]
-                    } else {
-                        vec![Statement::Return(expr)]
-                    }
-                }
-            };
-            body_stmts.append(&mut stmts);
-        };
-
-        body_stmts
-    }
+    // fn body(&mut self, body: AnalyzedBlock<'src>) -> Vec<Statement> {
+    //     let mut body_stmts: Vec<Statement> = body
+    //         .stmts
+    //         .into_iter()
+    //         .flat_map(|s| self.statement(s))
+    //         .collect();
+    //
+    //     if let Some(raw_expr) = body.expr.clone() {
+    //         let (mut stmts, expr) = self.expression(raw_expr.clone());
+    //         body_stmts.append(&mut stmts);
+    //         let mut stmts = match (self.in_main_fn, expr) {
+    //             (true, Some(expr)) => {
+    //                 vec![
+    //                     Statement::Expr(expr),
+    //                     Statement::Return(Some(Expression::Int(0))),
+    //                 ]
+    //             }
+    //             (true, None) => vec![Statement::Return(Some(Expression::Int(0)))],
+    //             (false, expr) => {
+    //                 if raw_expr.result_type() == Type::Nichts {
+    //                     vec![Statement::Return(None)]
+    //                 } else {
+    //                     vec![Statement::Return(expr)]
+    //                 }
+    //             }
+    //         };
+    //         body_stmts.append(&mut stmts);
+    //     };
+    //
+    //     body_stmts
+    // }
 
     pub(super) fn block_expr(
         &mut self,
@@ -685,7 +685,7 @@ impl<'src> Transpiler<'src> {
                 }));
 
                 "__hpi_internal_get_version".to_string()
-            },
+            }
             AnalyzedCallBase::Ident("Zergliedere_JSON") => {
                 self.required_includes.insert("./libSAP/libJson.h");
                 args.push_back(Expression::Ident(if self.user_config.gc_enable {
@@ -950,8 +950,6 @@ impl<'src> Transpiler<'src> {
                     "NULL".to_string()
                 }));
 
-                dbg!(&new_args);
-
                 for (idx, _arg) in args.iter().skip(1).enumerate() {
                     new_args.push(Expression::Ident(
                         self.get_type_reflector(type_list[idx + 1].clone()),
@@ -977,7 +975,6 @@ impl<'src> Transpiler<'src> {
                     })));
                 }
 
-                dbg!(&new_args);
                 args = new_args.into();
             }
             "__hpi_internal_print" => {

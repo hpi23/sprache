@@ -65,10 +65,10 @@ void formatter_next(Formatter *fmt) {
   fmt->curr_char = fmt->fmt[fmt->fmt_idx++];
 }
 
-void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
+void formatter_process_specifier(Formatter *fmt, ssize_t padding, char pad_char) {
   if (fmt->curr_char <= 1) {
-    // TODO: error, no format specification
-    assert(1);
+    puts("Missing format specifier");
+    abort();
     return;
   }
 
@@ -81,7 +81,7 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
     assert(arg.type.kind == TYPE_INT);
     assert(arg.type.ptr_count == 0);
 
-    DynString *fmt_specifier = dynstring_from("%0xld");
+    DynString *fmt_specifier = dynstring_from("%yxld");
 
     DynString *what;
     DynString *with;
@@ -95,6 +95,14 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
     }
 
     dynstring_replace(fmt_specifier, what, with);
+    dynstring_free(what);
+    dynstring_free(with);
+
+
+    what = dynstring_from("y");
+    with = dynstring_from((char[2]){pad_char, '\0'});
+    dynstring_replace(fmt_specifier, what, with);
+
     dynstring_free(what);
     dynstring_free(with);
 
@@ -161,10 +169,12 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding) {
   default: {
     if (false) {
       // TODO: error: illegal combination
-      assert(0);
+        puts("Illegal combination in format specifier");
+        abort();
     } else {
       // TODO: error: missing arg for specifier
-      assert(0);
+        puts("Missing argument for format specifier");
+        abort();
     }
   }
   }
@@ -179,14 +189,17 @@ void formatter_start_escape(Formatter *fmt) {
 
   ssize_t num_padding = -1;
 
+  char pad_char = '0';
+
   // check if in range '0' ..= '9'
   if (fmt->curr_char == '\0' || fmt->curr_char == -1) {
     // TODO: throw error
-    assert(0);
+    puts("Illegal format specifier");
+    abort();
   } else if (is_ascii_digit(fmt->curr_char)) {
     DynString *padding = dynstring_new();
 
-    while (is_ascii_digit(fmt->curr_char)) {
+    while(is_ascii_digit(fmt->curr_char)) {
       dynstring_push_char(padding, fmt->curr_char);
       formatter_next(fmt);
     }
@@ -194,11 +207,18 @@ void formatter_start_escape(Formatter *fmt) {
     DynStringParseInt padding_res = dynstring_parse_int64(padding);
     if (padding_res.error != NULL) {
       printf("Formatierungsfehler: Konnte Pufferung nicht verarbeiten: %s\n", padding_res.error);
-      assert(0);
+      abort();
     }
 
     dynstring_free(padding);
     num_padding = padding_res.num;
+
+    if (fmt->curr_char == '@') {
+        formatter_next(fmt);
+        pad_char = fmt->curr_char;
+    }
+    formatter_next(fmt);
+
   } else if (fmt->curr_char == '.') {
     formatter_next(fmt);
 
@@ -219,5 +239,5 @@ void formatter_start_escape(Formatter *fmt) {
     dynstring_free(padding);
   }
 
-  formatter_process_specifier(fmt, num_padding);
+  formatter_process_specifier(fmt, num_padding, pad_char);
 }

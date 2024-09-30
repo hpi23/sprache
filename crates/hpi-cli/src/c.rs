@@ -1,71 +1,47 @@
 use std::{
     fs,
-    path::PathBuf,
     process::{Command, Stdio},
 };
 
-use anyhow::{anyhow, bail, Context};
-use hpi_analyzer::ast::AnalyzedProgram;
-use hpi_transpiler_c::{TranspileArgs, Transpiler};
-use tempfile::tempdir;
+use anyhow::{bail, Context};
+use include_dir::Dir;
 
-use crate::cli::{RunArgs, TranspileArgs as CliTrans};
+static LIBSAP_DIR: Dir<'_> = include_dir::include_dir!("$CARGO_MANIFEST_DIR/../hpi-transpiler-c/libSAP");
 
-pub fn compile(ast: AnalyzedProgram, args: CliTrans) -> anyhow::Result<()> {
-    let c = Transpiler::new(TranspileArgs {
-        emit_comments: true,
-        emit_readable_names: true,
-        gc_enable: true,
-    }).transpile(ast).to_string();
-
-    // get output path
-    // let output = match args.output_file {
-    //     Some(out) => out,
-    //     None => {
-    //         let mut path = PathBuf::from(
-    //             args.path
-    //                 .file_stem()
-    //                 .with_context(|| "cannot get filestem of input file")?,
-    //         );
-    //         path.set_extension("c");
-    //         path
-    //     }
-    // };
-
-    let output = {
-        let mut path = PathBuf::from(
-            args.path
-                .file_stem()
-                .with_context(|| "cannot get filestem of input file")?,
-        );
-        path.set_extension("c");
-        path
-    };
-
-    fs::write(&output, c)
-        .with_context(|| format!("cannot write to `{file}`", file = output.to_string_lossy()))?;
-
-    Ok(())
-}
-
-pub fn run(ast: AnalyzedProgram, args: RunArgs) -> anyhow::Result<i64> {
-    let tmpdir = tempdir()?;
-
-    let args: CliTrans = args.into();
+pub fn compile_binary(c_program: &str, bin_output: &str) -> anyhow::Result<()> {
+    let tmpdir = tempfile::tempdir()?;
 
     let c_path = tmpdir.path().join("output.c");
-    // args.output_file = Some(c_path.clone());
-    compile(ast, args)?;
+    fs::write(&c_path, c_program)
+        .with_context(|| format!("cannot write to `{file}`", file = c_path.to_string_lossy()))?;
 
-    let bin_path = tmpdir.path().join("output");
+    let libsap_file = tmpdir.path().join("libsap.a");
+
+    let libsap_file_contents = LIBSAP_DIR.get_file("libSAP.a").unwrap().contents();
+
+    fs::write(&libsap_file, libsap_file_contents).with_context(|| {
+        format!(
+            "cannot write to `{file}`",
+            file = libsap_file.to_string_lossy()
+        )
+    })?;
+
+    println!("compiling... {}", tmpdir.path().to_string_lossy());
+
+    let libsap_base_path = tmpdir.path().join("libSAP");
+    fs::create_dir_all(libsap_base_path.clone()).unwrap();
+    LIBSAP_DIR.extract(libsap_base_path).unwrap();
 
     let process = Command::new("gcc")
         .arg(c_path)
-        .arg("-std=c89")
+        .arg(libsap_file)
+        .arg("-lcurl")
+        .arg("-lm")
         .arg("-o")
-        .arg(&bin_path)
+        .arg(bin_output)
         .stderr(Stdio::piped())
-        .spawn()?;
+        .spawn()
+        .with_context(|| "could not invoke `gcc`")?;
 
     let out = process.wait_with_output()?;
     match out.status.success() {
@@ -77,8 +53,5 @@ pub fn run(ast: AnalyzedProgram, args: RunArgs) -> anyhow::Result<i64> {
         ),
     }
 
-    match Command::new(bin_path).output()?.status.code() {
-        Some(code) => Ok(code as i64),
-        None => Err(anyhow!("could not get exit-code of rush bin process")),
-    }
+    Ok(())
 }

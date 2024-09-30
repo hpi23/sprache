@@ -207,7 +207,6 @@ void bucket_free(Bucket bucket) {
     ListGetResult result = list_at(bucket.values, i);
     assert(result.found);
     BucketContent *content = (BucketContent *)result.value;
-
     free(content->key);
     free(content);
   }

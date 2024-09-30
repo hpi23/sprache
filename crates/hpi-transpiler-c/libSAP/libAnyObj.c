@@ -48,20 +48,23 @@ AnyValue __hpi_internal_anyobj_take(AnyObject *obj, DynString *key) {
 
 ListNode *__hpi_internal_anyobj_keys(AnyObject *obj) {
   ListNode *raw_keys = hashmap_keys(obj->fields);
+  size_t raw_len = list_len(raw_keys);
 
   ListNode *new_list = list_new();
 
-  for (ssize_t i = 0; i < list_len(raw_keys); i++) {
+  for (ssize_t i = 0; i < raw_len; i++) {
     ListGetResult temp = list_at(raw_keys, i);
     assert(temp.found);
 
     DynString **str = malloc(sizeof(DynString *));
     *str = dynstring_from(temp.value);
     list_append(new_list, str);
-    free(temp.value);
+    // free(temp.value);
+    gc_free_addr(temp.value);
   }
 
-  list_free(raw_keys);
+  gc_free_addr(raw_keys);
+  // list_free(raw_keys);
 
   return new_list;
 }
@@ -83,7 +86,7 @@ void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type, void *(
       double *as_double = allocator((TypeDescriptor){.obj_fields = NULL, .ptr_count = 1, .list_inner = NULL, .kind = TYPE_FLOAT});
       *as_double = (double)*(int64_t *)from.value;
       // TODO: is this required?
-      //gc_free_addr(from.value);
+      // gc_free_addr(from.value);
       return as_double;
     }
 
@@ -123,7 +126,7 @@ void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type, void *(
     ListNode **list_ptr = allocator((TypeDescriptor){.kind = TYPE_LIST, .list_inner = as_type.list_inner, .ptr_count = 1, .obj_fields = NULL});
 
     *list_ptr = new_list;
-    //gc_free_addr(old_list);
+    // gc_free_addr(old_list);
 
     // TODO: does this free enough stuff?
     // gc_free_addr(from.value);

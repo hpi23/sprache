@@ -1,6 +1,7 @@
 use std::{collections::HashMap, env, fs, io, process, str::FromStr, time::Instant};
 
 use anyhow::{bail, Context};
+use c::compile_binary;
 use clap::Parser;
 use cli::{Cli, Command};
 
@@ -59,8 +60,7 @@ async fn main() -> anyhow::Result<()> {
 
     match root_args.command {
         Command::Transpile(args) => {
-            let total_start = Instant::now();
-            let mut start = Instant::now();
+            let start = Instant::now();
 
             let path = args.path.clone();
             let path_str = path.to_string_lossy().to_string();
@@ -68,7 +68,7 @@ async fn main() -> anyhow::Result<()> {
             let code = fs::read_to_string(path).with_context(|| "Could not read source file")?;
 
             let file_read_time = start.elapsed();
-            start = Instant::now();
+            let transpile_start = Instant::now();
 
             let (out, diagnostics) = hpi_transpiler_c::transpile(
                 &code,
@@ -91,6 +91,8 @@ async fn main() -> anyhow::Result<()> {
                 process::exit(1)
             });
 
+            let transpile_time = transpile_start.elapsed();
+
             println!(
                 "{}",
                 diagnostics
@@ -100,33 +102,17 @@ async fn main() -> anyhow::Result<()> {
                     .join("\n\n")
             );
 
-            // let total_start = Instant::now();
-            // let mut start = Instant::now();
-            //
-            // let text = fs::read_to_string(&args.path)?;
-            //
-            // let file_read_time = start.elapsed();
-            // start = Instant::now();
-            //
-            // let tree = analyze(&text, &path)?;
-            //
-            // let analyze_time = start.elapsed();
-            // start = Instant::now();
-            //
-            // let exit_code = match transpiler {
-            //     Ok(code) => code,
-            //     Err(err) => bail!(format!("Laufzeitumgebung abgestürtzt: {err}")),
-            // };
+            let gcc_start = Instant::now();
+
+            compile_binary(&out, "output.out")?;
 
             if root_args.time {
-                eprintln!("Datei Einlesen: {file_read_time:?}");
-                eprintln!("Transpilierung: {:?}", start.elapsed());
-                eprintln!("\x1b[90mGes:          {:?}\x1b[0m", total_start.elapsed());
+                eprintln!("Datei Einlesen:  {file_read_time:?}");
+                eprintln!("Transpilierung:  {transpile_time:?}");
+                eprintln!("GCC Ausfuehrung: {:?}", gcc_start.elapsed());
+                eprintln!("\x1b[90mGes:             {:?}\x1b[0m", start.elapsed());
             }
 
-            // Ok(exit_code)
-
-            // println!("tanspile: {:?}", start.elapsed());
             fs::write("output.c", out).unwrap();
         }
         Command::Run(args) => {

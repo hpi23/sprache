@@ -1,7 +1,7 @@
 #pragma once
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 struct ListNode {
   bool is_initialized;

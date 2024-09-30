@@ -136,10 +136,14 @@ int main() {
   // bool cont = dynstring_contains(print_test, dynstring_from("vo"));
   // printf("%d\n", cont);
 
-  DynString *foo = dynstring_from("hi");
-  dynstring_repeat(foo, 3);
-  dynstring_print(foo);
-  dynstring_free(foo);
+  DynString *banene = dynstring_from("Banane");
+  DynString *B = dynstring_from("B");
+  DynString *X = dynstring_from("X");
+
+  dynstring_replace(banene, B, X);
+  // dynstring_repeat(foo, 3);
+  dynstring_print(banene);
+  dynstring_free(banene);
 
   return 0;
 }

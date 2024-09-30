@@ -256,6 +256,7 @@ bool dynstring_contains(DynString *base, DynString *test) {
 
 // TODO: improve this implementation?
 ListNode *__dynstring_split_cstr_internal(DynString *base_from, char *delimeter, ssize_t delimeter_len, ssize_t limit) {
+  // TODO: call the GC here!
   ListNode *res = list_new();
 
   if (delimeter_len == 0 || delimeter_len > base_from->length) {

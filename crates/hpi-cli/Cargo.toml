@@ -18,3 +18,4 @@ hpi-ls = { path = "../hpi-ls" }
 reqwest = { version = "0.11.20", default-features = false, features = ["blocking", "rustls-tls", "rustls-tls-native-roots"] }
 tempfile = "3.3.0"
 tokio = "1.26.0"
+include_dir = "0.7.4"

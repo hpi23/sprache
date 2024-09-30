@@ -169,7 +169,7 @@ impl<'src, Lexer: Lex<'src>> Parser<'src, Lexer> {
 
         let type_ = match &self.curr_tok.kind {
             TokenKind::Ident("Zahl") => Type::Int(ptr_count),
-            TokenKind::Ident("Fließkommazahl") => Type::Float(ptr_count),
+            TokenKind::Ident("Fließkommazahl" | "Fliesskommazahl") => Type::Float(ptr_count),
             TokenKind::Ident("Wahrheitswert") => Type::Bool(ptr_count),
             TokenKind::Ident("Zeichen") => Type::Char(ptr_count),
             TokenKind::Ident("Speicherbox") => Type::AnyObject(ptr_count),

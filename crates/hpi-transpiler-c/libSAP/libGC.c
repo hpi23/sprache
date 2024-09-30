@@ -152,6 +152,7 @@ void gc_free_entry(GCEntry *obj) {
     obj->address = NULL;
     break;
   case TYPE_OBJECT:
+    // This is stupid?
     hashmap_free(obj->address);
     obj->address = NULL;
     break;

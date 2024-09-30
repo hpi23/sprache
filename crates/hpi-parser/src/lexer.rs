@@ -334,6 +334,27 @@ impl<'src> Lexer<'src> {
             Some('r') => "\r",
             Some('n') => "\n",
             Some('u') => "\\u",
+            Some('x') => {
+                self.next();
+                if self.curr_char != Some('1') {
+                    return Err(Error::new_boxed(
+                        "Erwartete `1`.".to_string(),
+                        start_loc.until(self.location),
+                        self.input,
+                    ));
+                }
+
+                self.next();
+                if self.curr_char != Some('b') {
+                    return Err(Error::new_boxed(
+                        "Erwartete `b`.".to_string(),
+                        start_loc.until(self.location),
+                        self.input,
+                    ));
+                }
+
+                "\x1b"
+            }
             Some(_) | None => {
                 return Err(Error::new_boxed(
                     "Invalide Fluchtsequenz.".to_string(),
@@ -358,7 +379,7 @@ impl<'src> Lexer<'src> {
             if !self.curr_char.map_or(false, |c| c.is_ascii_hexdigit()) {
                 self.next();
                 return Err(Error::new_boxed(
-                    "expected at least one hexadecimal digit".to_string(),
+                    "Erwartete mindestens eine Hexadezimalstelle.".to_string(),
                     start_loc.until(self.location),
                     self.input,
                 ));
@@ -477,8 +498,8 @@ impl<'src> Lexer<'src> {
             "Nichts" => TokenKind::Nichts,
             "funk" => TokenKind::Funk,
             "setze" => TokenKind::Setze,
-            "ändere" => TokenKind::Aendere,
-            "überweise" => TokenKind::Ueberweise,
+            "ändere" | "aendere" => TokenKind::Aendere,
+            "überweise" | "ueberweise" => TokenKind::Ueberweise,
             "solange" => TokenKind::Solange,
             "abbrechen" => TokenKind::Abbrechen,
             "weitermachen" => TokenKind::Weitermachen,

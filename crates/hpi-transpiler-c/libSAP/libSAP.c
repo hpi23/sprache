@@ -108,6 +108,7 @@ DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, void(tracer)(voi
 
 void __hpi_internal_sleep(double duration) { sleep(duration); }
 
+// TODO: this creates a double free?
 AnyObject *__hpi_internal_env() {
   AnyObject *obj = gc_alloc((TypeDescriptor){.kind = TYPE_ANY_OBJECT, .ptr_count = 0, .list_inner = NULL, .obj_fields = NULL});
 

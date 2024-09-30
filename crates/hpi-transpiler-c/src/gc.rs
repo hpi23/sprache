@@ -136,23 +136,20 @@ impl<'src> Transpiler<'src> {
     }
 
     fn teardown_type(&mut self, ident: String, type_: Type) {
-        match &type_ {
-            Type::Object(fields, ptr) => {
-                self.type_descriptor_teardown.append(&mut vec![
-                    Statement::Comment(
-                        format!("Type descriptor `{}`", type_.sanitized_name()).into(),
-                    ),
-                    Statement::Expr(Expression::Call(Box::new(CallExpr {
-                        func: "hashmap_free".to_string(),
-                        args: vec![Expression::Member(Box::new(MemberExpr {
-                            expr: Expression::Ident(ident),
-                            member: "obj_fields".to_string(),
-                            base_is_ptr: false,
-                        }))],
-                    }))),
-                ]);
-            }
-            other => println!("[Type teardown] not handling: {other}"),
+        if let Type::Object(_, _) = &type_ {
+            self.type_descriptor_teardown.append(&mut vec![
+                Statement::Comment(
+                    format!("Type descriptor `{}`", type_.sanitized_name()).into(),
+                ),
+                Statement::Expr(Expression::Call(Box::new(CallExpr {
+                    func: "hashmap_free".to_string(),
+                    args: vec![Expression::Member(Box::new(MemberExpr {
+                        expr: Expression::Ident(ident),
+                        member: "obj_fields".to_string(),
+                        base_is_ptr: false,
+                    }))],
+                }))),
+            ]);
         }
     }
 
