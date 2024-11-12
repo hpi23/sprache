@@ -88,6 +88,7 @@ DynString *__hpi_internal_fmt(ssize_t num_args, DynString *fmt, void(tracer)(voi
   }
 
   Formatter *formatter = formatter_new(fmt_str, input_args);
+
   DynString *output = formatter_fmt(formatter);
 
   if (tracer != NULL) {

@@ -98,7 +98,6 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding, char pad_char)
     dynstring_free(what);
     dynstring_free(with);
 
-
     what = dynstring_from("y");
     with = dynstring_from((char[2]){pad_char, '\0'});
     dynstring_replace(fmt_specifier, what, with);
@@ -169,12 +168,12 @@ void formatter_process_specifier(Formatter *fmt, ssize_t padding, char pad_char)
   default: {
     if (false) {
       // TODO: error: illegal combination
-        puts("Illegal combination in format specifier");
-        abort();
+      puts("Illegal combination in format specifier");
+      abort();
     } else {
       // TODO: error: missing arg for specifier
-        puts("Missing argument for format specifier");
-        abort();
+      puts("Missing argument for format specifier");
+      abort();
     }
   }
   }
@@ -199,7 +198,7 @@ void formatter_start_escape(Formatter *fmt) {
   } else if (is_ascii_digit(fmt->curr_char)) {
     DynString *padding = dynstring_new();
 
-    while(is_ascii_digit(fmt->curr_char)) {
+    while (is_ascii_digit(fmt->curr_char)) {
       dynstring_push_char(padding, fmt->curr_char);
       formatter_next(fmt);
     }
@@ -214,11 +213,10 @@ void formatter_start_escape(Formatter *fmt) {
     num_padding = padding_res.num;
 
     if (fmt->curr_char == '@') {
-        formatter_next(fmt);
-        pad_char = fmt->curr_char;
+      formatter_next(fmt);
+      pad_char = fmt->curr_char;
+      formatter_next(fmt);
     }
-    formatter_next(fmt);
-
   } else if (fmt->curr_char == '.') {
     formatter_next(fmt);
 
