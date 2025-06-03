@@ -6,7 +6,6 @@
 #include "./list/list.h"
 #include "./vec/vec.h"
 #include <assert.h>
-#include <malloc.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -426,7 +425,7 @@ void gc_sweep_rec() {
 // Sweep phase of the garbage collection cycle.
 void gc_sweep() {
   gc_sweep_rec();
-  malloc_trim(0);
+  // malloc_trim(0);
 }
 
 // void _gc_ref(GC *self, void *address) {

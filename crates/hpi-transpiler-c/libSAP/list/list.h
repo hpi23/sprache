@@ -22,6 +22,6 @@ list_new();
 void list_append(struct ListNode *list, void *value);
 void list_print(struct ListNode *list);
 ListGetResult list_at(struct ListNode *list, uint64_t index);
-ssize_t list_len(struct ListNode *list);
+size_t list_len(struct ListNode *list);
 void list_free(struct ListNode *list);
-void list_delete_index(struct ListNode *list, ssize_t index);
+void list_delete_index(struct ListNode *list, size_t index);

@@ -42,8 +42,8 @@ void list_print(struct ListNode *list) {
   printf("]\n");
 }
 
-ssize_t list_len(struct ListNode *list) {
-  ssize_t cnt = 0;
+size_t list_len(struct ListNode *list) {
+  size_t cnt = 0;
   while (list != NULL && list->is_initialized) {
     cnt++;
     assert(list != list->next); // cycle detected
@@ -82,7 +82,7 @@ void list_free(struct ListNode *list) {
   free(list);
 }
 
-void list_delete_index(struct ListNode *list, ssize_t index) {
+void list_delete_index(struct ListNode *list, size_t index) {
   assert(list != NULL);
 
   ListNode *prev = NULL;

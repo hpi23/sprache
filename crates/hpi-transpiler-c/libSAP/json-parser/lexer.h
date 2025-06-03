@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 typedef struct {
-  ssize_t index;
+  size_t index;
 } Location;
 
 typedef struct {

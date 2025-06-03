@@ -27,7 +27,7 @@ DynString *dynstring_new() {
   return string;
 }
 
-DynString *dynstring_with_capacity(ssize_t cap) {
+DynString *dynstring_with_capacity(size_t cap) {
   assert(cap >= 0);
 
   DynString *string = malloc(sizeof(DynString));
@@ -45,7 +45,7 @@ DynString *dynstring_with_capacity(ssize_t cap) {
 
 DynString *dynstring_from(char *from) {
   assert(from != NULL);
-  ssize_t from_length = strlen(from);
+  size_t from_length = strlen(from);
 
   DynString *string = malloc(sizeof(DynString));
   string->capacity = from_length;
@@ -56,10 +56,10 @@ DynString *dynstring_from(char *from) {
   return string;
 }
 
-DynString *dynstring_from_memcpy(char *from, ssize_t amount) {
+DynString *dynstring_from_memcpy(char *from, size_t amount) {
   assert(amount > 0);
   assert(from != NULL);
-  ssize_t from_length = amount;
+  size_t from_length = amount;
 
   DynString *string = malloc(sizeof(DynString));
   string->capacity = from_length;
@@ -111,7 +111,7 @@ void dynstring_push_string(DynString *string, char *add) {
   assert(string != NULL);
   // Check if the capacity of the string must be extended
   bool size_changed = false;
-  ssize_t add_len = strlen(add);
+  size_t add_len = strlen(add);
 
   while (string->capacity < string->length + add_len) {
     string->capacity = string->capacity * 2;
@@ -147,9 +147,9 @@ void dynstring_print(DynString *string) {
   printf("\n");
 }
 
-ssize_t dynstring_length(DynString *string) { return string->length; }
+size_t dynstring_length(DynString *string) { return string->length; }
 
-void dynstring_repeat(DynString *string, ssize_t n) {
+void dynstring_repeat(DynString *string, size_t n) {
   if (n <= 0) {
     dynstring_clear(string);
     return;
@@ -159,8 +159,8 @@ void dynstring_repeat(DynString *string, ssize_t n) {
     return;
   }
 
-  ssize_t old_size = string->length;
-  ssize_t new_size = old_size * n;
+  size_t old_size = string->length;
+  size_t new_size = old_size * n;
   while (string->capacity < new_size) {
     string->capacity *= 2;
   }
@@ -241,7 +241,7 @@ bool dynstring_strcmp_c(DynString *left, char *right) {
 
 bool dynstring_contains(DynString *base, DynString *test) {
   ListNode *split = dynstring_split(base, test, 0);
-  ssize_t len = list_len(split);
+  size_t len = list_len(split);
 
   for (int i = 0; i < len; i++) {
     ListGetResult res = list_at(split, i);
@@ -255,7 +255,7 @@ bool dynstring_contains(DynString *base, DynString *test) {
 }
 
 // TODO: improve this implementation?
-ListNode *__dynstring_split_cstr_internal(DynString *base_from, char *delimeter, ssize_t delimeter_len, ssize_t limit) {
+ListNode *__dynstring_split_cstr_internal(DynString *base_from, char *delimeter, size_t delimeter_len, size_t limit) {
   // TODO: call the GC here!
   ListNode *res = list_new();
 
@@ -264,14 +264,14 @@ ListNode *__dynstring_split_cstr_internal(DynString *base_from, char *delimeter,
     return res;
   }
 
-  ssize_t last_match_pos = 0;
-  ssize_t matches = 0;
+  size_t last_match_pos = 0;
+  size_t matches = 0;
 
   DynString *base = dynstring_clone(base_from);
 
-  for (ssize_t char_idx = 0; char_idx < base->length && (matches < limit || limit <= 0); char_idx++) {
-    ssize_t match_idx = char_idx;
-    ssize_t matched = 0;
+  for (size_t char_idx = 0; char_idx < base->length && (matches < limit || limit <= 0); char_idx++) {
+    size_t match_idx = char_idx;
+    size_t matched = 0;
 
     while (match_idx - char_idx < delimeter_len && delimeter[match_idx - char_idx] == base->internal_str[match_idx]) {
       match_idx++;
@@ -279,7 +279,7 @@ ListNode *__dynstring_split_cstr_internal(DynString *base_from, char *delimeter,
     }
 
     if (matched == delimeter_len) {
-      ssize_t new_len = match_idx - last_match_pos - matched;
+      size_t new_len = match_idx - last_match_pos - matched;
       if (new_len == 0) {
         list_append(res, dynstring_new());
       } else {
@@ -287,7 +287,7 @@ ListNode *__dynstring_split_cstr_internal(DynString *base_from, char *delimeter,
         list_append(res, before);
       }
 
-      ssize_t slice_len = base->length - match_idx;
+      size_t slice_len = base->length - match_idx;
       if (slice_len > 0) {
         DynString *remaining = dynstring_from_memcpy(&base->internal_str[match_idx], slice_len);
         free(base->internal_str);
@@ -311,11 +311,11 @@ ListNode *__dynstring_split_cstr_internal(DynString *base_from, char *delimeter,
   return res;
 }
 
-ListNode *dynstring_split_cstr(DynString *base, char *delimeter, ssize_t limit) {
+ListNode *dynstring_split_cstr(DynString *base, char *delimeter, size_t limit) {
   return __dynstring_split_cstr_internal(base, delimeter, strlen(delimeter), limit);
 }
 
-ListNode *dynstring_split(DynString *base, DynString *delimeter, ssize_t limit) {
+ListNode *dynstring_split(DynString *base, DynString *delimeter, size_t limit) {
   char *delimeter_temp = dynstring_as_cstr(delimeter);
   ListNode *res = __dynstring_split_cstr_internal(base, delimeter_temp, delimeter->length, limit);
   free(delimeter_temp);
@@ -325,7 +325,7 @@ ListNode *dynstring_split(DynString *base, DynString *delimeter, ssize_t limit) 
 DynString *dynstring_join(ListNode *list, DynString *delim) {
   DynString *output = dynstring_new();
 
-  ssize_t len = list_len(list);
+  size_t len = list_len(list);
 
   for (int i = 0; i < len; i++) {
     ListGetResult curr = list_at(list, i);
@@ -359,7 +359,7 @@ void dynstring_set(DynString *string, char *content) {
   assert(string->internal_str != NULL);
   free(string->internal_str);
 
-  ssize_t new_len = strlen(content);
+  size_t new_len = strlen(content);
 
   if (new_len == 0) {
     string->capacity = DEFAULT_CAPACITY;

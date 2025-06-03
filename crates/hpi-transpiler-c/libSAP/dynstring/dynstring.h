@@ -7,8 +7,8 @@
 
 typedef struct {
   char *internal_str;
-  ssize_t capacity;
-  ssize_t length;
+  size_t capacity;
+  size_t length;
 } DynString;
 
 DynString *dynstring_new();
@@ -17,13 +17,13 @@ DynString *dynstring_clone(DynString *input);
 
 DynString *dynstring_from(char *from);
 
-DynString *dynstring_from_memcpy(char *from, ssize_t amount);
+DynString *dynstring_from_memcpy(char *from, size_t amount);
 
 // Splits the dynstring into components using the given delimeter
-ListNode *dynstring_split_cstr(DynString *base, char *delimeter, ssize_t limit);
+ListNode *dynstring_split_cstr(DynString *base, char *delimeter, size_t limit);
 
 // Splits the dynstring into components using the given delimeter
-ListNode *dynstring_split(DynString *base, DynString *delimeter, ssize_t limit);
+ListNode *dynstring_split(DynString *base, DynString *delimeter, size_t limit);
 
 bool dynstring_contains(DynString * base, DynString * test);
 
@@ -59,7 +59,7 @@ char *dynstring_as_cstr(DynString *string);
 void dynstring_print(DynString *string);
 
 // Repeats the contents of the string n times.
-void dynstring_repeat(DynString *string, ssize_t n);
+void dynstring_repeat(DynString *string, size_t n);
 
 typedef struct {
   char *error;
