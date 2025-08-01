@@ -158,10 +158,11 @@ impl<'src> Transpiler<'src> {
 
                             stmts.push(expr_stmt);
 
-                            stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
-                                func: "gc_ref".into(),
-                                args: vec![Expression::Ident(ident.clone())],
-                            }))));
+                            // TODO: this is currently broken
+                            // stmts.push(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                            //     func: "gc_ref".into(),
+                            //     args: vec![Expression::Ident(ident.clone())],
+                            // }))));
 
                             stmts.push(Statement::Return(Some(Expression::Ident(ident))));
                             return stmts;
