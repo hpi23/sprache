@@ -14,7 +14,7 @@ dbg: main
 
 output.c: $(HPI_FILE) src/*.rs
 	echo $(HPI_FILE)
-	cargo r $(HPI_FILE) 1 1 1 1
+	cargo r $(HPI_FILE) 1 1 1 1 0
 
 libSAP:
 	mkdir -p libSAP/obj
