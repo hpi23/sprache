@@ -446,7 +446,7 @@ impl<'src> Transpiler<'src> {
         TranspileOutput {
             program: CProgram {
                 includes: self.required_includes.clone(),
-                globals: globals.clone(),
+                globals,
                 type_descriptors: self.type_descriptor_declarations.clone(),
                 type_defs: vec![],
                 functions,
@@ -454,8 +454,8 @@ impl<'src> Transpiler<'src> {
             headers: CProgram {
                 includes: mem::take(&mut self.required_includes),
                 type_defs: vec![],
-                globals,
-                type_descriptors: self.type_descriptor_declarations.clone(),
+                globals: vec![],
+                type_descriptors: vec![],
                 functions: headers,
             },
         }
