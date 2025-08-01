@@ -45,7 +45,5 @@ fn main() {
 
     println!("tanspile: {:?}", start.elapsed());
     fs::write("output.c", out.program.to_string()).unwrap();
-    if config.is_lib {
-        fs::write("output.h", out.headers.to_string()).unwrap();
-    }
+    fs::write("output.h", out.headers.to_string()).unwrap();
 }
