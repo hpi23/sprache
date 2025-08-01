@@ -20,6 +20,10 @@ libSAP:
 	mkdir -p libSAP/obj
 	cd libSAP && make
 
+lib: libSAP
+	echo $(HPI_FILE)
+	cargo r $(HPI_FILE) 1 1 1 1
+
 main: output.c libSAP
 	gcc output.c -ggdb \
 		./libSAP/libSAP.a \
