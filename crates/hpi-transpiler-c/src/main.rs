@@ -17,6 +17,10 @@ fn main() {
         is_lib: env::args().nth(5).expect("<lib> is required") == "1",
     };
 
+    if config.is_lib {
+        println!("NOTE: Compiling as lib....");
+    }
+
     let (out, diagnostics) =
         hpi_transpiler_c::transpile(&code, &path, config).unwrap_or_else(|diagnostics| {
             println!(
