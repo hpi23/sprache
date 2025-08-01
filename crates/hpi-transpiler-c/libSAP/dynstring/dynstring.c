@@ -176,8 +176,8 @@ DynStringParseInt dynstring_parse_int64(DynString *string) {
   result.num = strtoll(c_str, &remaining_string, 10);
   if (strlen(remaining_string) != 0 || errno != 0) {
     if (asprintf(&result.error, "Error: integer `%s` parse error", c_str) == -1) {
-        puts("Internal asprintf() error");
-        abort();
+      puts("Internal asprintf() error");
+      abort();
     };
     free(c_str);
     return result;
@@ -198,8 +198,8 @@ DynStringParseDouble dynstring_parse_double(DynString *string) {
   result.num = strtold(c_str, &remaining_string);
   if (strlen(remaining_string) != 0 || errno != 0) {
     if (asprintf(&result.error, "Error: double `%s` parse error", c_str) == -1) {
-        puts("Internal asprintf() error");
-        abort();
+      puts("Internal asprintf() error");
+      abort();
     };
     return result;
   }
