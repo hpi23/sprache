@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -124,13 +123,6 @@ void dynstring_push_string(DynString *string, char *add) {
   string->length += add_len;
 }
 
-// void dynstring_push_fmt(DynString *string, const char *fmt, ...) {
-//   char *buf;
-//   asprintf(&buf, fmt, ARGS);
-//   dynstring_push_string(string, buf);
-//   free(buf);
-// }
-
 char *dynstring_as_cstr(DynString *string) {
   assert(string != NULL);
   char *c_str = malloc(sizeof(char) * string->length + 1);
@@ -183,7 +175,10 @@ DynStringParseInt dynstring_parse_int64(DynString *string) {
   errno = 0;
   result.num = strtoll(c_str, &remaining_string, 10);
   if (strlen(remaining_string) != 0 || errno != 0) {
-    asprintf(&result.error, "Error: integer `%s` parse error", c_str);
+    if (asprintf(&result.error, "Error: integer `%s` parse error", c_str) == -1) {
+        puts("Internal asprintf() error");
+        abort();
+    };
     free(c_str);
     return result;
   }
@@ -202,7 +197,10 @@ DynStringParseDouble dynstring_parse_double(DynString *string) {
   errno = 0;
   result.num = strtold(c_str, &remaining_string);
   if (strlen(remaining_string) != 0 || errno != 0) {
-    asprintf(&result.error, "Error: double `%s` parse error", c_str);
+    if (asprintf(&result.error, "Error: double `%s` parse error", c_str) == -1) {
+        puts("Internal asprintf() error");
+        abort();
+    };
     return result;
   }
 

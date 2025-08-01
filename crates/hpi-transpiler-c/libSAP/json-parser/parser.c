@@ -58,7 +58,7 @@ NewJsonParserResult parser_new(char *input) {
   return result;
 }
 
-JsonParseResult parse_json(JsonParser *parser, void*(allocator)(TypeDescriptor)) {
+JsonParseResult parse_json(JsonParser *parser, void *(allocator)(TypeDescriptor)) {
   JsonParseResult result = {.error = NULL};
 
   switch (parser->curr_tok.kind) {
@@ -87,7 +87,10 @@ JsonParseResult parse_json(JsonParser *parser, void*(allocator)(TypeDescriptor))
     char *remaining_string;
     result.value.num_int = strtoll(parser->curr_tok.value, &remaining_string, 10);
     if (strlen(remaining_string) != 0 || errno != 0) {
-      asprintf(&result.error, "Error: integer `%s` parse error", parser->curr_tok.value);
+      if (asprintf(&result.error, "Error: integer `%s` parse error", parser->curr_tok.value) == -1) {
+        puts("Internal asprintf() error");
+        abort();
+      };
       return result;
     }
 
@@ -104,7 +107,10 @@ JsonParseResult parse_json(JsonParser *parser, void*(allocator)(TypeDescriptor))
     char *remaining_string;
     result.value.num_float = strtold(parser->curr_tok.value, &remaining_string);
     if (strlen(remaining_string) != 0 || errno != 0) {
-      asprintf(&result.error, "Error: float `%s` parse error", parser->curr_tok.value);
+      if (asprintf(&result.error, "Error: float `%s` parse error", parser->curr_tok.value) == -1) {
+        puts("Internal asprintf() error");
+        abort();
+      };
       return result;
     }
 
@@ -134,7 +140,10 @@ JsonParseResult parse_json(JsonParser *parser, void*(allocator)(TypeDescriptor))
     result.value.type = JSON_TYPE_NULL;
 
     if (strcmp(parser->curr_tok.value, "null") != 0) {
-      asprintf(&result.error, "Error: expected `null`, got `%s`", parser->curr_tok.value);
+      if (asprintf(&result.error, "Error: expected `null`, got `%s`", parser->curr_tok.value) == -1) {
+        puts("Internal asprintf() error");
+        abort();
+      };
       return result;
     }
 
@@ -155,7 +164,10 @@ JsonParseResult parse_json(JsonParser *parser, void*(allocator)(TypeDescriptor))
     } else if (strcmp(parser->curr_tok.value, "false") == 0) {
       result.value.boolean = false;
     } else {
-      asprintf(&result.error, "Error: expected either `true` or `false`, got `%s`", parser->curr_tok.value);
+      if (asprintf(&result.error, "Error: expected either `true` or `false`, got `%s`", parser->curr_tok.value) == -1) {
+        puts("Internal asprintf() error");
+        abort();
+      };
       return result;
     }
 
@@ -168,19 +180,25 @@ JsonParseResult parse_json(JsonParser *parser, void*(allocator)(TypeDescriptor))
     break;
   }
   default:
-    asprintf(&result.error, "Error: expected JSON value, got `%s`", display_tokenkind(parser->curr_tok.kind));
+    if (asprintf(&result.error, "Error: expected JSON value, got `%s`", display_tokenkind(parser->curr_tok.kind)) == -1) {
+      puts("Internal asprintf() error");
+      abort();
+    };
     return result;
   }
 
   return result;
 }
 
-ParseResultObjectField parse_object_field(JsonParser *parser, void*(allocator)(TypeDescriptor)) {
+ParseResultObjectField parse_object_field(JsonParser *parser, void *(allocator)(TypeDescriptor)) {
   ParseResultObjectField result = {.error = NULL};
 
   // expect a key (string)
   if (parser->curr_tok.kind != TOKENKIND_STRING) {
-    asprintf(&result.error, "Error: expected `STRING`, got `%s`", display_tokenkind(parser->curr_tok.kind));
+    if (asprintf(&result.error, "Error: expected `STRING`, got `%s`", display_tokenkind(parser->curr_tok.kind)) == -1) {
+      puts("Internal asprintf() error");
+      abort();
+    };
     return result;
   }
 
@@ -195,7 +213,10 @@ ParseResultObjectField parse_object_field(JsonParser *parser, void*(allocator)(T
 
   // expect a `:`
   if (parser->curr_tok.kind != TOKENKIND_COLON) {
-    asprintf(&result.error, "Error: expected `COLON`, got `%s`", display_tokenkind(parser->curr_tok.kind));
+    if (asprintf(&result.error, "Error: expected `COLON`, got `%s`", display_tokenkind(parser->curr_tok.kind)) == -1) {
+      puts("Internal asprintf() error");
+      abort();
+    };
     return result;
   }
 
@@ -215,7 +236,7 @@ ParseResultObjectField parse_object_field(JsonParser *parser, void*(allocator)(T
   return result;
 }
 
-ParseResultObject parse_object(JsonParser *parser, void*(allocator)(TypeDescriptor)) {
+ParseResultObject parse_object(JsonParser *parser, void *(allocator)(TypeDescriptor)) {
   ParseResultObject result = {.error = NULL};
 
   // Skip the `{`
@@ -267,8 +288,11 @@ ParseResultObject parse_object(JsonParser *parser, void*(allocator)(TypeDescript
   }
 
   if (parser->curr_tok.kind != TOKENKIND_RBRACE) {
-    asprintf(&result.error, "Error: expected token `%s` at position %ld, found `%s` (%s)", display_tokenkind(TOKENKIND_RBRACE),
-             parser->lexer.curr_loc.index, display_tokenkind(parser->curr_tok.kind), parser->curr_tok.value);
+    if (asprintf(&result.error, "Error: expected token `%s` at position %ld, found `%s` (%s)", display_tokenkind(TOKENKIND_RBRACE),
+                 parser->lexer.curr_loc.index, display_tokenkind(parser->curr_tok.kind), parser->curr_tok.value) == -1) {
+      puts("Internal asprintf() error");
+      abort();
+    };
     return result;
   }
 
@@ -284,7 +308,7 @@ ParseResultObject parse_object(JsonParser *parser, void*(allocator)(TypeDescript
   return result;
 }
 
-ParseResultArray parser_parse_array(JsonParser *parser, void*(allocator)(TypeDescriptor)) {
+ParseResultArray parser_parse_array(JsonParser *parser, void *(allocator)(TypeDescriptor)) {
   JsonValueArray array = {.fields = list_new()};
   ParseResultArray result = {.value = array, .error = NULL};
 
@@ -339,8 +363,11 @@ ParseResultArray parser_parse_array(JsonParser *parser, void*(allocator)(TypeDes
   }
 
   if (parser->curr_tok.kind != TOKENKIND_RBRACKET) {
-    asprintf(&result.error, "Error: expected token `%s` at position %ld, found `%s`", display_tokenkind(TOKENKIND_RBRACKET),
-             parser->lexer.curr_loc.index, display_tokenkind(parser->curr_tok.kind));
+    if (asprintf(&result.error, "Error: expected token `%s` at position %ld, found `%s`", display_tokenkind(TOKENKIND_RBRACKET),
+                 parser->lexer.curr_loc.index, display_tokenkind(parser->curr_tok.kind)) == -1) {
+      puts("Internal asprintf() error");
+      abort();
+    };
     return result;
   }
 

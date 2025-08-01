@@ -185,7 +185,8 @@ AnyValue __hpi_internal_anyvalue_from_json(JsonValue value, void *(allocator)(Ty
   return res;
 }
 
-AnyValue __hpi_internal_parse_json(DynString *input, void *(allocator)(), void(trace_allocation)(void *, TypeDescriptor, TypeDescriptor *)) {
+AnyValue __hpi_internal_parse_json(DynString *input, void *(allocator)(TypeDescriptor),
+                                   void(trace_allocation)(void *, TypeDescriptor, TypeDescriptor *)) {
   char *input_cstr = dynstring_as_cstr(input);
 
   NewJsonParserResult create_res = parser_new(input_cstr);

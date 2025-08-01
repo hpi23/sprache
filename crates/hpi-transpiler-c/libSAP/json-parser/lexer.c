@@ -87,7 +87,10 @@ TokenResult lexer_make_string(Lexer *lexer) {
           if (lexer->curr_char > 0) {
             n = (n << 4) + lexer->curr_char;
           } else {
-            asprintf(&result.error, "Error: invalid escape sequence, found `%c` before end of sequence", lexer->curr_char);
+            if (asprintf(&result.error, "Error: invalid escape sequence, found `%c` before end of sequence", lexer->curr_char) == -1) {
+              puts("Internal asprintf() error");
+              abort();
+            }
             return result;
           }
         }
@@ -103,7 +106,10 @@ TokenResult lexer_make_string(Lexer *lexer) {
         lexer_advance(lexer);
         continue;
       default:
-        asprintf(&result.error, "Error: expected escape sequence, found `%c`", lexer->curr_char);
+        if (asprintf(&result.error, "Error: expected escape sequence, found `%c`", lexer->curr_char) == -1) {
+          puts("Internal asprintf() error");
+          abort();
+        };
         return result;
       }
     }
@@ -114,7 +120,10 @@ TokenResult lexer_make_string(Lexer *lexer) {
 
   // skip closing quote
   if (lexer->curr_char != '"') {
-    asprintf(&result.error, "Error: missing closing quote: expected `\"`, found `%c`", lexer->curr_char);
+    if (asprintf(&result.error, "Error: missing closing quote: expected `\"`, found `%c`", lexer->curr_char) == -1) {
+      puts("Internal asprintf() error");
+      abort();
+    };
     return result;
   }
   lexer_advance(lexer);
@@ -217,7 +226,11 @@ TokenResult lexer_next_token(Lexer *lexer) {
       return lexer_make_number(lexer);
     }
 
-    asprintf(&result.error, "Error: illegal character at position %ld (%d) '%d'", lexer->curr_loc.index, lexer->curr_char, lexer->curr_char);
+    if (asprintf(&result.error, "Error: illegal character at position %ld (%d) '%d'", lexer->curr_loc.index, lexer->curr_char, lexer->curr_char) ==
+        -1) {
+      puts("Internal asprintf() error");
+      abort();
+    };
     return result;
   }
 

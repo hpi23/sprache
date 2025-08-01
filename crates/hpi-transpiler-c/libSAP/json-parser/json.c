@@ -152,12 +152,18 @@ char *__internal_json_value_to_string(JsonValue value, ssize_t indent) {
     return json_array_to_string(value.array, indent);
   case JSON_TYPE_INT: {
     char *buf;
-    asprintf(&buf, "%ld", value.num_int);
+    if (asprintf(&buf, "%ld", value.num_int) == -1) {
+      puts("Internal asprintf() error");
+      abort();
+    };
     return buf;
   }
   case JSON_TYPE_FLOAT: {
     char *buf;
-    asprintf(&buf, "%f", value.num_float);
+    if (asprintf(&buf, "%f", value.num_float) == -1) {
+      puts("Internal asprintf() error");
+      abort();
+    }
     return buf;
   }
   case JSON_TYPE_BOOL: {
@@ -169,7 +175,10 @@ char *__internal_json_value_to_string(JsonValue value, ssize_t indent) {
   }
   case JSON_TYPE_STRING: {
     char *buf;
-    asprintf(&buf, "\"%s\"", value.string);
+    if (asprintf(&buf, "\"%s\"", value.string) == -1) {
+      puts("Internal asprintf() error");
+      abort();
+    };
     return buf;
   }
   }
@@ -189,7 +198,7 @@ void json_value_object_free(JsonValueObject obj) {
   while (keys != NULL) {
     char *key = (char *)keys->value;
     if (key == NULL) {
-        break;
+      break;
     }
 
     MapGetResult value = hashmap_get(obj.fields, key);

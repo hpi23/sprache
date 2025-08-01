@@ -25,7 +25,7 @@ ListNode *dynstring_split_cstr(DynString *base, char *delimeter, size_t limit);
 // Splits the dynstring into components using the given delimeter
 ListNode *dynstring_split(DynString *base, DynString *delimeter, size_t limit);
 
-bool dynstring_contains(DynString * base, DynString * test);
+bool dynstring_contains(DynString *base, DynString *test);
 
 // Replaces `from` with `what`
 void dynstring_replace(DynString *base, DynString *from, DynString *what);
@@ -46,7 +46,10 @@ void dynstring_push_string(DynString *string, char *add);
 #define dynstring_push_fmt(dynstring, fmt, ...)                                                                                                      \
   {                                                                                                                                                  \
     char *__internal_buf;                                                                                                                            \
-    asprintf(&__internal_buf, fmt, ##__VA_ARGS__);                                                                                                   \
+    if (asprintf(&__internal_buf, fmt, ##__VA_ARGS__) == -1) {                                                                                       \
+      puts("Internal asprintf() error");                                                                                                             \
+      abort();                                                                                                                                       \
+    };                                                                                                                                               \
     dynstring_push_string(dynstring, __internal_buf);                                                                                                \
     free(__internal_buf);                                                                                                                            \
   }
