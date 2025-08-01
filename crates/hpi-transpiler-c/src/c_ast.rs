@@ -276,7 +276,7 @@ pub struct FnDefinition {
     pub name: String,
     pub type_: CType,
     pub params: Vec<(String, CType)>,
-    pub body: Vec<Statement>,
+    pub body: Option<Vec<Statement>>,
 }
 
 impl Display for FnDefinition {
@@ -288,15 +288,21 @@ impl Display for FnDefinition {
             .collect::<Vec<String>>()
             .join(", ");
 
-        let block = display_stmts(&self.body);
-        let body = match block.contains('\n') {
-            true => format!("{{\n{block}\n}}"),
-            false => format!("{{ {block} }}", block = block.trim_start()),
+        let semicolon_or_body = match &self.body {
+            Some(body) => {
+                let block = display_stmts(&body);
+                match block.contains('\n') {
+                    true => format!(" {{\n{block}\n}}"),
+                    false => format!(" {{ {block} }}", block = block.trim_start()),
+                }
+            }
+            None => ";".to_string(),
         };
 
         write!(
             f,
-            "{type_} {name}({params}) {body}",
+            "{type_} {name}({params}){semicolon_or_body}",
+            // Ohhh naaaa, this can't be OK
             type_ = if self.name == "main" {
                 "int".to_string()
             } else {
@@ -635,19 +641,23 @@ impl Display for MemberExpr {
 #[derive(Debug, Clone)]
 pub struct ArrayExpr {
     pub(super) inner_type: CType,
-    pub(super) values: Vec<Expression>
+    pub(super) values: Vec<Expression>,
 }
 
 impl Display for ArrayExpr {
- fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    write!(
-        f,
-        "({}[{}]){{{}}}",
-        self.inner_type,
-        self.values.len(),
-        self.values.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(", ")
-    )
- }
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "({}[{}]){{{}}}",
+            self.inner_type,
+            self.values.len(),
+            self.values
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -657,13 +667,16 @@ pub struct StructExpr {
 }
 
 impl Display for StructExpr {
- fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    write!(
-        f,
-        "({}){{{}}}",
-        self.name,
-        self.values.iter().map(|(key, value)| format!(".{key} = {value}")).collect::<Vec<String>>().join(", ")
-        // self.values.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(", ")
-    )
- }
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "({}){{{}}}",
+            self.name,
+            self.values
+                .iter()
+                .map(|(key, value)| format!(".{key} = {value}"))
+                .collect::<Vec<String>>()
+                .join(", ") // self.values.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(", ")
+        )
+    }
 }

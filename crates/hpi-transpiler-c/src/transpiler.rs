@@ -16,6 +16,14 @@ pub struct TranspileArgs {
     pub emit_readable_names: bool,
     /// If enabled, GC code is inserted into the final program.
     pub gc_enable: bool,
+    /// If enabled, a header file is generated and the `main` function is renamed.
+    pub is_lib: bool,
+}
+
+#[derive(Clone)]
+pub struct TranspileOutput {
+    pub program: CProgram,
+    pub headers: CProgram,
 }
 
 pub struct Transpiler<'src> {
@@ -123,10 +131,10 @@ impl<'src> Transpiler<'src> {
         unreachable!("the analyzer guarantees valid variable references")
     }
 
-    pub fn transpile(&mut self, tree: AnalyzedProgram<'src>) -> CProgram {
+    pub fn transpile(&mut self, tree: AnalyzedProgram<'src>) -> TranspileOutput {
         self.types = tree.types;
 
-        let globals = tree
+        let globals: Vec<_> = tree
             .globals
             .into_iter()
             .flat_map(|g| self.let_stmt(g, true))
@@ -205,13 +213,16 @@ impl<'src> Transpiler<'src> {
                         args: vec![],
                     },
                 )))),
-                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
-                    AnalyzedCallExpr {
-                        result_type: Type::Nichts,
-                        func: AnalyzedCallBase::Ident("cexit"),
-                        args: vec![AnalyzedExpression::Int(0)],
-                    },
-                )))),
+                match self.user_config.is_lib {
+                    false => Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
+                        AnalyzedCallExpr {
+                            result_type: Type::Nichts,
+                            func: AnalyzedCallBase::Ident("cexit"),
+                            args: vec![AnalyzedExpression::Int(0)],
+                        },
+                    )))),
+                    true => None,
+                },
             ]
             .into_iter()
             .flatten()
@@ -251,73 +262,69 @@ impl<'src> Transpiler<'src> {
             name: "type_descriptor_setup".to_string(),
             type_: Type::Nichts.into(),
             params: vec![],
-            body: self.type_descriptor_setup.clone(),
+            body: Some(self.type_descriptor_setup.clone()),
         });
 
         functions.push_back(FnDefinition {
             name: "type_descriptor_teardown".to_string(),
             type_: Type::Nichts.into(),
             params: vec![],
-            body: self.type_descriptor_teardown.clone(),
+            body: Some(self.type_descriptor_teardown.clone()),
         });
 
         functions.push_back(FnDefinition {
             name: "global_variable_setup".to_string(),
             type_: Type::Nichts.into(),
             params: vec![],
-            body: self.global_variable_setup.clone(),
+            body: Some(self.global_variable_setup.clone()),
         });
 
         functions.push_back(FnDefinition {
             name: "cexit".to_string(),
             type_: Type::Nichts.into(),
             params: vec![("code".to_string(), CType::Int(0))],
-            body: vec![
-                self.pop_scope(true),
-                if self.user_config.gc_enable {
+            body: Some(
+                vec![
+                    self.pop_scope(true),
+                    if self.user_config.gc_enable {
+                        Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                            func: "gc_die".to_string(),
+                            args: vec![],
+                        }))))
+                    } else {
+                        None
+                    },
                     Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
-                        func: "gc_die".to_string(),
+                        func: "type_descriptor_teardown".to_string(),
                         args: vec![],
-                    }))))
-                } else {
-                    None
-                },
-                Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
-                    func: "type_descriptor_teardown".to_string(),
-                    args: vec![],
-                })))),
-                if self.required_includes.contains("./libSAP/libHttp.h") {
+                    })))),
+                    if self.required_includes.contains("./libSAP/libHttp.h") {
+                        Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
+                            func: "__hpi_internal_curl_cleanup".to_string(),
+                            args: vec![],
+                        }))))
+                    } else {
+                        None
+                    },
                     Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
-                        func: "__hpi_internal_curl_cleanup".to_string(),
-                        args: vec![],
-                    }))))
-                } else {
-                    None
-                },
-                Some(Statement::Expr(Expression::Call(Box::new(CallExpr {
-                    func: "exit".to_string(),
-                    args: vec![Expression::Ident("code".to_string())],
-                })))),
-            ]
-            .into_iter()
-            .flatten()
-            .collect(),
+                        func: "exit".to_string(),
+                        args: vec![Expression::Ident("code".to_string())],
+                    })))),
+                ]
+                .into_iter()
+                .flatten()
+                .collect(),
+            ),
         });
-
-        // functions.push_back(FnDefinition {
-        //     name: "main".to_string(),
-        //     type_: CType::Int(0),
-        //     params: vec![
-        //         ("argc".to_string(), CType::Int(0)),
-        //         ("argv".to_string(), CType::Char(2)),
-        //     ],
-        //     body: self.body(main_fn.clone())
-        // });
 
         self.in_main_fn = true;
         functions.push_back(self.fn_declaration(AnalyzedFunctionDefinition {
             used: true,
-            name: "main",
+            name: if self.user_config.is_lib {
+                "lib_main"
+            } else {
+                "main"
+            },
             params: vec![
                 AnalyzedParameter {
                     name: "argc",
@@ -425,12 +432,32 @@ impl<'src> Transpiler<'src> {
             functions.push_front(func)
         }
 
-        CProgram {
-            includes: mem::take(&mut self.required_includes),
-            globals,
-            type_descriptors: self.type_descriptor_declarations.clone(),
-            type_defs: vec![],
-            functions,
+        // Generate headers
+        let headers = functions
+            .iter()
+            .map(|f| FnDefinition {
+                name: f.name.clone(),
+                type_: f.type_.clone(),
+                params: f.params.clone(),
+                body: None,
+            })
+            .collect();
+
+        TranspileOutput {
+            program: CProgram {
+                includes: self.required_includes.clone(),
+                globals: globals.clone(),
+                type_descriptors: self.type_descriptor_declarations.clone(),
+                type_defs: vec![],
+                functions,
+            },
+            headers: CProgram {
+                includes: mem::take(&mut self.required_includes),
+                type_defs: vec![],
+                globals,
+                type_descriptors: self.type_descriptor_declarations.clone(),
+                functions: headers,
+            },
         }
     }
 
@@ -446,6 +473,7 @@ impl<'src> Transpiler<'src> {
         self.scopes.push(Scope::new());
 
         let name = match node.name {
+            "lib_main" => "lib_main".to_string(),
             "main" => "main".to_string(),
             "bewerbung" => "bewerbung".to_string(),
             "einschreibung" => "einschreibung".to_string(),
@@ -518,7 +546,7 @@ impl<'src> Transpiler<'src> {
             name,
             type_: node.return_type.into(),
             params,
-            body,
+            body: Some(body),
         }
     }
 }

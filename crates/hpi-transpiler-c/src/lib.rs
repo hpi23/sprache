@@ -1,5 +1,7 @@
 use hpi_analyzer::Diagnostic;
-pub use transpiler::{Transpiler, TranspileArgs};
+pub use transpiler::{TranspileArgs, Transpiler};
+
+use crate::transpiler::TranspileOutput;
 
 macro_rules! comment {
     ($self:ident, $vec:expr, $msg:expr) => {
@@ -10,10 +12,10 @@ macro_rules! comment {
 }
 
 mod c_ast;
-mod transpiler;
 mod expression;
-mod statement;
 mod gc;
+mod statement;
+mod transpiler;
 
 /// Transpiles rush source code to C89 / C90.
 /// The `Ok(_)` variant also returns non-error diagnostics.
@@ -21,9 +23,9 @@ mod gc;
 pub fn transpile<'tree>(
     text: &'tree str,
     path: &'tree str,
-    style_config: TranspileArgs,
-) -> Result<(String, Vec<Diagnostic<'tree>>), Vec<Diagnostic<'tree>>> {
+    config: TranspileArgs,
+) -> Result<(TranspileOutput, Vec<Diagnostic<'tree>>), Vec<Diagnostic<'tree>>> {
     let (tree, diagnostics) = hpi_analyzer::analyze(text, path)?;
-    let c_ast = Transpiler::new(style_config).transpile(tree);
-    Ok((c_ast.to_string(), diagnostics))
+    let c_output = Transpiler::new(config).transpile(tree);
+    Ok((c_output, diagnostics))
 }

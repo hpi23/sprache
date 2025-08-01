@@ -9,8 +9,12 @@ fn main() {
 
     let config = TranspileArgs {
         emit_comments: env::args().nth(2).expect("<emit-comments> is required") == "1",
-        emit_readable_names: env::args().nth(3).expect("<emit-readable-names> is required") == "1",
+        emit_readable_names: env::args()
+            .nth(3)
+            .expect("<emit-readable-names> is required")
+            == "1",
         gc_enable: env::args().nth(4).expect("<gc-enable> is required") == "1",
+        is_lib: env::args().nth(5).expect("<lib> is required") == "1",
     };
 
     let (out, diagnostics) =
@@ -36,5 +40,8 @@ fn main() {
     );
 
     println!("tanspile: {:?}", start.elapsed());
-    fs::write("output.c", out).unwrap();
+    fs::write("output.c", out.program.to_string()).unwrap();
+    if config.is_lib {
+        fs::write("output.h", out.headers.to_string()).unwrap();
+    }
 }
