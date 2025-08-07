@@ -1,15 +1,17 @@
 #pragma once
 #include "hashmap/map.h"
 #include "reflection.h"
+#include <stdint.h>
 
 typedef struct {
-    int64_t year;
-    int64_t month;
-    int64_t calendar_day;
-    int64_t week_day;
-    int64_t hour;
-    int64_t minute;
-    int64_t second;
+  int16_t year;
+  int8_t month;
+  int8_t calendar_day;
+  int8_t week_day;
+  int8_t hour;
+  int8_t minute;
+  int8_t second;
+  int64_t unix_time;
 } TimeStruct;
 
 TimeStruct __hpi_internal_time_provider();

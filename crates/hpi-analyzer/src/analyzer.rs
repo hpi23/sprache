@@ -401,6 +401,7 @@ impl<'src> Analyzer<'src> {
                         ObjectTypeField { key: "Stunde".to_string(), type_: Box::new(Type::Int(0)) },
                         ObjectTypeField { key: "Minute".to_string(), type_: Box::new(Type::Int(0)) },
                         ObjectTypeField { key: "Sekunde".to_string(), type_: Box::new(Type::Int(0)) },
+                        ObjectTypeField { key: "Unix".to_string(), type_: Box::new(Type::Int(0)) },
 
                 ], 0);
 

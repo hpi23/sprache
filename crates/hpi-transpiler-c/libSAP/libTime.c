@@ -1,8 +1,10 @@
 #include "./libTime.h"
+// #include "bits/types/struct_timeval.h"
 #include "hashmap/map.h"
 #include "reflection.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/time.h>
 #include <time.h>
 
 TimeStruct current;
@@ -11,15 +13,19 @@ TimeStruct __hpi_internal_time_provider() {
   int64_t raw_time = time(NULL);
   struct tm *local = localtime(&raw_time);
 
-  TimeStruct res = {
-      .year = local->tm_year + 1900,
-      .month = local->tm_mon + 1,
-      .calendar_day = local->tm_mday,
-      .week_day = local->tm_wday,
-      .hour = local->tm_hour,
-      .minute = local->tm_min,
-      .second = local->tm_sec,
-  };
+  struct timeval *te = malloc(sizeof(struct timeval));
+  gettimeofday(te, NULL);
+  int64_t milliseconds = te->tv_sec * 1000LL + te->tv_usec / 1000;
+  free(te);
+
+  TimeStruct res = {.year = local->tm_year + 1900,
+                    .month = local->tm_mon + 1,
+                    .calendar_day = local->tm_mday,
+                    .week_day = local->tm_wday,
+                    .hour = local->tm_hour,
+                    .minute = local->tm_min,
+                    .second = local->tm_sec,
+                    .unix_time = milliseconds};
 
   return res;
 }
@@ -99,11 +105,12 @@ HashMap *__hpi_internal_time(void(tracer)(void *addr, TypeDescriptor type, TypeD
   obj->list_inner = NULL;
   obj->obj_fields = hashmap_new();
 
-  char *keys[7] = {"Sekunde", "Minute", "Stunde", "Wochentag", "Kalendar_Tag", "Monat", "Jahr"};
+#define KITEMS 8
+  char *keys[KITEMS] = {"Sekunde", "Minute", "Stunde", "Wochentag", "Kalendar_Tag", "Monat", "Jahr", "Unix"};
 
   HashMap *map = hashmap_new();
 
-  for (int i = 0; i < 7; i++) {
+  for (int i = 0; i < KITEMS; i++) {
     int64_t *ptr = malloc(sizeof(int64_t));
 
     switch (i) {
@@ -128,6 +135,9 @@ HashMap *__hpi_internal_time(void(tracer)(void *addr, TypeDescriptor type, TypeD
       break;
     case 6:
       *ptr = current.year;
+      break;
+    case 7:
+      *ptr = current.unix_time;
       break;
     default:
       puts("Illegal case in time");

@@ -48,11 +48,12 @@ init_wrapper:
 
 cleanSAP:
 	rm -rf ./libSAP/**/obj/
+	rm -rf ./libSAP/obj/
 	rm -f ./libSAP/libSAP.a ./libSAP/libSAP_raw.a
 	rm -f ./libSAP/**/*.a
 
 clean: cleanSAP
-	rm output.c
+	rm -f output.c
 
 .NOTPARALLEL:
 init: cleanSAP init_wrapper  libSAP
