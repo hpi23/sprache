@@ -12,4 +12,4 @@ libJson.a: $(OBJ_FILES)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	mkdir -p obj
-	gcc -c -o $@ $<
+	gcc -O3 -c -o $@ $<
