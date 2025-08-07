@@ -24,12 +24,19 @@ lib: libSAP
 	echo $(HPI_FILE)
 	cargo r $(HPI_FILE) 1 1 1 1
 
-main: output.c libSAP
+dbg: output.c libSAP
 	gcc output.c -ggdb \
 		./libSAP/libSAP.a \
 		-lcurl \
 		-lm \
 		$(CFLAGS) -o main
+
+main: output.c libSAP
+	gcc output.c -ggdb \
+		./libSAP/libSAP.a \
+		-lcurl \
+		-lm \
+		-O3 -o main
 
 valgrind: main
 	valgrind --leak-check=full \
