@@ -17,6 +17,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include "libSAP.h"
 
 const Semver LIBSAP_VERSION = {
     .major = 0,

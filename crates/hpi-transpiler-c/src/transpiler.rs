@@ -154,15 +154,15 @@ impl<'src> Transpiler<'src> {
         let main_fn = AnalyzedBlock {
             result_type: Type::Int(0),
             stmts: vec![
-                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
-                    AnalyzedCallExpr {
+                Some(AnalyzedStatementK::Expr(AnalyzedExpression::Call(
+                    Box::new(AnalyzedCallExpr {
                         result_type: Type::String(0),
                         func: AnalyzedCallBase::Ident("type_descriptor_setup"),
                         args: vec![],
-                    },
-                )))),
-                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
-                    AnalyzedCallExpr {
+                    }),
+                ))),
+                Some(AnalyzedStatementK::Expr(AnalyzedExpression::Call(
+                    Box::new(AnalyzedCallExpr {
                         result_type: Type::Nichts,
                         func: AnalyzedCallBase::Ident("__hpi_internal_init_libSAP"),
                         args: vec![
@@ -179,24 +179,24 @@ impl<'src> Transpiler<'src> {
                             ),
                             AnalyzedExpression::Bool(self.user_config.gc_enable),
                         ],
-                    },
-                )))),
-                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
-                    AnalyzedCallExpr {
+                    }),
+                ))),
+                Some(AnalyzedStatementK::Expr(AnalyzedExpression::Call(
+                    Box::new(AnalyzedCallExpr {
                         result_type: Type::Nichts,
                         func: AnalyzedCallBase::Ident("global_variable_setup"),
                         args: vec![],
-                    },
-                )))),
-                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
-                    AnalyzedCallExpr {
+                    }),
+                ))),
+                Some(AnalyzedStatementK::Expr(AnalyzedExpression::Call(
+                    Box::new(AnalyzedCallExpr {
                         result_type: Type::String(0),
                         func: AnalyzedCallBase::Ident("bewerbung"),
                         args: vec![],
-                    },
-                )))),
-                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
-                    AnalyzedCallExpr {
+                    }),
+                ))),
+                Some(AnalyzedStatementK::Expr(AnalyzedExpression::Call(
+                    Box::new(AnalyzedCallExpr {
                         result_type: Type::Nichts,
                         func: AnalyzedCallBase::Ident("einschreibung"),
                         args: vec![AnalyzedExpression::Call(Box::new(AnalyzedCallExpr {
@@ -204,28 +204,32 @@ impl<'src> Transpiler<'src> {
                             func: AnalyzedCallBase::Ident("__hpi_internal_generate_matrikelnummer"),
                             args: vec![],
                         }))],
-                    },
-                )))),
-                Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
-                    AnalyzedCallExpr {
+                    }),
+                ))),
+                Some(AnalyzedStatementK::Expr(AnalyzedExpression::Call(
+                    Box::new(AnalyzedCallExpr {
                         result_type: Type::Nichts,
                         func: AnalyzedCallBase::Ident("studium"),
                         args: vec![],
-                    },
-                )))),
+                    }),
+                ))),
                 match self.user_config.is_lib {
-                    false => Some(AnalyzedStatement::Expr(AnalyzedExpression::Call(Box::new(
-                        AnalyzedCallExpr {
+                    false => Some(AnalyzedStatementK::Expr(AnalyzedExpression::Call(
+                        Box::new(AnalyzedCallExpr {
                             result_type: Type::Nichts,
                             func: AnalyzedCallBase::Ident("cexit"),
                             args: vec![AnalyzedExpression::Int(0)],
-                        },
-                    )))),
+                        }),
+                    ))),
                     true => None,
                 },
             ]
             .into_iter()
             .flatten()
+            .map(|sk| AnalyzedStatement {
+                span: Span::dummy(),
+                kind: sk,
+            })
             .collect(),
             // TODO: call exit function, do not do this
             expr: None,

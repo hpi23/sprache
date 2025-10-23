@@ -899,7 +899,10 @@ impl<'src> Analyzer<'src> {
             Statement::Solange(node) => return self.while_stmt(node),
             Statement::Abbrechen(node) => self.break_stmt(node),
             Statement::Weitermachen(node) => self.continue_stmt(node),
-            Statement::Expr(node) => AnalyzedStatement::Expr(self.expression(node.expr)),
+            Statement::Expr(node) => AnalyzedStatement {
+                span: node.span,
+                kind: AnalyzedStatementK::Expr(self.expression(node.expr)),
+            },
         })
     }
 
@@ -1141,11 +1144,14 @@ impl<'src> Analyzer<'src> {
             }
         }
 
-        AnalyzedStatement::Let(AnalyzedLetStmt {
-            name: node.name.inner,
-            expr,
-            used: true,
-        })
+        AnalyzedStatement {
+            span: node.span,
+            kind: AnalyzedStatementK::Let(AnalyzedLetStmt {
+                name: node.name.inner,
+                expr,
+                used: true,
+            }),
+        }
     }
 
     fn aendere_stmt(&mut self, node: AendereStmt<'src>) -> AnalyzedStatement<'src> {
@@ -1218,16 +1224,19 @@ impl<'src> Analyzer<'src> {
             false,
         );
 
-        AnalyzedStatement::Aendere(AnalyzedAendereStmt {
-            assignee: node.assignee.inner,
-            assignee_ptr_count: node.assignee_ptr_count,
-            expr,
-            result_type: if matches!(result_type, Type::Unknown | Type::Never) {
-                result_type
-            } else {
-                Type::Nichts
-            },
-        })
+        AnalyzedStatement {
+            span: node.span,
+            kind: AnalyzedStatementK::Aendere(AnalyzedAendereStmt {
+                assignee: node.assignee.inner,
+                assignee_ptr_count: node.assignee_ptr_count,
+                expr,
+                result_type: if matches!(result_type, Type::Unknown | Type::Never) {
+                    result_type
+                } else {
+                    Type::Nichts
+                },
+            }),
+        }
     }
 
     // TODO: this breaks if there is no function
@@ -1265,7 +1274,10 @@ impl<'src> Analyzer<'src> {
             true,
         );
 
-        AnalyzedStatement::Return(expr.map(|(expr, _)| expr))
+        AnalyzedStatement {
+            span: node.span,
+            kind: AnalyzedStatementK::Return(expr.map(|(expr, _)| expr)),
+        }
     }
 
     /// Analyzes a [`WhileStmt`].
@@ -1362,11 +1374,14 @@ impl<'src> Analyzer<'src> {
             // if the condition is always `false`, return nothing
             (true, _) => None,
             // otherwise, return an `AnalyzedWhileStmt`
-            (_, _) => Some(AnalyzedStatement::While(AnalyzedWhileStmt {
-                cond,
-                block,
-                never_terminates,
-            })),
+            (_, _) => Some(AnalyzedStatement {
+                span: node.span,
+                kind: AnalyzedStatementK::While(AnalyzedWhileStmt {
+                    cond,
+                    block,
+                    never_terminates,
+                }),
+            }),
         }
     }
 
@@ -1380,7 +1395,10 @@ impl<'src> Analyzer<'src> {
             );
         }
         self.current_loop_is_terminated = true;
-        AnalyzedStatement::Break
+        AnalyzedStatement {
+            span: node.span,
+            kind: AnalyzedStatementK::Break,
+        }
     }
 
     fn continue_stmt(&mut self, node: WeitermachenStmt<'src>) -> AnalyzedStatement<'src> {
@@ -1392,7 +1410,10 @@ impl<'src> Analyzer<'src> {
                 node.span,
             );
         }
-        AnalyzedStatement::Continue
+        AnalyzedStatement {
+            span: node.span,
+            kind: AnalyzedStatementK::Continue,
+        }
     }
 
     fn expression(&mut self, node: Expression<'src>) -> AnalyzedExpression<'src> {
@@ -2630,6 +2651,13 @@ impl<'src> Analyzer<'src> {
                     Type::Function {
                         params: vec![Type::String(0)],
                         result_type: Box::new(Type::Any),
+                    },
+                ),
+                (
+                    "NehmeTyp".to_string(),
+                    Type::Function {
+                        params: vec![Type::String(0)],
+                        result_type: Box::new(Type::String(0)),
                     },
                 ),
                 (

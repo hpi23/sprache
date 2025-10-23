@@ -1,14 +1,13 @@
 use hpi_analyzer::{
     ast::{
-        AnalyzedAendereStmt, AnalyzedExpression, AnalyzedLetStmt, AnalyzedStatement,
-        AnalyzedWhileStmt,
+        AnalyzedAendereStmt, AnalyzedExpression, AnalyzedLetStmt, AnalyzedStatement, AnalyzedStatementK, AnalyzedWhileStmt
     },
     AssignOp, Type,
 };
 
 use crate::{
     c_ast::{
-        AssignStmt, CType, CallExpr, Expression, IfStmt, PrefixExpr, PrefixOp, Statement,
+        AssignStmt, CType, Expression, IfStmt, PrefixExpr, PrefixOp, Statement,
         VarDeclaration,
     },
     gc::Scope,
@@ -18,17 +17,17 @@ use crate::{
 
 impl<'src> Transpiler<'src> {
     pub(super) fn statement(&mut self, node: AnalyzedStatement<'src>) -> Vec<Statement> {
-        match node {
-            AnalyzedStatement::Let(node) => self.let_stmt(node, false),
-            AnalyzedStatement::Aendere(node) => self.aendere_stmt(node),
-            AnalyzedStatement::Return(node) => self.return_stmt(node),
-            AnalyzedStatement::While(node) => self.while_stmt(node),
+        let output_stmts = match node.kind {
+            AnalyzedStatementK::Let(node) => self.let_stmt(node, false),
+            AnalyzedStatementK::Aendere(node) => self.aendere_stmt(node),
+            AnalyzedStatementK::Return(node) => self.return_stmt(node),
+            AnalyzedStatementK::While(node) => self.while_stmt(node),
             // for `break` and `continue` jumps, `goto` is used because of HPI's semantics
-            AnalyzedStatement::Break => {
+            AnalyzedStatementK::Break => {
                 let loop_ = self.loops.last_mut().expect("there is always a loop");
                 vec![Statement::Goto(loop_.break_label.clone())]
             }
-            AnalyzedStatement::Continue => {
+            AnalyzedStatementK::Continue => {
                 let gc_remove_roots = self.pop_scope(false);
                 let loop_ = self.loops.last_mut().expect("there is always a loop");
                 let mut res_stmt = vec![];
@@ -38,7 +37,7 @@ impl<'src> Transpiler<'src> {
                 res_stmt.push(Statement::Goto(loop_.head_label.clone()));
                 res_stmt
             }
-            AnalyzedStatement::Expr(node) => {
+            AnalyzedStatementK::Expr(node) => {
                 let (mut stmts, expr) = self.expression(node);
                 if let Some(expr) = expr {
                     stmts.push(Statement::Expr(expr));
@@ -46,6 +45,15 @@ impl<'src> Transpiler<'src> {
                 stmts
             }
             other => unreachable!("Not supported: {other:?}"),
+        };
+
+        match self.user_config.emit_comments {
+            true => {
+                let mut stmts = vec![Statement::Comment(format!("L {}:{}", node.span.start.line, node.span.start.column).into())];
+                stmts.extend(output_stmts);
+                stmts
+            }
+            false => output_stmts,
         }
     }
 

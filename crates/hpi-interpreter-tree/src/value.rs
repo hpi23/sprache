@@ -158,6 +158,10 @@ fn speicherbox_nehme(val: &Value, args: Vec<Value>) -> Value {
     }
 }
 
+fn speicherbox_nehme_typ(val: &Value, args: Vec<Value>) -> Value {
+    todo!("not implemented")
+}
+
 fn speicherbox_datentyp_von(val: &Value, args: Vec<Value>) -> Value {
     let type_ = match (val, &args[0]) {
         (Value::Speicherbox(inner), Value::String(key)) => match inner.get(key) {
@@ -225,6 +229,9 @@ impl Value {
             }
             (Value::Speicherbox(_), "Nehmen") => {
                 Value::BuiltinFunction(Box::new(self.clone()), speicherbox_nehme)
+            }
+            (Value::Speicherbox(_), "NehmeTyp") => {
+                Value::BuiltinFunction(Box::new(self.clone()), speicherbox_nehme_typ)
             }
             (Value::Speicherbox(_), "Datentyp_Von") => {
                 Value::BuiltinFunction(Box::new(self.clone()), speicherbox_datentyp_von)

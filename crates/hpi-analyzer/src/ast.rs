@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use hpi_parser::ast::{AssignOp, InfixOp, ObjectTypeField, PrefixOp, Type};
+use hpi_parser::{ast::{AssignOp, InfixOp, ObjectTypeField, PrefixOp, Type}};
+pub use hpi_parser::Span;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnalyzedProgram<'src> {
@@ -37,7 +38,26 @@ pub struct AnalyzedBlock<'src> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum AnalyzedStatement<'src> {
+pub struct AnalyzedStatement<'src> {
+    pub span: Span<'src>,
+    pub kind: AnalyzedStatementK<'src>,
+}
+
+impl AnalyzedStatement<'_> {
+    pub fn result_type(&self) -> Type {
+        self.kind.result_type()
+    }
+
+    pub fn constant(&self) -> bool {
+        match &self.kind {
+            AnalyzedStatementK::Expr(expr) => expr.constant(),
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AnalyzedStatementK<'src> {
     Beantrage(AnalyzedBeantrageStmt<'src>),
     Let(AnalyzedLetStmt<'src>),
     Aendere(AnalyzedAendereStmt<'src>),
@@ -48,7 +68,7 @@ pub enum AnalyzedStatement<'src> {
     Expr(AnalyzedExpression<'src>),
 }
 
-impl AnalyzedStatement<'_> {
+impl AnalyzedStatementK<'_> {
     pub fn result_type(&self) -> Type {
         match self {
             Self::Beantrage(_) => Type::Nichts,

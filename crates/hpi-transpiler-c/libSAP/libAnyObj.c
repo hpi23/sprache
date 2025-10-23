@@ -1,6 +1,7 @@
 #include "./libAnyObj.h"
+#include "dynstring/dynstring.h"
 #include "hashmap/map.h"
-#include "libGC.h"
+// #include "libGC.h"
 #include "list/list.h"
 #include "reflection.h"
 #include <assert.h>
@@ -46,6 +47,26 @@ AnyValue __hpi_internal_anyobj_take(AnyObject *obj, DynString *key) {
   }
 }
 
+DynString * __hpi_internal_anyobj_take_type(AnyObject *obj, DynString *key) {
+  char *key_c = dynstring_as_cstr(key);
+  MapGetResult res = hashmap_get(obj->fields, key_c);
+  free(key_c);
+
+  if (res.found) {
+    AnyValue v = *(AnyValue *)res.value;
+    char * c_str = display_type(v.type);
+    DynString * dstr = dynstring_from(c_str);
+    free(c_str);
+    return dstr;
+  } else {
+    TypeDescriptor val_type = {.kind = TYPE_NONE};
+    char * c_str = display_type(val_type);
+    DynString * dstr = dynstring_from(c_str);
+    free(c_str);
+    return dstr;
+  }
+}
+
 ListNode *__hpi_internal_anyobj_keys(AnyObject *obj) {
   ListNode *raw_keys = hashmap_keys(obj->fields);
   size_t raw_len = list_len(raw_keys);
@@ -60,10 +81,12 @@ ListNode *__hpi_internal_anyobj_keys(AnyObject *obj) {
     *str = dynstring_from(temp.value);
     list_append(new_list, str);
     // free(temp.value);
-    gc_free_addr(temp.value);
+    // gc_free_addr(temp.value);
   }
 
-  gc_free_addr(raw_keys);
+  // gc_free_addr(raw_keys);
+  list_free(raw_keys);
+  // free_li
   // list_free(raw_keys);
 
   return new_list;
@@ -77,7 +100,7 @@ void *__hpi_internal_runtime_cast(AnyValue from, TypeDescriptor as_type, void *(
     if (from.type.kind == TYPE_FLOAT && as_type.kind == TYPE_INT) {
       // int64_t *as_int = malloc(sizeof(int64_t));
       int64_t *as_int = allocator((TypeDescriptor){.obj_fields = NULL, .ptr_count = 1, .list_inner = NULL, .kind = TYPE_INT});
-      *as_int = (int64_t) * (double *)from.value;
+      *as_int = (int64_t)*(double *)from.value;
       // TODO: is this required?
       // gc_free_addr(from.value);
       return as_int;

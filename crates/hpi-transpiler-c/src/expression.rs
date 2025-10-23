@@ -888,6 +888,12 @@ impl<'src> Transpiler<'src> {
                             );
                             "__hpi_internal_anyobj_take".to_string()
                         }
+                        (Type::AnyObject(0), "NehmeTyp") => {
+                            args.push_front(
+                                member_expr.expect("An anyobj always produces a value"),
+                            );
+                            "__hpi_internal_anyobj_take_type".to_string()
+                        }
                         (Type::AnyObject(0), "Schlüssel") => {
                             args.push_back(member_expr.expect("An anyobj always produces a value"));
                             "__hpi_internal_anyobj_keys".to_string()

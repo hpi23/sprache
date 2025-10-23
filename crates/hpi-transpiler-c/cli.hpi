@@ -1,0 +1,374 @@
+beantrage Geld von Hasso;
+beantrage Drucke von Drucker;
+beantrage Http von Netzwerk;
+beantrage Gliedere_JSON von Textverarbeitung;
+beantrage Zergliedere_JSON von Textverarbeitung;
+beantrage Formatiere von Textverarbeitung;
+beantrage Aufgeben von libSAP;
+beantrage Umgebungsvariablen von libSAP;
+beantrage Argumente von libSAP;
+beantrage Zeit von Uhr;
+beantrage Versions_Nummer von libSAP;
+
+//
+// ANFANG LIB.
+//
+
+//
+// Datentypen.
+//
+
+datentyp Speise auf Objekt {
+    Zeichenkette Titel /
+    Zeichenkette Beschreibung /
+    Fließkommazahl Preis /
+
+    // LECKER NAEHRWERTE.
+    Fließkommazahl Protein_GR /
+    Fließkommazahl Kcal /
+    Fließkommazahl Fett_GR /
+    Fließkommazahl Zucker_GR /
+    Fließkommazahl Kohlenhydrate_GR /
+
+    Zeichenkette ZeitSlot /
+    Zahl VeganFlaggen /
+};
+
+//
+// Konstanten.
+//
+
+setze Zahl MENSA_FILMUNI auf 9603;
+setze Zahl MENSA_GRIEBNITZSEE auf 9601;
+setze Zeichenkette MENSA_URL_GENERISCH auf "https://stwwb.webspeiseplan.de/index.php?token=55ed21609e26bbf68ba2b19390bf7961&model=menu&location=%d&languagetype=2&_=%d";
+
+//
+// Funktionen.
+//
+
+funk Lade_Speiseangebot(Zahl Mensa_Ort / Zahl Tages_Verschiebung) ergibt Liste von Speise {
+    setze Zeichenkette Körper auf "";
+    setze Zahl Aktuelle_Zeit auf Zeit().Unix;
+    setze Zeichenkette URL auf Formatiere(MENSA_URL_GENERISCH / Mensa_Ort / Aktuelle_Zeit);
+    Drucke(URL);
+    setze Zahl Antwort_Zahl auf Http(
+        "GET" /
+        URL /
+        "" /
+        [
+            erstelle {
+                Zeichenkette Schlüssel auf "Referer" /
+                Zeichenkette Wert auf "https://stwwb.webspeiseplan.de/menu" /
+            }
+        ] /
+        &Körper /
+    );
+
+    falls Antwort_Zahl != 200 {
+        Aufgeben(1);
+    }
+
+    Drucke("Heruntergeladen, Zergliedere_JSON()...");
+
+    setze Speicherbox Res auf Zergliedere_JSON(Körper) als Speicherbox;
+    setze Liste von Speicherbox ContentRes auf Res.Nehmen("content") als Liste von Speicherbox;
+    setze Zahl Zähler auf 0;
+
+    setze Liste von Speise Resultat auf [];
+
+    solange Zähler < ContentRes.Länge() {
+        setze Speicherbox ResTemp auf ContentRes[Zähler];
+        setze Liste von Speicherbox Gerichte auf ResTemp.Nehmen("speiseplanGerichtData") als Liste von Speicherbox;
+        setze Speicherbox SpeiseplanAdvanced auf ResTemp.Nehmen("speiseplanAdvanced") als Speicherbox;
+        setze Zeichenkette ZeitSlot auf SpeiseplanAdvanced.Nehmen("titel") als Zeichenkette;
+
+        setze Zahl Gerichtzähler auf 0;
+        solange (Gerichtzähler < Gerichte.Länge()) {
+            setze Speicherbox Gericht auf Gerichte[Gerichtzähler];
+            Gerichtzähler += 1;
+
+            setze Speicherbox ZusatzInfos auf Gericht.Nehmen("zusatzinformationen") als Speicherbox;
+
+            // DIES STIRBT MANCHMAL.
+            setze Fließkommazahl Preis auf ZusatzInfos.Nehmen("mitarbeiterpreisDecimal2") als Fließkommazahl;
+
+            setze Fließkommazahl Protein auf ZusatzInfos.Nehmen("nweiweissDecimal1") als Fließkommazahl;
+            setze Fließkommazahl Kcal auf ZusatzInfos.Nehmen("nwkcalInteger") als Fließkommazahl;
+            setze Fließkommazahl Fett auf ZusatzInfos.Nehmen("nwfettDecimal1") als Fließkommazahl;
+            setze Fließkommazahl Zucker auf ZusatzInfos.Nehmen("nwzuckerDecimal1") als Fließkommazahl;
+            setze Fließkommazahl Kohlenhydrate auf ZusatzInfos.Nehmen("nwzuckerDecimal1") als Fließkommazahl;
+
+            setze Zahl VeganFlaggen auf -1;
+            setze Zeichenkette MerkmaleTyp auf Gericht.NehmeTyp("gerichtmerkmaleIds");
+
+            falls MerkmaleTyp != "Nichts" {
+                setze Zeichenkette GerichtmerkmaleIds auf Gericht.Nehmen("gerichtmerkmaleIds") als Zeichenkette;
+
+                aendere VeganFlaggen auf 0;
+                falls GerichtmerkmaleIds.Enthält("228") {
+                    aendere VeganFlaggen auf 2;
+                } sonst falls GerichtmerkmaleIds.Enthält("229") {
+                    aendere VeganFlaggen auf 1;
+                }
+            }
+
+
+            setze Speicherbox GerichtInfos auf Gericht.Nehmen("speiseplanAdvancedGericht") als Speicherbox;
+            setze Zeichenkette GerichtDatumRoh auf GerichtInfos.Nehmen("datum") als Zeichenkette;
+
+            setze Zeichenkette GerichtDatum auf GerichtDatumRoh.Zertrenne("T")[0];
+
+            setze Zahl Verwendeter_Tag auf Zeit().Kalendar_Tag + Tages_Verschiebung; // OHH neinnn, das kaputtchen
+            setze Zahl Verwendeter_Monat auf Zeit().Monat; // OHH neinnn, das kaputtchen
+
+            // KB bei nicht 31 tage oder bei Dezember
+            falls Verwendeter_Tag == 32 {
+                aendere Verwendeter_Tag auf 1;
+                aendere Verwendeter_Monat auf Verwendeter_Monat + 1;
+            }
+
+            setze Zeichenkette HeuteDatum auf Formatiere("%d-%2d-%2d" / Zeit().Jahr / Verwendeter_Monat / Verwendeter_Tag);
+            setze Zeichenkette Gerichtname auf GerichtInfos.Nehmen("gerichtname") als Zeichenkette;
+
+            setze Zahl Kaunter auf -1;
+
+            falls Gerichtname.Enthält("COUNTER 1") {
+                aendere Kaunter auf 1;
+            } sonst falls Gerichtname.Enthält("COUNTER 2") {
+                aendere Kaunter auf 2;
+            } sonst falls Gerichtname.Enthält("COUNTER 3") {
+                aendere Kaunter auf 3;
+            } sonst falls Gerichtname.Enthält("COUNTER 4") {
+                aendere Kaunter auf 4;
+            }
+
+             aendere Gerichtname auf Gerichtname
+                .Ersetze("\n" / "")
+                .Ersetze("COUNTER 1 / " / "")
+                .Ersetze("COUNTER 2 / " / "")
+                .Ersetze("COUNTER 3 / " / "")
+                .Ersetze("COUNTER 4 / " / "");
+
+            falls
+                (GerichtDatum != HeuteDatum)
+                || Gerichtname.Startet_Mit("Salatbuffet")
+                || Gerichtname.Enthält("Relevo")
+                || Gerichtname.Enthält("kleine Schale") // WARUMMM!!!
+                || Gerichtname.Enthält("Wochenende!")
+                || Gerichtname.Enthält("Preise pro 100 g")
+                || Gerichtname.Enthält("Preis pro 100 g")
+                || Gerichtname.Enthält("Preis pro 100g") { // WARUM??? Es gibt einfach beide!
+                weitermachen;
+            }
+
+            setze Zeichenkette Titel auf Formatiere("Kaunter %d" / Kaunter);
+            falls Kaunter == -1 {
+                aendere Titel auf "K/A      ";
+            }
+
+            Resultat.Hinzufügen(erstelle {
+                Zeichenkette ZeitSlot auf ZeitSlot /
+                Zeichenkette Titel auf Titel /
+                Zeichenkette Beschreibung auf Gerichtname /
+                Fließkommazahl Preis auf Preis /
+                Fliesskommazahl Protein_GR auf Protein /
+                Fliesskommazahl Kcal auf Kcal /
+                Fliesskommazahl Fett_GR auf Fett /
+                Fliesskommazahl Zucker_GR auf Zucker /
+                Fliesskommazahl Kohlenhydrate_GR auf Kohlenhydrate /
+                Zeichenkette ZeitSlot auf ZeitSlot /
+                Zahl VeganFlaggen auf VeganFlaggen /
+            });
+
+        }
+
+        Zähler += 1;
+    }
+
+    Resultat
+}
+
+//
+// ENDE LIB.
+//
+
+setze Zeichenkette KEINE_DATEN auf "! OBACHT: Keine Daten vorhanden";
+setze Wahrheitswert ZEIGE_MEHR_NACHRICHTEN auf nein;
+
+
+funk Bewerbung() ergibt Zeichenkette { "Hallo Welt!" }
+
+funk Einschreibung(Zahl Matrikelnummer) ergibt Nichts {
+  setze Zahl _ auf Matrikelnummer;
+}
+
+funk Studium() ergibt Nichts {
+    setze Liste von Zeichenkette A auf Argumente();
+    Drucke(Haupt(A));
+}
+
+funk Haupt(Liste von Zeichenkette Args) ergibt Zeichenkette {
+    Drucke(Args);
+
+    setze Liste von Zeichenkette Ausgabe auf [];
+
+    falls Args.Länge() == 1 {
+        Drucke("Erwartete Befehlszeilenargument <mensa-ort> <tages-verschiebung (wenn du willst)>, bekam nichts");
+        Aufgeben(69);
+    }
+
+    falls Args.Länge() > 3 {
+        Drucke("Erwartete Befehlszeilenargument <mensa-ort> <tages-verschiebung (wenn du willst)>, bekam vieel zu vieel");
+        Aufgeben(69);
+    }
+
+    setze Zeichenkette Eingabe auf Args[1];
+    setze Zahl Tages_Verschiebung auf 0;
+
+    // EXTREMST ABGEFUCKT -> das sollte aber nicht kaputt gehen???
+    // SORRY, falls das jemand findet -- Mike Myueller
+    falls Args.Länge() == 3 {
+        setze Zeichenkette Parser_Eingabe auf Formatiere("{\"tage\": %s}" / Args[2]);
+        setze Speicherbox Parser_Ausgabe auf Zergliedere_JSON(Parser_Eingabe) als Speicherbox;
+        aendere Tages_Verschiebung auf Parser_Ausgabe.Nehmen("tage") als Zahl;
+        //Drucke(Tages_Verschiebung); // THIS FUCKS ITSELF IF THERE IS NO ;
+    }
+
+    setze Zahl Mensa_Ort auf 0;
+
+    falls Eingabe == "hpi" {
+        ändere Mensa_Ort auf MENSA_GRIEBNITZSEE;
+    } sonst falls Eingabe == "filmuni" {
+        ändere Mensa_Ort auf MENSA_FILMUNI;
+    } sonst falls Eingabe == "bernau" {
+        Drucke(Formatiere("Gefährlicher Standort: <%s>\nValide, weniger gefährliche Standorte:\n    - hpi\n    - filmuni" / Eingabe));
+        Drucke("UND: wurde in Bernau überhaupt schon Essen erfunden? - Oder gibt es da nur Salz?");
+        Aufgeben(69);
+    } sonst {
+        Drucke(Formatiere("Unbekannter Standort: <%s>\nValide Standorte:\n    - hpi\n    - filmuni" / Eingabe));
+        Aufgeben(42);
+    }
+
+    // Erwarte einen Wahrheitswert fuer logging.
+    falls Args.Länge() == 3 {
+        ändere Eingabe auf Args[2];
+        falls Eingabe == "schreibe" {
+            ändere ZEIGE_MEHR_NACHRICHTEN auf ja;
+        }
+    }
+
+    Ausgabe.Hinzufügen(Formatiere("FAHRE HPI script version V%s für LINUX oder MACAROON" / Versions_Nummer()));
+    Ausgabe.Hinzufügen("========================================================");
+
+    Ausgabe.Hinzufügen(Aktualisiere(Mensa_Ort / Tages_Verschiebung));
+    ueberweise Verflache_Ausgabe(Ausgabe);
+}
+
+funk Aktualisiere(Zahl Mensa_Ort / Zahl Tages_Verschiebung) ergibt Zeichenkette {
+    setze Liste von Zeichenkette Ausgabe auf [];
+
+    Ausgabe.Hinzufügen("    ~> Lade Speiseangebot aus dem Internet herunter...");
+    falls Tages_Verschiebung != 0 {
+        Ausgabe.Hinzufügen(Formatiere("    ~> ANMERKUNG: Speiseangebot wird um %d Tag(e) verschoben." / Tages_Verschiebung));
+    }
+    setze Liste von Speise Speisen auf Lade_Speiseangebot(Mensa_Ort / Tages_Verschiebung);
+    Ausgabe.Hinzufügen(Formatiere("    ~> Speiseangebot bereit. %d Speisen geladen." / Speisen.Länge()));
+
+
+    setze Liste von Speise Mittagessen auf [];
+    setze Liste von Speise Abendessen auf [];
+
+    setze Zahl Zähler auf 0;
+    solange Zähler < Speisen.Länge() {
+        setze Speise S auf Speisen[Zähler];
+        setze Zeichenkette ZeitSlot auf S.ZeitSlot.Ersetze(" " / "");
+        falls ZeitSlot.Enthält("Mittagessen") {
+            Mittagessen.Hinzufügen(S);
+        } sonst falls ZeitSlot.Enthält("Abendessen") {
+            Abendessen.Hinzufügen(S);
+        } sonst falls ZeitSlot.Enthält("Automatenplan") {
+            falls ZEIGE_MEHR_NACHRICHTEN {
+                Ausgabe.Hinzufügen("[NACHRICHT] Ignoriere Automat");
+            }
+        } sonst {
+            Drucke(Formatiere("Nicht unterstützter ZeitSlot: `%s`" / ZeitSlot));
+            Aufgeben(1);
+        }
+        Zähler += 1;
+    }
+
+
+    Ausgabe.Hinzufügen("======= MITTAGESSEN ========");
+
+     Ausgabe.Hinzufügen(Gericht_Liste_Drucken(Mittagessen));
+
+    Ausgabe.Hinzufügen("======== ABENDESSEN ========");
+
+    Ausgabe.Hinzufügen(Gericht_Liste_Drucken(Abendessen));
+
+    ueberweise Verflache_Ausgabe(Ausgabe);
+}
+
+funk Gericht_Liste_Drucken(Liste von Speise Eingabe) ergibt Zeichenkette {
+    setze Liste von Zeichenkette Ausgabe auf [];
+
+    setze Fliesskommazahl Maximale_Protein auf 0,0;
+
+    setze Zahl Zähler auf 0;
+    solange Zähler < Eingabe.Länge() {
+        setze Speise S auf Eingabe[Zähler];
+        falls S.Protein_GR > Maximale_Protein {
+            aendere Maximale_Protein auf S.Protein_GR;
+        }
+
+        Zähler += 1;
+    }
+
+    setze Zahl Zähler auf 0;
+    solange Zähler < Eingabe.Länge() {
+        setze Speise S auf Eingabe[Zähler];
+
+        setze Zeichenkette VeganEmojii auf "?";
+
+        falls S.VeganFlaggen == 0 {
+            aendere VeganEmojii auf "🚫";
+        } sonst falls S.VeganFlaggen == 1 {
+            aendere VeganEmojii auf "🐄";
+        } sonst falls S.VeganFlaggen == 2 {
+            aendere VeganEmojii auf "🌱";
+        }
+
+        Ausgabe.Hinzufügen(Formatiere("\x1b[0;32m    - %s %s | %.2f€ | %s\x1b[0m" / VeganEmojii / S.Titel / S.Preis / S.Beschreibung));
+        Ausgabe.Hinzufügen(Formatiere(
+            "\x1b[0;31m        * %3@ d Kcal        * %3@ dg. Protein        * %3@ dg. Fett          * %3@ dg. Kohl.\x1b[0m"
+            / S.Kcal als Zahl
+            / S.Protein_GR als Zahl
+            / S.Fett_GR als Zahl
+            / S.Kohlenhydrate_GR als Zahl
+            ));
+        Zähler += 1;
+    }
+
+    falls Zähler == 0 {
+        // HOLY BALLS: this fails to compile if there is the ; missing
+        Ausgabe.Hinzufügen(Formatiere("    %s" / KEINE_DATEN));
+    }
+
+    ueberweise Verflache_Ausgabe(Ausgabe);
+}
+
+funk Verflache_Ausgabe(Liste von Zeichenkette Roh) ergibt Zeichenkette {
+    setze Zeichenkette Flache_Ausgabe auf "";
+    setze Zahl Ausgaben_Zaehler auf 0;
+
+    solange Ausgaben_Zaehler < Roh.Länge() {
+        setze Zeichenkette Ende auf "\n";
+        falls Ausgaben_Zaehler == Roh.Länge() {
+            aendere Ende auf "";
+        }
+        aendere Flache_Ausgabe auf Formatiere("%s%s%s" / Flache_Ausgabe / Roh[Ausgaben_Zaehler] / Ende);
+        Ausgaben_Zaehler += 1;
+    }
+
+    ueberweise Flache_Ausgabe;
+}

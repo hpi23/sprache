@@ -2,6 +2,7 @@
 #include "./reflection.h"
 #include "dynstring/dynstring.h"
 #include "hashmap/map.h"
+#include "to_string.h"
 
 typedef struct {
   TypeDescriptor type;
@@ -14,9 +15,10 @@ typedef struct {
 
 // AnyObj utility functions
 AnyObject *anyobj_new();
-void anyobj_free(AnyObject * obj);
+void anyobj_free(AnyObject *obj);
 ListNode *__hpi_internal_anyobj_keys(AnyObject *obj);
 AnyValue __hpi_internal_anyobj_take(AnyObject *obj, DynString *key);
+DynString *__hpi_internal_anyobj_take_type(AnyObject *obj, DynString *key);
 void anyobj_insert(AnyObject *obj, char *key, AnyValue value);
 
 // Runtime type casting

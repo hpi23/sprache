@@ -375,18 +375,18 @@ where
     }
 
     fn visit_statement(&mut self, node: &AnalyzedStatement<'src>) -> StmtResult {
-        match node {
-            AnalyzedStatement::Beantrage(_) => Ok(()),
-            AnalyzedStatement::Let(node) => self.visit_let_stmt(node),
-            AnalyzedStatement::Aendere(node) => self.visit_aendere_stmt(node),
-            AnalyzedStatement::Return(expr) => Err(InterruptKind::Return(
+        match &node.kind {
+            AnalyzedStatementK::Beantrage(_) => Ok(()),
+            AnalyzedStatementK::Let(node) => self.visit_let_stmt(node),
+            AnalyzedStatementK::Aendere(node) => self.visit_aendere_stmt(node),
+            AnalyzedStatementK::Return(expr) => Err(InterruptKind::Return(
                 expr.as_ref()
                     .map_or(Ok(Value::Unit), |expr| self.visit_expression(expr))?,
             )),
-            AnalyzedStatement::While(node) => self.visit_while_stmt(node),
-            AnalyzedStatement::Break => Err(InterruptKind::Break),
-            AnalyzedStatement::Continue => Err(InterruptKind::Continue),
-            AnalyzedStatement::Expr(node) => self.visit_expression(node).map(|_| ()),
+            AnalyzedStatementK::While(node) => self.visit_while_stmt(node),
+            AnalyzedStatementK::Break => Err(InterruptKind::Break),
+            AnalyzedStatementK::Continue => Err(InterruptKind::Continue),
+            AnalyzedStatementK::Expr(node) => self.visit_expression(node).map(|_| ()),
         }
     }
 
